@@ -140,6 +140,32 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
+    .wz-card-body {
+        padding: 20px 14px !important;
+    }
+    .wz-card-footer {
+        padding: 14px 12px !important;
+        gap: 8px;
+    }
+    .wz-card-footer .btn-wz-prev,
+    .wz-card-footer .btn-wz-next {
+        padding: 8px 12px !important;
+        font-size: 0.8rem !important;
+        white-space: nowrap !important;
+    }
+    .pricing-card-glow {
+        padding: 24px 12px !important;
+        border-radius: 16px !important;
+    }
+    .pricing-card-glow .currency-symbol {
+        font-size: 1.25rem !important;
+    }
+    .pricing-card-glow .price-input {
+        font-size: 1.6rem !important;
+        width: 130px !important;
+        max-width: 65% !important;
+        padding: 4px 6px !important;
+    }
 }
 
 /* ─── Wizard Card ─── */
@@ -694,12 +720,14 @@
     background: linear-gradient(135deg, rgba(6,182,212,0.08), rgba(56,189,248,0.04));
     border: 1px solid rgba(6,182,212,0.2);
     border-radius: 20px;
-    padding: 40px;
+    padding: 36px 20px;
     text-align: center;
+    max-width: 100%;
+    overflow: hidden;
 }
-.pricing-card-glow .currency-symbol { font-size: 2rem; color: var(--wz-cyan); font-weight: 800; }
+.pricing-card-glow .currency-symbol { font-size: 1.8rem; color: var(--wz-cyan); font-weight: 800; flex-shrink: 0; }
 .pricing-card-glow .price-input {
-    font-size: 2.5rem !important;
+    font-size: 2.2rem !important;
     font-weight: 800 !important;
     text-align: center !important;
     background: transparent !important;
@@ -707,8 +735,9 @@
     border-bottom: 2px solid rgba(6,182,212,0.4) !important;
     border-radius: 0 !important;
     color: #F8FAFC !important;
-    padding: 8px 16px !important;
-    width: 260px;
+    padding: 6px 12px !important;
+    width: 180px;
+    max-width: 100%;
 }
 .pricing-card-glow .price-input:focus {
     border-bottom-color: var(--wz-cyan) !important;

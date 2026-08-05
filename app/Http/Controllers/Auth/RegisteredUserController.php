@@ -16,39 +16,28 @@ use Illuminate\View\View;
 class RegisteredUserController extends Controller
 {
     /**
-     * Display the registration view.
+     * Display the registration view or redirect when registration is temporarily suspended.
      */
-    public function create(): View
+    public function create()
     {
-        return view('auth.register');
+        $notification = [
+            'message' => 'Registration is temporarily suspended / التسجيل مغلق مؤقتاً.',
+            'alert-type' => 'warning'
+        ];
+
+        return redirect()->route('login')->with($notification);
     }
 
     /**
      * Handle an incoming registration request.
-     *
-     * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+        $notification = [
+            'message' => 'Registration is temporarily suspended / التسجيل مغلق مؤقتاً.',
+            'alert-type' => 'warning'
+        ];
 
-        $nameParts = explode(' ', trim($request->name), 2);
-
-        $user = User::create([
-            'fname' => $nameParts[0],
-            'lname' => $nameParts[1] ?? null,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        event(new Registered($user));
-
-        Auth::login($user);
-
-        return redirect(route('dashboard', absolute: false));
+        return redirect()->route('login')->with($notification);
     }
 }

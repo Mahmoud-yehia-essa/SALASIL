@@ -848,6 +848,137 @@ html.light-theme .pac-matched {
 html.light-theme .pac-icon {
     filter: none !important;
 }
+
+/* ─── Mobile View Responsive Optimizations for Live Communications Desk ─── */
+@media (max-width: 991.98px) {
+    .hub-workspace {
+        height: calc(100vh - 180px) !important;
+        min-height: 480px !important;
+        border-radius: 14px !important;
+        position: relative !important;
+    }
+
+    .hub-sidebar {
+        width: 100% !important;
+        min-width: 100% !important;
+        border-right: none !important;
+        display: flex !important;
+    }
+    .hub-main-stage {
+        display: none !important;
+        width: 100% !important;
+    }
+
+    .hub-workspace.mobile-chat-active .hub-sidebar {
+        display: none !important;
+    }
+    .hub-workspace.mobile-chat-active .hub-main-stage {
+        display: flex !important;
+        width: 100% !important;
+    }
+
+    .stage-header {
+        padding: 10px 12px !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    .stage-user-info {
+        gap: 8px !important;
+        max-width: 100% !important;
+    }
+    .stage-avatar {
+        width: 36px !important;
+        height: 36px !important;
+    }
+    .stage-title {
+        font-size: 0.92rem !important;
+    }
+    .stage-sub {
+        font-size: 0.72rem !important;
+    }
+    .stage-actions {
+        gap: 4px !important;
+        width: 100% !important;
+        justify-content: flex-end !important;
+        margin-top: 2px !important;
+    }
+    .stage-actions select {
+        width: 95px !important;
+        font-size: 0.75rem !important;
+        padding: 4px 6px !important;
+    }
+    .stage-actions button {
+        padding: 4px 8px !important;
+        font-size: 0.75rem !important;
+    }
+
+    .stage-messages-body {
+        padding: 12px 10px !important;
+        gap: 10px !important;
+    }
+    .chat-msg-wrapper {
+        max-width: 88% !important;
+    }
+    .msg-bubble-box {
+        padding: 10px 14px !important;
+        font-size: 0.85rem !important;
+    }
+    .chat-location-card,
+    .chat-voicenote-card {
+        max-width: 100% !important;
+    }
+    .media-img-preview {
+        max-width: 100% !important;
+        max-height: 180px !important;
+    }
+
+    .stage-footer {
+        padding: 10px 12px !important;
+    }
+    .input-controls-row {
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+    }
+    .chat-input-textarea {
+        padding: 8px 12px !important;
+        font-size: 0.85rem !important;
+    }
+    .btn-send-gradient,
+    .btn-mic-record {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 17px !important;
+        border-radius: 10px !important;
+    }
+    .voice-record-overlay {
+        padding: 0 10px !important;
+    }
+    .rec-waveform-canvas {
+        width: 90px !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .page-content {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+    .kpi-card-hub {
+        padding: 10px 12px !important;
+        gap: 10px !important;
+    }
+    .kpi-icon-wrap {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 17px !important;
+    }
+    .kpi-title-hub {
+        font-size: 0.68rem !important;
+    }
+    .kpi-number-hub {
+        font-size: 1.12rem !important;
+    }
+}
 </style>
 
 <div class="page-content" style="padding-bottom: 10px;">
@@ -984,6 +1115,9 @@ html.light-theme .pac-icon {
             <!-- Header Bar -->
             <div id="chatHeader" class="stage-header" style="display: none;">
                 <div class="stage-user-info">
+                    <button type="button" class="btn btn-sm btn-outline-secondary text-cyan d-lg-none me-1 p-1 rounded-3" onclick="closeMobileChat()" title="Back to Conversations">
+                        <i class="bx bx-left-arrow-alt fs-4"></i>
+                    </button>
                     <img id="activeConvAvatar" src="{{ asset('upload/no_image.jpg') }}" class="stage-avatar" alt="Avatar">
                     <div>
                         <div id="activeConvTitle" class="stage-title">Select a Conversation</div>
@@ -1562,7 +1696,12 @@ function selectConversation(id, elem) {
         $(`.conv-card-item[data-id="${id}"]`).addClass('active');
     }
     currentConvId = id;
+    $('.hub-workspace').addClass('mobile-chat-active');
     loadConversationMessages(id);
+}
+
+function closeMobileChat() {
+    $('.hub-workspace').removeClass('mobile-chat-active');
 }
 
 // Fetch Thread Data & Initial Messages via AJAX
