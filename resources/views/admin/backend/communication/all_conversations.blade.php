@@ -481,6 +481,8 @@
     z-index: 10;
 }
 .input-controls-row { display: flex; align-items: center; gap: 10px; }
+.chat-actions-bar { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.chat-input-send-row { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 
 .chat-input-textarea {
     flex: 1;
@@ -936,12 +938,33 @@ html.light-theme .pac-icon {
         padding: 10px 12px !important;
     }
     .input-controls-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    .chat-actions-bar {
+        width: 100% !important;
+        justify-content: flex-start !important;
         gap: 6px !important;
-        flex-wrap: wrap !important;
+    }
+    .chat-input-send-row {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        width: 100% !important;
+        gap: 8px !important;
     }
     .chat-input-textarea {
+        flex: 1 1 0% !important;
+        width: 0 !important;
+        min-width: 0 !important;
         padding: 8px 12px !important;
         font-size: 0.85rem !important;
+    }
+    .btn-send-gradient {
+        flex: 0 0 auto !important;
+        flex-shrink: 0 !important;
     }
     .btn-send-gradient,
     .btn-mic-record {
@@ -1198,45 +1221,51 @@ html.light-theme .pac-icon {
                         </div>
                     </div>
 
-                    <!-- Quick Response Templates -->
-                    <div class="dropdown">
-                        <button class="btn btn-outline-secondary btn-sm rounded-3 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown">
-                            <i class='bx bx-zap me-1 text-warning'></i>Templates
+                    <!-- Actions & Tools Bar (Templates, Attachments, Mic) -->
+                    <div class="chat-actions-bar">
+                        <!-- Quick Response Templates -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm rounded-3 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown">
+                                <i class='bx bx-zap me-1 text-warning'></i>Templates
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-dark shadow-lg">
+                                <li><a class="dropdown-item fs-8" href="javascript:;" onclick="insertTemplate('Hello! How can we assist you today?')">Hello! How can we assist you today?</a></li>
+                                <li><a class="dropdown-item fs-8" href="javascript:;" onclick="insertTemplate('Your shipment update request has been received and is being processed.')">Your request has been received.</a></li>
+                                <li><a class="dropdown-item fs-8" href="javascript:;" onclick="insertTemplate('Thank you for reaching out to SALASIL support desk.')">Thank you for reaching out.</a></li>
+                            </ul>
+                        </div>
+
+                        <!-- Attachment Menu -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-info btn-sm rounded-3 dropdown-toggle text-info" type="button" data-bs-toggle="dropdown">
+                                <i class='bx bx-paperclip me-1'></i>Attach
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-dark shadow-lg">
+                                <li><a class="dropdown-item fs-8" href="javascript:;" onclick="triggerFileSelect('image')"><i class='bx bx-image me-2 text-info'></i>Send Image</a></li>
+                                <li><a class="dropdown-item fs-8" href="javascript:;" onclick="triggerFileSelect('file')"><i class='bx bx-file me-2 text-warning'></i>Send File</a></li>
+                                <li><a class="dropdown-item fs-8" href="javascript:;" onclick="openLocationModal()"><i class='bx bx-map-pin me-2 text-danger'></i>Send Location</a></li>
+                            </ul>
+                        </div>
+
+                        <!-- Hidden File Input -->
+                        <input type="file" id="hiddenFileInput" style="display: none;" onchange="handleFileSelected(this)">
+
+                        <!-- Voice Recording Button -->
+                        <button type="button" class="btn-mic-record" id="voiceRecordBtn" onclick="startVoiceRecording()" title="Record Voice Note">
+                            <i class='bx bx-microphone'></i>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-dark shadow-lg">
-                            <li><a class="dropdown-item fs-8" href="javascript:;" onclick="insertTemplate('Hello! How can we assist you today?')">Hello! How can we assist you today?</a></li>
-                            <li><a class="dropdown-item fs-8" href="javascript:;" onclick="insertTemplate('Your shipment update request has been received and is being processed.')">Your request has been received.</a></li>
-                            <li><a class="dropdown-item fs-8" href="javascript:;" onclick="insertTemplate('Thank you for reaching out to SALASIL support desk.')">Thank you for reaching out.</a></li>
-                        </ul>
                     </div>
 
-                    <!-- Attachment Menu -->
-                    <div class="dropdown">
-                        <button class="btn btn-outline-info btn-sm rounded-3 dropdown-toggle text-info" type="button" data-bs-toggle="dropdown">
-                            <i class='bx bx-paperclip me-1'></i>Attach
+                    <!-- Type Box & Send Button Row (Dedicated row on mobile) -->
+                    <div class="chat-input-send-row">
+                        <!-- Message Textarea -->
+                        <textarea id="messageTextInput" class="form-control chat-input-textarea" rows="1" placeholder="Type message... (Enter to send)" onkeydown="checkEnterSend(event)"></textarea>
+
+                        <!-- Send Button -->
+                        <button type="button" class="btn-send-gradient" onclick="sendMessage()">
+                            <i class='bx bx-send'></i>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-dark shadow-lg">
-                            <li><a class="dropdown-item fs-8" href="javascript:;" onclick="triggerFileSelect('image')"><i class='bx bx-image me-2 text-info'></i>Send Image</a></li>
-                            <li><a class="dropdown-item fs-8" href="javascript:;" onclick="triggerFileSelect('file')"><i class='bx bx-file me-2 text-warning'></i>Send File</a></li>
-                            <li><a class="dropdown-item fs-8" href="javascript:;" onclick="openLocationModal()"><i class='bx bx-map-pin me-2 text-danger'></i>Send Location</a></li>
-                        </ul>
                     </div>
-
-                    <!-- Hidden File Input -->
-                    <input type="file" id="hiddenFileInput" style="display: none;" onchange="handleFileSelected(this)">
-
-                    <!-- Message Textarea -->
-                    <textarea id="messageTextInput" class="form-control chat-input-textarea" rows="1" placeholder="Type message... (Enter to send)" onkeydown="checkEnterSend(event)"></textarea>
-
-                    <!-- Voice Recording Button -->
-                    <button type="button" class="btn-mic-record" id="voiceRecordBtn" onclick="startVoiceRecording()" title="Record Voice Note">
-                        <i class='bx bx-microphone'></i>
-                    </button>
-
-                    <!-- Send Button -->
-                    <button type="button" class="btn-send-gradient" onclick="sendMessage()">
-                        <i class='bx bx-send'></i>
-                    </button>
                 </div>
             </div>
         </div>
