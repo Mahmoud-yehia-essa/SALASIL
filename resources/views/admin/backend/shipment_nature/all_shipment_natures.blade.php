@@ -1,0 +1,130 @@
+@extends('admin.master_admin')
+@section('admin')
+
+<style>
+    /* Custom Styling for Status Badges & Selects */
+    select.shipment-nature-status-select {
+        width: 130px !important;
+        min-width: 130px !important;
+        height: 36px !important;
+        padding-left: 12px !important;
+        padding-right: 24px !important;
+        background-position: right 8px center !important;
+        background-size: 10px 6px !important;
+        border-radius: 50rem !important;
+        font-weight: 700 !important;
+        font-size: 0.82rem !important;
+        line-height: 1.3 !important;
+        cursor: pointer !important;
+        display: inline-block !important;
+        box-shadow: none !important;
+        white-space: nowrap !important;
+    }
+
+    .shipment-nature-status-select.status-badge-active {
+        background-color: rgba(34, 197, 94, 0.18) !important;
+        color: #22C55E !important;
+        border: 1px solid rgba(34, 197, 94, 0.4) !important;
+    }
+
+    .shipment-nature-status-select.status-badge-inactive {
+        background-color: rgba(148, 163, 184, 0.18) !important;
+        color: #94A3B8 !important;
+        border: 1px solid rgba(148, 163, 184, 0.4) !important;
+    }
+
+    select option {
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
+        font-weight: 600;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-4 pb-2 border-bottom border-secondary border-opacity-25 gap-3">
+    <div>
+        <h3 class="fw-bold header-title mb-1">
+            <i class="bx bx-shield-quarter text-info me-2"></i>Shipment Natures
+        </h3>
+        <p class="text-slate-400 mb-0" style="font-size: 0.95rem;">
+            Manage cargo characteristics (e.g. Hazardous, Fragile, Refrigerated) and visibility status.
+        </p>
+    </div>
+    <div>
+        <a href="{{ route('add.shipment.nature') }}" class="btn btn-primary rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2">
+            <i class="bx bx-plus-circle fs-5"></i>
+            <span>Add New Shipment Nature</span>
+        </a>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+    <div class="card-header bg-transparent border-bottom border-secondary border-opacity-25 py-3 px-4 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 fw-bold d-flex align-items-center gap-2">
+            <i class="bx bx-table text-info fs-4"></i>
+            <span>Shipment Natures Database Records</span>
+        </h5>
+        <span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-25 px-3 py-1 fw-semibold fs-6">
+            Total Records: {{ count($shipmentNatures) }}
+        </span>
+    </div>
+
+    <div class="card-body p-4">
+        <div class="table-responsive">
+            <table id="example" class="table table-striped table-bordered align-middle" style="width:100%">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">#</th>
+                        <th>Nature Name (EN)</th>
+                        <th>Nature Name (AR)</th>
+                        <th style="width: 140px;">Status</th>
+                        <th>Created Date</th>
+                        <th class="text-center" style="width: 100px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($shipmentNatures as $key => $item)
+                    <tr>
+                        <td class="text-center fw-bold">{{ $key + 1 }}</td>
+                        <td class="fw-bold text-white fs-6">
+                            <i class="bx bx-error-circle me-1 text-info"></i> {{ $item->name_en }}
+                        </td>
+                        <td class="fw-semibold text-slate-300 fs-6" style="direction: rtl; text-align: right;">
+                            {{ $item->name_ar }}
+                        </td>
+                        <!-- Dynamic Status Dropdown -->
+                        <td style="min-width: 140px;">
+                            <select class="form-select shipment-nature-status-select status-badge-{{ $item->is_active == 1 ? 'active' : 'inactive' }}" 
+                                    data-shipment-nature-id="{{ $item->id }}" 
+                                    title="Change Active Status">
+                                <option value="1" {{ $item->is_active == 1 ? 'selected' : '' }}>Active</option>
+                                <option value="0" {{ $item->is_active == 0 ? 'selected' : '' }}>Inactive</option>
+                            </select>
+                        </td>
+                        <td class="text-slate-300 fs-7">
+                            {{ $item->created_at ? $item->created_at->format('Y-m-d') : 'N/A' }}
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <a href="{{ route('edit.shipment.nature', $item->id) }}" 
+                                   class="btn btn-sm btn-outline-info rounded-3 p-2 d-inline-flex align-items-center justify-content-center"
+                                   title="Edit Shipment Nature">
+                                    <i class="bx bx-edit-alt fs-5"></i>
+                                </a>
+                                <a href="{{ route('delete.shipment.nature', $item->id) }}" 
+                                   class="btn btn-sm btn-outline-danger rounded-3 p-2 d-inline-flex align-items-center justify-content-center delete-shipment-nature-btn"
+                                   title="Delete Shipment Nature">
+                                    <i class="bx bx-trash fs-5"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@endsection

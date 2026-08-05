@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SALASIL — Empowering Your Supply Chain</title>
+  <meta name="description" content="SALASIL is a next-generation logistics ecosystem connecting businesses with a diverse truck fleet network. Real-time tracking, intelligent pricing, and seamless freight management." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --navy:#1B2B6B;--navy-dark:#0F1A45;--navy-light:#253580;
+      --teal:#4ECDC4;--teal-light:#72E8E0;--teal-dark:#2BA8A0;
+      --gold:#F5A623;--bg-dark:#080E24;--bg-mid:#0D1535;
+      --bg-card:rgba(27,43,107,0.35);--text-white:#F0F4FF;
+      --text-muted:#8A9BC4;--border:rgba(78,205,196,0.18);
+      --font-head:'Outfit',sans-serif;--font-body:'Inter',sans-serif;
+      --radius-lg:20px;--radius-xl:32px;
+      --transition:0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font-body);background:var(--bg-dark);color:var(--text-white);overflow-x:hidden;line-height:1.6}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg-dark)}::-webkit-scrollbar-thumb{background:var(--teal-dark);border-radius:3px}
+
+    /* ── NAVBAR ── */
+    #navbar{position:fixed;top:0;left:0;right:0;z-index:1000;padding:22px 6%;display:flex;align-items:center;justify-content:space-between;transition:all var(--transition)}
+    #navbar.scrolled{padding:12px 6%;background:rgba(8,14,36,0.75);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border-bottom:1px solid var(--border);box-shadow:0 4px 40px rgba(0,0,0,0.4)}
+    .nav-logo{display:flex;align-items:center;gap:12px;text-decoration:none}
+    .nav-logo img{height:40px;width:auto;filter:brightness(1.1);transition:var(--transition)}
+    .nav-logo:hover img{filter:brightness(1.3) drop-shadow(0 0 12px var(--teal))}
+    .nav-links{display:flex;align-items:center;gap:36px;list-style:none}
+    .nav-links a{text-decoration:none;color:var(--text-muted);font-size:.9rem;font-weight:500;font-family:var(--font-head);letter-spacing:.04em;transition:color var(--transition);position:relative}
+    .nav-links a::after{content:'';position:absolute;bottom:-4px;left:0;width:0;height:2px;background:var(--teal);border-radius:2px;transition:width var(--transition)}
+    .nav-links a:hover{color:var(--teal)}.nav-links a:hover::after{width:100%}
+    .nav-cta{padding:10px 26px;background:linear-gradient(135deg,var(--teal),var(--navy));border:none;border-radius:50px;color:#fff;font-family:var(--font-head);font-weight:600;font-size:.88rem;cursor:pointer;transition:var(--transition);box-shadow:0 4px 20px rgba(78,205,196,.3);text-decoration:none}
+    .nav-cta:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(78,205,196,.55)}
+    .hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:4px}
+    .hamburger span{display:block;width:26px;height:2px;background:var(--teal);border-radius:2px;transition:var(--transition)}
+
+    /* ── HERO ── */
+    #hero{position:relative;min-height:100vh;display:flex;align-items:center;overflow:hidden;padding:120px 6% 80px}
+    .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 15% 50%,rgba(27,43,107,.55) 0%,transparent 65%),radial-gradient(ellipse 60% 50% at 85% 20%,rgba(78,205,196,.12) 0%,transparent 60%),linear-gradient(160deg,#080E24 0%,#0D1535 50%,#080E24 100%)}
+    .hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(78,205,196,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(78,205,196,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridShift 20s linear infinite}
+    @keyframes gridShift{from{background-position:0 0}to{background-position:60px 60px}}
+    .orb{position:absolute;border-radius:50%;filter:blur(80px);animation:orbFloat 8s ease-in-out infinite}
+    .orb-1{width:500px;height:500px;background:rgba(27,43,107,.6);top:-100px;left:-100px;animation-delay:0s}
+    .orb-2{width:350px;height:350px;background:rgba(78,205,196,.15);top:20%;right:5%;animation-delay:-3s}
+    .orb-3{width:250px;height:250px;background:rgba(27,43,107,.5);bottom:10%;left:40%;animation-delay:-5s}
+    @keyframes orbFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-30px) scale(1.05)}}
+    #particles-canvas{position:absolute;inset:0;pointer-events:none;z-index:0}
+    .hero-content{position:relative;z-index:2;max-width:700px}
+    .hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:rgba(78,205,196,.12);border:1px solid rgba(78,205,196,.3);border-radius:50px;font-size:.78rem;font-weight:600;color:var(--teal);letter-spacing:.12em;text-transform:uppercase;margin-bottom:28px}
+    .hero-badge .dot{width:8px;height:8px;background:var(--teal);border-radius:50%;animation:blink 1.6s ease-in-out infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+    .hero-headline{font-family:var(--font-head);font-size:clamp(2.4rem,5.5vw,4rem);font-weight:800;line-height:1.1;letter-spacing:-.02em;margin-bottom:24px;background:linear-gradient(135deg,#FFF 30%,var(--teal-light) 70%,var(--teal) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero-sub{font-size:clamp(.95rem,1.8vw,1.1rem);color:var(--text-muted);line-height:1.75;margin-bottom:44px;max-width:580px}
+    .hero-ctas{display:flex;gap:16px;flex-wrap:wrap}
+    .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:16px 34px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:var(--navy-dark);font-family:var(--font-head);font-weight:700;font-size:.95rem;border-radius:50px;text-decoration:none;transition:var(--transition);box-shadow:0 6px 30px rgba(78,205,196,.4);position:relative;overflow:hidden}
+    .btn-primary::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--teal-light),var(--teal));opacity:0;transition:opacity var(--transition)}
+    .btn-primary:hover::before{opacity:1}
+    .btn-primary:hover{transform:translateY(-3px);box-shadow:0 12px 48px rgba(78,205,196,.6)}
+    .btn-primary span,.btn-primary svg{position:relative;z-index:1}
+    .btn-secondary{display:inline-flex;align-items:center;gap:10px;padding:16px 34px;background:transparent;color:var(--text-white);font-family:var(--font-head);font-weight:600;font-size:.95rem;border-radius:50px;text-decoration:none;border:1px solid rgba(78,205,196,.4);transition:var(--transition);position:relative;overflow:hidden}
+    .btn-secondary::before{content:'';position:absolute;inset:0;background:rgba(78,205,196,.08);opacity:0;transition:opacity var(--transition)}
+    .btn-secondary:hover::before{opacity:1}
+    .btn-secondary:hover{border-color:var(--teal);color:var(--teal);box-shadow:0 0 30px rgba(78,205,196,.25),inset 0 0 20px rgba(78,205,196,.05);transform:translateY(-3px)}
+    .btn-secondary span,.btn-secondary svg{position:relative;z-index:1}
+    .hero-visual{position:absolute;right:0;top:50%;transform:translateY(-50%);width:50%;height:80%;z-index:1;pointer-events:none}
+    .route-svg{width:100%;height:100%;opacity:.85}
+    .hero-stats{display:flex;gap:40px;margin-top:60px;flex-wrap:wrap}
+    .stat{display:flex;flex-direction:column;gap:4px}
+    .stat-number{font-family:var(--font-head);font-size:1.9rem;font-weight:800;color:var(--teal)}
+    .stat-label{font-size:.78rem;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase}
+
+    /* ── SECTIONS ── */
+    section{position:relative;padding:110px 6%}
+    .section-tag{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal);margin-bottom:16px}
+    .section-title{font-family:var(--font-head);font-size:clamp(1.9rem,4vw,3rem);font-weight:800;line-height:1.15;letter-spacing:-.02em;margin-bottom:18px;color:var(--text-white)}
+    .section-title span{color:var(--teal)}
+    .section-desc{font-size:1rem;color:var(--text-muted);max-width:600px;line-height:1.75}
+    .section-header{text-align:center;margin-bottom:72px}
+    .section-header .section-desc{margin:0 auto}
+    .divider{width:60px;height:3px;background:linear-gradient(90deg,var(--teal),transparent);border-radius:3px;margin:20px auto}
+
+    /* ── SERVICES ── */
+    #services{background:linear-gradient(180deg,var(--bg-dark) 0%,var(--bg-mid) 100%)}
+    .services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px}
+    .service-card{position:relative;padding:44px 36px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);backdrop-filter:blur(12px);transition:var(--transition);cursor:pointer;overflow:hidden;transform-style:preserve-3d}
+    .service-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(78,205,196,.06),transparent 60%);opacity:0;transition:opacity var(--transition)}
+    .service-card:hover::before{opacity:1}
+    .service-card:hover{border-color:rgba(78,205,196,.4);box-shadow:0 20px 60px rgba(78,205,196,.12),0 0 0 1px rgba(78,205,196,.1);transform:translateY(-8px)}
+    .service-card::after{content:'';position:absolute;top:0;right:0;width:120px;height:120px;background:radial-gradient(circle,rgba(78,205,196,.15),transparent 70%);opacity:0;transition:opacity var(--transition)}
+    .service-card:hover::after{opacity:1}
+    .service-icon{width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(78,205,196,.15),rgba(27,43,107,.3));border:1px solid rgba(78,205,196,.25);border-radius:18px;margin-bottom:28px;transition:var(--transition)}
+    .service-card:hover .service-icon{background:linear-gradient(135deg,rgba(78,205,196,.3),rgba(27,43,107,.5));box-shadow:0 0 24px rgba(78,205,196,.35);transform:scale(1.08)}
+    .service-icon svg{width:30px;height:30px;color:var(--teal)}
+    .service-title{font-family:var(--font-head);font-size:1.35rem;font-weight:700;margin-bottom:14px;color:var(--text-white)}
+    .service-desc{font-size:.92rem;color:var(--text-muted);line-height:1.7}
+    .service-link{display:inline-flex;align-items:center;gap:6px;margin-top:28px;font-size:.85rem;font-weight:600;color:var(--teal);text-decoration:none;transition:var(--transition)}
+    .service-link:hover{gap:10px}
+    .service-link svg{transition:transform var(--transition)}
+    .service-link:hover svg{transform:translateX(4px)}
+
+    /* ── TIMELINE ── */
+    #how-it-works{background:var(--bg-dark)}
+    .timeline{position:relative;display:flex;flex-direction:column;max-width:900px;margin:0 auto}
+    .timeline::before{content:'';position:absolute;left:50px;top:30px;bottom:30px;width:2px;background:linear-gradient(180deg,var(--teal),var(--navy-light),var(--teal));border-radius:2px}
+    .timeline-item{display:flex;align-items:flex-start;gap:36px;padding:36px 0;position:relative}
+    .timeline-number{flex-shrink:0;width:100px;text-align:center}
+    .timeline-num-circle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--teal),var(--teal-dark));font-family:var(--font-head);font-weight:800;font-size:1.1rem;color:var(--navy-dark);box-shadow:0 0 0 8px rgba(78,205,196,.12),0 8px 24px rgba(78,205,196,.3);transition:var(--transition);margin:0 auto}
+    .timeline-item:hover .timeline-num-circle{box-shadow:0 0 0 12px rgba(78,205,196,.2),0 8px 32px rgba(78,205,196,.5);transform:scale(1.1)}
+    .timeline-body{flex:1;padding:32px 36px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);backdrop-filter:blur(12px);transition:var(--transition)}
+    .timeline-item:hover .timeline-body{border-color:rgba(78,205,196,.3);box-shadow:0 8px 40px rgba(78,205,196,.1)}
+    .timeline-icon{margin-bottom:14px;color:var(--teal)}
+    .timeline-icon svg{width:28px;height:28px}
+    .timeline-title{font-family:var(--font-head);font-size:1.2rem;font-weight:700;margin-bottom:10px;color:var(--text-white)}
+    .timeline-desc{font-size:.92rem;color:var(--text-muted);line-height:1.7}
+
+    /* ── FLEET CAROUSEL ── */
+    #fleet{background:linear-gradient(180deg,var(--bg-mid) 0%,var(--bg-dark) 100%);overflow:hidden}
+    .carousel-wrapper{position:relative;margin-top:20px;overflow:hidden}
+    .carousel-wrapper::before,.carousel-wrapper::after{content:'';position:absolute;top:0;bottom:0;width:120px;z-index:10;pointer-events:none}
+    .carousel-wrapper::before{left:0;background:linear-gradient(90deg,var(--bg-mid),transparent)}
+    .carousel-wrapper::after{right:0;background:linear-gradient(-90deg,var(--bg-mid),transparent)}
+    .carousel-track{display:flex;gap:24px;animation:carousel 35s linear infinite;width:max-content;padding:20px 0}
+    .carousel-track:hover{animation-play-state:paused}
+    @keyframes carousel{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .fleet-card{flex-shrink:0;width:320px;padding:36px 32px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);backdrop-filter:blur(12px);transition:var(--transition);cursor:pointer}
+    .fleet-card:hover{border-color:rgba(78,205,196,.45);box-shadow:0 16px 48px rgba(78,205,196,.15);transform:translateY(-6px)}
+    .fleet-icon-wrap{width:80px;height:80px;border-radius:20px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(78,205,196,.1),rgba(27,43,107,.4));border:1px solid rgba(78,205,196,.2);margin-bottom:24px;font-size:2.2rem}
+    .fleet-name{font-family:var(--font-head);font-size:1.2rem;font-weight:700;margin-bottom:10px;color:var(--text-white)}
+    .fleet-desc{font-size:.87rem;color:var(--text-muted);line-height:1.65;margin-bottom:20px}
+    .fleet-tags{display:flex;flex-wrap:wrap;gap:8px}
+    .fleet-tag{padding:4px 12px;background:rgba(78,205,196,.1);border:1px solid rgba(78,205,196,.2);border-radius:50px;font-size:.73rem;font-weight:600;color:var(--teal);letter-spacing:.04em}
+
+    /* ── WHY US ── */
+    #why-us{background:var(--bg-dark)}
+    .why-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
+    .why-card{padding:32px 28px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);text-align:center;transition:var(--transition)}
+    .why-card:hover{border-color:rgba(78,205,196,.35);transform:translateY(-5px);box-shadow:0 12px 36px rgba(78,205,196,.1)}
+    .why-icon{font-size:2rem;margin-bottom:18px;display:block}
+    .why-title{font-family:var(--font-head);font-size:1rem;font-weight:700;margin-bottom:10px}
+    .why-text{font-size:.85rem;color:var(--text-muted);line-height:1.65}
+
+    /* ── CTA BAND ── */
+    #cta-band{padding:80px 6%;background:linear-gradient(135deg,rgba(27,43,107,.8),rgba(78,205,196,.12));border-top:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;position:relative;overflow:hidden}
+    #cta-band::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 80% at 50% 50%,rgba(78,205,196,.07),transparent 70%)}
+    .cta-band-title{font-family:var(--font-head);font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:800;color:var(--text-white);margin-bottom:16px}
+    .cta-band-sub{font-size:1rem;color:var(--text-muted);margin-bottom:40px}
+    .cta-band-btns{display:flex;justify-content:center;gap:16px;flex-wrap:wrap}
+
+    /* ── FOOTER ── */
+    footer{background:var(--bg-mid);padding:72px 6% 36px;border-top:1px solid var(--border)}
+    .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:60px}
+    .footer-brand img{height:44px;margin-bottom:20px;display:block}
+    .footer-brand p{font-size:.88rem;color:var(--text-muted);line-height:1.75;max-width:280px}
+    .footer-socials{display:flex;gap:12px;margin-top:24px}
+    .social-link{width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:rgba(78,205,196,.08);border:1px solid rgba(78,205,196,.2);border-radius:10px;color:var(--text-muted);text-decoration:none;transition:var(--transition)}
+    .social-link:hover{background:rgba(78,205,196,.2);border-color:var(--teal);color:var(--teal)}
+    .footer-col h4{font-family:var(--font-head);font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:22px}
+    .footer-col ul{list-style:none;display:flex;flex-direction:column;gap:12px}
+    .footer-col ul li a{font-size:.88rem;color:var(--text-muted);text-decoration:none;transition:color var(--transition)}
+    .footer-col ul li a:hover{color:var(--text-white)}
+    .footer-contact-item{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+    .footer-contact-item svg{color:var(--teal);flex-shrink:0;margin-top:2px}
+    .footer-contact-item span{font-size:.87rem;color:var(--text-muted)}
+    .footer-bottom{border-top:1px solid var(--border);padding-top:28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+    .footer-bottom p{font-size:.82rem;color:var(--text-muted)}
+    .footer-bottom-links{display:flex;gap:24px}
+    .footer-bottom-links a{font-size:.82rem;color:var(--text-muted);text-decoration:none;transition:color var(--transition)}
+    .footer-bottom-links a:hover{color:var(--teal)}
+
+    /* ── ANIMATIONS ── */
+    .reveal{opacity:0;transform:translateY(40px)}
+    @keyframes truckDrive{0%{transform:translateX(-20px)}50%{transform:translateX(20px)}100%{transform:translateX(-20px)}}
+    @keyframes pulseGlow{0%,100%{opacity:.4}50%{opacity:1}}
+    @keyframes dashFlow{from{stroke-dashoffset:1000}to{stroke-dashoffset:0}}
+    .route-dot{animation:pulseGlow 2s ease-in-out infinite}
+    .route-path{stroke-dasharray:12 8;animation:dashFlow 8s linear infinite}
+    @keyframes floatBox{0%,100%{transform:translateY(0) rotate(0deg)}33%{transform:translateY(-18px) rotate(5deg)}66%{transform:translateY(-8px) rotate(-3deg)}}
+    .float-box{animation:floatBox 5s ease-in-out infinite}
+    .float-box:nth-child(2){animation-delay:-1.5s}
+    .float-box:nth-child(3){animation-delay:-3s}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:1024px){.footer-grid{grid-template-columns:1fr 1fr}.hero-visual{width:45%;opacity:.6}}
+    @media(max-width:768px){
+      .nav-links{display:none}
+      .nav-links.open{display:flex;flex-direction:column;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(8,14,36,.97);backdrop-filter:blur(24px);justify-content:center;align-items:center;gap:40px;z-index:999}
+      .nav-links.open a{font-size:1.4rem}
+      .hamburger{display:flex;z-index:1001}
+      .hero-visual{display:none}
+      .footer-grid{grid-template-columns:1fr;gap:36px}
+      .timeline::before{left:26px}
+      .timeline-number{width:52px}
+      .timeline-body{padding:24px 20px}
+    }
+    @media(max-width:480px){section{padding:80px 5%}.hero-ctas{flex-direction:column}.btn-primary,.btn-secondary{width:100%;justify-content:center}}
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav id="navbar" role="navigation" aria-label="Main navigation">
+  <a href="#hero" class="nav-logo">
+    <img src="/logo.png" alt="SALASIL Logo" />
+  </a>
+  <ul class="nav-links" id="nav-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#fleet">Our Fleet</a></li>
+    <li><a href="#why-us">Why SALASIL</a></li>
+    <li><a href="#contact" class="nav-cta">Get Started</a></li>
+  </ul>
+  <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- HERO -->
+<section id="hero" aria-label="Hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <canvas id="particles-canvas"></canvas>
+
+  <div class="hero-content">
+    <div class="hero-badge reveal">
+      <span class="dot"></span>
+      Next-Generation Logistics Platform
+    </div>
+    <h1 class="hero-headline reveal">
+      Empowering Your Supply Chain.<br/>Delivering Beyond Boundaries.
+    </h1>
+    <p class="hero-sub reveal">
+      Experience the future of logistics with SALASIL. From instant quick-shipments to meticulously scheduled freight trips, we connect you with the right fleet, at the right time, with absolute transparency.
+    </p>
+    <div class="hero-ctas reveal">
+      <a href="#services" class="btn-primary" id="book-freight-btn">
+        <span>Book Your Freight Now</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#fleet" class="btn-secondary" id="explore-routes-btn">
+        <span>Explore Scheduled Routes</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat reveal"><span class="stat-number" data-target="2500" data-suffix="+">0</span><span class="stat-label">Active Trucks</span></div>
+      <div class="stat reveal"><span class="stat-number" data-target="98" data-suffix="%">0</span><span class="stat-label">On-Time Rate</span></div>
+      <div class="stat reveal"><span class="stat-number" data-target="47" data-suffix="+">0</span><span class="stat-label">Cities Covered</span></div>
+      <div class="stat reveal"><span class="stat-number" data-target="12000" data-suffix="+">0</span><span class="stat-label">Shipments Delivered</span></div>
+    </div>
+  </div>
+
+  <!-- Hero SVG Visual -->
+  <div class="hero-visual" aria-hidden="true">
+    <svg class="route-svg" viewBox="0 0 600 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="300" cy="250" r="220" stroke="rgba(78,205,196,0.04)" stroke-width="1"/>
+      <circle cx="300" cy="250" r="160" stroke="rgba(78,205,196,0.07)" stroke-width="1"/>
+      <circle cx="300" cy="250" r="100" stroke="rgba(78,205,196,0.1)" stroke-width="1"/>
+      <path d="M 80 380 Q 150 200 300 180 Q 450 160 520 120" stroke="rgba(78,205,196,0.1)" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <path class="route-path" id="truck-path" d="M 80 380 Q 150 200 300 180 Q 450 160 520 120" stroke="url(#routeGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle class="route-dot" cx="80" cy="380" r="8" fill="#4ECDC4"/>
+      <circle class="route-dot" cx="300" cy="180" r="8" fill="#4ECDC4" style="animation-delay:-1s"/>
+      <circle class="route-dot" cx="520" cy="120" r="8" fill="#4ECDC4" style="animation-delay:-2s"/>
+      <g transform="translate(65,340)">
+        <rect x="-18" y="-12" width="36" height="24" rx="6" fill="rgba(27,43,107,0.9)" stroke="rgba(78,205,196,0.4)" stroke-width="1"/>
+        <text x="0" y="4" text-anchor="middle" fill="#4ECDC4" font-size="8" font-family="Outfit" font-weight="700">ORIGIN</text>
+      </g>
+      <g transform="translate(520,90)">
+        <rect x="-22" y="-12" width="44" height="24" rx="6" fill="rgba(27,43,107,0.9)" stroke="rgba(78,205,196,0.4)" stroke-width="1"/>
+        <text x="0" y="4" text-anchor="middle" fill="#4ECDC4" font-size="8" font-family="Outfit" font-weight="700">DESTINATION</text>
+      </g>
+      <g id="truck-svg">
+        <rect x="-45" y="-20" width="75" height="36" rx="6" fill="url(#truckBody)"/>
+        <rect x="32" y="-28" width="34" height="36" rx="5" fill="url(#cabGrad)"/>
+        <rect x="38" y="-24" width="20" height="16" rx="3" fill="rgba(78,205,196,0.5)"/>
+        <circle cx="-26" cy="18" r="9" fill="#1B2B6B" stroke="#4ECDC4" stroke-width="2"/>
+        <circle cx="-26" cy="18" r="3.5" fill="#4ECDC4"/>
+        <circle cx="24" cy="18" r="9" fill="#1B2B6B" stroke="#4ECDC4" stroke-width="2"/>
+        <circle cx="24" cy="18" r="3.5" fill="#4ECDC4"/>
+        <circle cx="50" cy="18" r="9" fill="#1B2B6B" stroke="#4ECDC4" stroke-width="2"/>
+        <circle cx="50" cy="18" r="3.5" fill="#4ECDC4"/>
+        <circle cx="66" cy="-4" r="5" fill="#F5A623" opacity="0.9"/>
+        <path d="M 68 -4 L 100 -14 L 100 6 Z" fill="rgba(245,166,35,0.12)"/>
+      </g>
+      <g class="float-box" transform="translate(150,280)">
+        <rect x="-20" y="-20" width="40" height="40" rx="8" fill="rgba(27,43,107,0.7)" stroke="rgba(78,205,196,0.3)" stroke-width="1.5"/>
+        <text x="0" y="6" text-anchor="middle" fill="#4ECDC4" font-size="16">📦</text>
+      </g>
+      <g class="float-box" transform="translate(430,210)">
+        <rect x="-18" y="-18" width="36" height="36" rx="7" fill="rgba(27,43,107,0.7)" stroke="rgba(78,205,196,0.3)" stroke-width="1.5"/>
+        <text x="0" y="5" text-anchor="middle" fill="#4ECDC4" font-size="14">📦</text>
+      </g>
+      <g class="float-box" transform="translate(480,300)">
+        <rect x="-15" y="-15" width="30" height="30" rx="6" fill="rgba(27,43,107,0.7)" stroke="rgba(78,205,196,0.3)" stroke-width="1.5"/>
+        <text x="0" y="4" text-anchor="middle" fill="#4ECDC4" font-size="12">📦</text>
+      </g>
+      <g transform="translate(300,100)">
+        <rect x="-55" y="-18" width="110" height="36" rx="18" fill="rgba(8,14,36,0.92)" stroke="rgba(78,205,196,0.5)" stroke-width="1.5"/>
+        <circle cx="-35" cy="0" r="6" fill="#4ECDC4"/>
+        <circle cx="-35" cy="0" r="10" fill="rgba(78,205,196,0.2)" class="route-dot"/>
+        <text x="-18" y="4" fill="#ffffff" font-size="10" font-family="Outfit" font-weight="600">LIVE TRACKING</text>
+      </g>
+      <g transform="translate(200,340)">
+        <rect x="-42" y="-16" width="84" height="32" rx="10" fill="rgba(245,166,35,0.15)" stroke="rgba(245,166,35,0.5)" stroke-width="1"/>
+        <text x="0" y="4" text-anchor="middle" fill="#F5A623" font-size="10" font-family="Outfit" font-weight="700">ETA: 2h 15m</text>
+      </g>
+      <defs>
+        <linearGradient id="routeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#4ECDC4" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#1B2B6B" stop-opacity="0.8"/>
+        </linearGradient>
+        <linearGradient id="truckBody" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#253580"/><stop offset="100%" stop-color="#1B2B6B"/>
+        </linearGradient>
+        <linearGradient id="cabGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#2BA8A0"/><stop offset="100%" stop-color="#1B2B6B"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section id="services" aria-label="Our Services">
+  <div class="section-header">
+    <span class="section-tag reveal">What We Offer</span>
+    <h2 class="section-title reveal">Our <span>Core Services</span></h2>
+    <div class="divider reveal"></div>
+    <p class="section-desc reveal">From lightning-fast same-day shipments to complex multi-stop freight operations, SALASIL has every logistics need covered.</p>
+  </div>
+  <div class="services-grid">
+    <article class="service-card reveal" id="service-quick">
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <h3 class="service-title">Quick Shipments</h3>
+      <p class="service-desc">On-demand freight pickup and delivery within hours. Connect instantly with available drivers in your area for urgent, time-sensitive cargo needs.</p>
+      <a href="#" class="service-link">Learn More <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </article>
+    <article class="service-card reveal" id="service-scheduled">
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <h3 class="service-title">Scheduled Routes</h3>
+      <p class="service-desc">Plan ahead with precision. Schedule recurring freight routes with dedicated drivers, guaranteed slots, and predictable pricing for optimized supply chains.</p>
+      <a href="#" class="service-link">Learn More <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </article>
+    <article class="service-card reveal" id="service-tracking">
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+      </div>
+      <h3 class="service-title">Real-Time Tracking</h3>
+      <p class="service-desc">End-to-end visibility across your entire fleet. Live GPS tracking, automated ETA updates, proof of delivery, and instant alerts keep you always informed.</p>
+      <a href="#" class="service-link">Learn More <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </article>
+    <article class="service-card reveal" id="service-pricing">
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <h3 class="service-title">Intelligent Pricing</h3>
+      <p class="service-desc">Dynamic, market-aware pricing with transparent quotes. No hidden fees — instant estimates based on distance, cargo type, and real-time market conditions.</p>
+      <a href="#" class="service-link">Learn More <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </article>
+    <article class="service-card reveal" id="service-freight">
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      </div>
+      <h3 class="service-title">Heavy Cargo Management</h3>
+      <p class="service-desc">Specialized handling for oversized and heavy freight. Our vetted fleet includes flatbeds, lowboys, and container trucks for your most demanding loads.</p>
+      <a href="#" class="service-link">Learn More <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </article>
+    <article class="service-card reveal" id="service-analytics">
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <h3 class="service-title">Fleet Analytics</h3>
+      <p class="service-desc">Powerful dashboard with insights on fleet performance, fuel efficiency, driver scores, and route optimization. Make data-driven logistics decisions.</p>
+      <a href="#" class="service-link">Learn More <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </article>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works" aria-label="How It Works">
+  <div class="section-header">
+    <span class="section-tag reveal">The Process</span>
+    <h2 class="section-title reveal">How <span>SALASIL Works</span></h2>
+    <div class="divider reveal"></div>
+    <p class="section-desc reveal">From first request to final delivery — a seamlessly orchestrated journey in four simple steps.</p>
+  </div>
+  <div class="timeline">
+    <div class="timeline-item reveal">
+      <div class="timeline-number"><div class="timeline-num-circle">01</div></div>
+      <div class="timeline-body">
+        <div class="timeline-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <h3 class="timeline-title">Place Your Request</h3>
+        <p class="timeline-desc">Describe your shipment details — cargo type, pickup location, destination, and preferred timeline. Our AI-powered system instantly matches you with the ideal truck and driver from our vetted network.</p>
+      </div>
+    </div>
+    <div class="timeline-item reveal">
+      <div class="timeline-number"><div class="timeline-num-circle">02</div></div>
+      <div class="timeline-body">
+        <div class="timeline-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <h3 class="timeline-title">Driver Assigned Instantly</h3>
+        <p class="timeline-desc">A verified, professionally-rated driver accepts your booking. You receive their profile, vehicle details, and direct contact — full transparency before the journey even starts.</p>
+      </div>
+    </div>
+    <div class="timeline-item reveal">
+      <div class="timeline-number"><div class="timeline-num-circle">03</div></div>
+      <div class="timeline-body">
+        <div class="timeline-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <h3 class="timeline-title">Track Every Kilometer</h3>
+        <p class="timeline-desc">Monitor your shipment live on an interactive map. Receive proactive ETA updates, milestone notifications, and condition reports — total peace of mind throughout transit.</p>
+      </div>
+    </div>
+    <div class="timeline-item reveal">
+      <div class="timeline-number"><div class="timeline-num-circle">04</div></div>
+      <div class="timeline-body">
+        <div class="timeline-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <h3 class="timeline-title">Delivered &amp; Confirmed</h3>
+        <p class="timeline-desc">Digital proof of delivery with e-signature and timestamped photo documentation. Automated invoice generation and instant payment processing — the entire cycle, closed seamlessly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OUR FLEET -->
+<section id="fleet" aria-label="Our Fleet">
+  <div class="section-header">
+    <span class="section-tag reveal">Transportation Solutions</span>
+    <h2 class="section-title reveal">Our <span>Diverse Fleet</span></h2>
+    <div class="divider reveal"></div>
+    <p class="section-desc reveal">A comprehensive range of specialized vehicles, ready to handle any cargo — from palletized goods to temperature-sensitive pharmaceuticals.</p>
+  </div>
+  <div class="carousel-wrapper">
+    <div class="carousel-track" id="carousel-track">
+      <div class="fleet-card"><div class="fleet-icon-wrap">🚛</div><h3 class="fleet-name">Flatbed Truck</h3><p class="fleet-desc">Ideal for oversized, heavy, and irregularly shaped cargo. Open platform design for easy loading from any side with crane or forklift.</p><div class="fleet-tags"><span class="fleet-tag">Heavy Cargo</span><span class="fleet-tag">Oversized</span><span class="fleet-tag">Construction</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">❄️</div><h3 class="fleet-name">Reefer Truck</h3><p class="fleet-desc">Temperature-controlled refrigerated units maintaining precise cold chain from -25°C to +25°C for perishables, pharma, and food products.</p><div class="fleet-tags"><span class="fleet-tag">Cold Chain</span><span class="fleet-tag">Food &amp; Pharma</span><span class="fleet-tag">Perishables</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">📦</div><h3 class="fleet-name">Closed Box Truck</h3><p class="fleet-desc">Fully enclosed cargo area protecting goods from weather, dust, and theft. Perfect for retail distribution, electronics, and sensitive merchandise.</p><div class="fleet-tags"><span class="fleet-tag">Retail</span><span class="fleet-tag">Electronics</span><span class="fleet-tag">Weather-Proof</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">🏗️</div><h3 class="fleet-name">Container Truck</h3><p class="fleet-desc">ISO-standard container transport for long-haul freight, port logistics, and intermodal shipping. Connects sea, rail, and road networks seamlessly.</p><div class="fleet-tags"><span class="fleet-tag">Intermodal</span><span class="fleet-tag">Port Logistics</span><span class="fleet-tag">Long-Haul</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">🚐</div><h3 class="fleet-name">Curtainsider</h3><p class="fleet-desc">Flexible side-curtain access for rapid palletized loading and unloading. Combines protection of a box truck with the versatility of a flatbed.</p><div class="fleet-tags"><span class="fleet-tag">Palletized</span><span class="fleet-tag">Fast Loading</span><span class="fleet-tag">Flexible</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">⛽</div><h3 class="fleet-name">Tanker Truck</h3><p class="fleet-desc">Certified transport for liquid bulk cargo including food-grade liquids, chemicals, and petroleum products — with full hazmat compliance.</p><div class="fleet-tags"><span class="fleet-tag">Liquid Bulk</span><span class="fleet-tag">Hazmat</span><span class="fleet-tag">Certified</span></div></div>
+      <!-- Duplicates for infinite loop -->
+      <div class="fleet-card"><div class="fleet-icon-wrap">🚛</div><h3 class="fleet-name">Flatbed Truck</h3><p class="fleet-desc">Ideal for oversized, heavy, and irregularly shaped cargo. Open platform design for easy loading from any side with crane or forklift.</p><div class="fleet-tags"><span class="fleet-tag">Heavy Cargo</span><span class="fleet-tag">Oversized</span><span class="fleet-tag">Construction</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">❄️</div><h3 class="fleet-name">Reefer Truck</h3><p class="fleet-desc">Temperature-controlled refrigerated units maintaining precise cold chain from -25°C to +25°C for perishables, pharma, and food products.</p><div class="fleet-tags"><span class="fleet-tag">Cold Chain</span><span class="fleet-tag">Food &amp; Pharma</span><span class="fleet-tag">Perishables</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">📦</div><h3 class="fleet-name">Closed Box Truck</h3><p class="fleet-desc">Fully enclosed cargo area protecting goods from weather, dust, and theft. Perfect for retail distribution, electronics, and sensitive merchandise.</p><div class="fleet-tags"><span class="fleet-tag">Retail</span><span class="fleet-tag">Electronics</span><span class="fleet-tag">Weather-Proof</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">🏗️</div><h3 class="fleet-name">Container Truck</h3><p class="fleet-desc">ISO-standard container transport for long-haul freight, port logistics, and intermodal shipping. Connects sea, rail, and road networks seamlessly.</p><div class="fleet-tags"><span class="fleet-tag">Intermodal</span><span class="fleet-tag">Port Logistics</span><span class="fleet-tag">Long-Haul</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">🚐</div><h3 class="fleet-name">Curtainsider</h3><p class="fleet-desc">Flexible side-curtain access for rapid palletized loading and unloading. Combines protection of a box truck with the versatility of a flatbed.</p><div class="fleet-tags"><span class="fleet-tag">Palletized</span><span class="fleet-tag">Fast Loading</span><span class="fleet-tag">Flexible</span></div></div>
+      <div class="fleet-card"><div class="fleet-icon-wrap">⛽</div><h3 class="fleet-name">Tanker Truck</h3><p class="fleet-desc">Certified transport for liquid bulk cargo including food-grade liquids, chemicals, and petroleum products — with full hazmat compliance.</p><div class="fleet-tags"><span class="fleet-tag">Liquid Bulk</span><span class="fleet-tag">Hazmat</span><span class="fleet-tag">Certified</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY SALASIL -->
+<section id="why-us" aria-label="Why Choose SALASIL">
+  <div class="section-header">
+    <span class="section-tag reveal">Our Edge</span>
+    <h2 class="section-title reveal">Why <span>Choose SALASIL</span></h2>
+    <div class="divider reveal"></div>
+    <p class="section-desc reveal">Built from the ground up for the demands of modern logistics, with trust and technology at our core.</p>
+  </div>
+  <div class="why-grid">
+    <div class="why-card reveal"><span class="why-icon">🔒</span><h3 class="why-title">Verified Driver Network</h3><p class="why-text">Every driver undergoes rigorous background checks, license verification, and regular safety assessments.</p></div>
+    <div class="why-card reveal"><span class="why-icon">⚡</span><h3 class="why-title">Instant Dispatch</h3><p class="why-text">AI-powered matching connects your shipment to the nearest available driver in under 60 seconds.</p></div>
+    <div class="why-card reveal"><span class="why-icon">📡</span><h3 class="why-title">24/7 Live Visibility</h3><p class="why-text">Real-time GPS tracking, automated alerts, and proactive communication every step of the route.</p></div>
+    <div class="why-card reveal"><span class="why-icon">🤖</span><h3 class="why-title">AI-Powered Routing</h3><p class="why-text">Smart route optimization reduces transit time and fuel consumption while maximizing delivery reliability.</p></div>
+    <div class="why-card reveal"><span class="why-icon">💳</span><h3 class="why-title">Seamless Payments</h3><p class="why-text">Secure digital payments, automated invoicing, and multi-currency support for hassle-free transactions.</p></div>
+    <div class="why-card reveal"><span class="why-icon">🌍</span><h3 class="why-title">Nationwide Coverage</h3><p class="why-text">Extensive network spanning 47+ cities, ensuring reliable coverage for both inter-city and last-mile delivery.</p></div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<section id="cta-band" aria-label="Call to Action">
+  <div style="position:relative;z-index:1">
+    <h2 class="cta-band-title reveal">Ready to Transform Your Logistics?</h2>
+    <p class="cta-band-sub reveal">Join thousands of businesses that trust SALASIL to move their world forward.</p>
+    <div class="cta-band-btns reveal">
+      <a href="#services" class="btn-primary" id="cta-book-btn">
+        <span>Book Your Freight Now</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#contact" class="btn-secondary" id="cta-contact-btn">
+        <span>Talk to Our Team</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.61 4.87 2 2 0 0 1 3.58 2.7h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.28 17.3l.64-.38z"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer id="contact" role="contentinfo">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <img src="/logo.png" alt="SALASIL Logo"/>
+      <p>Revolutionizing freight and logistics across the region. SALASIL connects businesses with a powerful network of professional drivers and diverse truck fleets — empowering supply chains of every scale.</p>
+      <div class="footer-socials">
+        <a href="#" class="social-link" aria-label="LinkedIn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
+        <a href="#" class="social-link" aria-label="Twitter"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg></a>
+        <a href="#" class="social-link" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+        <a href="#" class="social-link" aria-label="YouTube"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.95C18.88 4 12 4 12 4s-6.88 0-8.59.47a2.78 2.78 0 0 0-1.95 1.95A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.5C5.12 20 12 20 12 20s6.88 0 8.59-.5a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="#0D1535"/></svg></a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Services</h4>
+      <ul>
+        <li><a href="#services">Quick Shipments</a></li>
+        <li><a href="#services">Scheduled Routes</a></li>
+        <li><a href="#services">Real-Time Tracking</a></li>
+        <li><a href="#services">Heavy Cargo</a></li>
+        <li><a href="#services">Fleet Analytics</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Company</h4>
+      <ul>
+        <li><a href="#">About SALASIL</a></li>
+        <li><a href="#">Our Fleet</a></li>
+        <li><a href="#">Driver Partners</a></li>
+        <li><a href="#">Careers</a></li>
+        <li><a href="#">Press &amp; Media</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contact Us</h4>
+      <div class="footer-contact-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.61 4.87 2 2 0 0 1 3.58 2.7h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.28 17.3l.64-.38z"/></svg>
+        <span>+966 50 000 0000</span>
+      </div>
+      <div class="footer-contact-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <span>hello@salasil.com</span>
+      </div>
+      <div class="footer-contact-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span>Riyadh, Saudi Arabia</span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2026 SALASIL Logistics. All rights reserved.</p>
+    <div class="footer-bottom-links">
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">Cookie Policy</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+// Navbar scroll
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => { navbar.classList.toggle('scrolled', window.scrollY > 50); }, {passive:true});
+
+// Hamburger
+const hamburger = document.getElementById('hamburger');
+const navLinks  = document.getElementById('nav-links');
+hamburger.addEventListener('click', () => {
+  const isOpen = navLinks.classList.toggle('open');
+  hamburger.setAttribute('aria-expanded', isOpen);
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+});
+navLinks.querySelectorAll('a').forEach(l => l.addEventListener('click', () => { navLinks.classList.remove('open'); hamburger.setAttribute('aria-expanded','false'); document.body.style.overflow=''; }));
+
+// Scroll reveals
+gsap.utils.toArray('.reveal').forEach((el, i) => {
+  gsap.fromTo(el, {opacity:0, y:45}, {opacity:1, y:0, duration:0.85, ease:'power3.out', delay:(i%3)*0.08,
+    scrollTrigger:{trigger:el, start:'top 88%', toggleActions:'play none none none'}});
+});
+
+// Hero stagger (already visible)
+const heroItems = ['.hero-badge','.hero-headline','.hero-sub','.hero-ctas','.hero-stats','.hero-visual'];
+heroItems.forEach((sel, i) => {
+  gsap.fromTo(sel, {opacity:0, y: sel==='.hero-visual'?0:35, x: sel==='.hero-visual'?60:0},
+    {opacity: sel==='.hero-visual'?0.85:1, y:0, x:0, duration:0.9, ease:'power3.out', delay:0.2+i*0.2});
+});
+
+// Counter
+document.querySelectorAll('.stat-number').forEach(el => {
+  const target = parseInt(el.dataset.target,10);
+  const suffix = el.dataset.suffix || '+';
+  ScrollTrigger.create({trigger:el, start:'top 90%', once:true,
+    onEnter:() => {
+      const obj = {val:0};
+      gsap.to(obj, {val:target, duration:2, ease:'power2.out',
+        onUpdate:() => { el.textContent = Math.round(obj.val).toLocaleString() + suffix; }});
+    }
+  });
+});
+
+// 3D tilt on service cards
+document.querySelectorAll('.service-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const cx = r.width/2, cy = r.height/2;
+    const rotX = ((y-cy)/cy)*-8, rotY = ((x-cx)/cx)*8;
+    card.style.transform = `translateY(-8px) perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+  });
+  card.addEventListener('mouseleave', () => { card.style.transform=''; });
+});
+
+// Magnetic buttons
+document.querySelectorAll('.btn-primary, .btn-secondary').forEach(btn => {
+  btn.addEventListener('mousemove', e => {
+    const r = btn.getBoundingClientRect();
+    const x = e.clientX - r.left - r.width/2, y = e.clientY - r.top - r.height/2;
+    btn.style.transform = `translate(${x*0.15}px,${y*0.15}px) translateY(-3px)`;
+  });
+  btn.addEventListener('mouseleave', () => { btn.style.transform=''; });
+});
+
+// Particles
+(function(){
+  const canvas = document.getElementById('particles-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+  function resize(){ const h=document.getElementById('hero'); W=canvas.width=h.offsetWidth; H=canvas.height=h.offsetHeight; }
+  resize();
+  window.addEventListener('resize', resize, {passive:true});
+  function P(){ this.x=Math.random()*W; this.y=Math.random()*H; this.vx=(Math.random()-.5)*.4; this.vy=(Math.random()-.5)*.4; this.r=Math.random()*1.5+.5; this.a=Math.random()*.4+.1; }
+  P.prototype.update=function(){ this.x+=this.vx; this.y+=this.vy; if(this.x<0)this.x=W; if(this.x>W)this.x=0; if(this.y<0)this.y=H; if(this.y>H)this.y=0; };
+  const count=Math.min(80, Math.floor(W*H/15000));
+  for(let i=0;i<count;i++) particles.push(new P());
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(p=>{ ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fillStyle=`rgba(78,205,196,${p.a})`; ctx.fill(); p.update(); });
+    for(let i=0;i<particles.length;i++) for(let j=i+1;j<particles.length;j++){
+      const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y, d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){ ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y); ctx.lineTo(particles[j].x,particles[j].y); ctx.strokeStyle=`rgba(78,205,196,${0.07*(1-d/120)})`; ctx.lineWidth=.8; ctx.stroke(); }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// Truck along path
+(function(){
+  const truck = document.getElementById('truck-svg');
+  const path  = document.getElementById('truck-path');
+  if(!truck || !path) return;
+  const len = path.getTotalLength();
+  let t = 0;
+  function step(){
+    t = (t + 0.0006) % 1;
+    const pt  = path.getPointAtLength(t * len);
+    const pt2 = path.getPointAtLength(Math.min((t+0.01)*len, len));
+    const angle = Math.atan2(pt2.y-pt.y, pt2.x-pt.x)*180/Math.PI;
+    truck.setAttribute('transform', `translate(${pt.x},${pt.y}) rotate(${angle})`);
+    requestAnimationFrame(step);
+  }
+  step();
+})();
+</script>
+</body>
+</html>
