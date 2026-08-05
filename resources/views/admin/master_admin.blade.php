@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="en" class="dark-theme" dir="ltr">
+<html lang="en" class="light-theme" dir="ltr">
 
 <head>
     <script>
         (function() {
-            var t = localStorage.getItem('salasil_theme') || 'dark';
-            if (t === 'light') {
-                document.documentElement.classList.remove('dark-theme');
-                document.documentElement.classList.add('light-theme');
-            } else {
+            var t = localStorage.getItem('salasil_theme') || 'light';
+            if (t === 'dark') {
                 document.documentElement.classList.remove('light-theme');
                 document.documentElement.classList.add('dark-theme');
+            } else {
+                document.documentElement.classList.remove('dark-theme');
+                document.documentElement.classList.add('light-theme');
             }
         })();
     </script>
@@ -281,7 +281,7 @@
         /* ═════════════════════════════════════════════════════════════
            DATATABLES & TABLES DARK & LIGHT MODE HIGH-CONTRAST ENGINE
         ═════════════════════════════════════════════════════════════ */
-        html.dark-theme, html:not(.light-theme) {
+        html.dark-theme {
             --tbl-text: #F8FAFC;
             --tbl-border: rgba(255, 255, 255, 0.08);
             --tbl-header-bg: rgba(15, 23, 42, 0.85);
@@ -294,7 +294,7 @@
             --dt-input-text: #F8FAFC;
         }
 
-        html.light-theme {
+        html.light-theme, html:not(.dark-theme) {
             --tbl-text: #0F172A;
             --tbl-border: #E2E8F0;
             --tbl-header-bg: #F1F5F9;
@@ -1928,7 +1928,7 @@
             });
 
             // Theme Mode Toggle (Dark / Light) with LocalStorage persistence
-            var currentTheme = localStorage.getItem('salasil_theme') || 'dark';
+            var currentTheme = localStorage.getItem('salasil_theme') || 'light';
 
             function applyTheme(theme) {
                 if (theme === 'light') {

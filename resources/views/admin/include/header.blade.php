@@ -28,7 +28,7 @@
                 <!-- Theme Mode Switcher Button (Dark / Light) -->
                 <div class="nav-item">
                     <a class="nav-link text-white position-relative p-2 rounded-circle hover-bg-dark cursor-pointer" id="theme-toggle-btn" href="javascript:;" title="Toggle Dark/Light Mode">
-                        <i class='bx bx-sun fs-4' id="theme-icon" style="color: #38BDF8;"></i>
+                        <i class='bx bx-moon fs-4' id="theme-icon" style="color: #0284C7;"></i>
                     </a>
                 </div>
 
@@ -211,49 +211,49 @@
                 }
 
                 /* Dark Theme Overrides */
-                html:not(.light-theme) .notif-dropdown-box,
+                html.dark-theme .notif-dropdown-box,
                 body.dark-theme .notif-dropdown-box {
                     background: #1E293B !important;
                     border: 1px solid rgba(255,255,255,0.12) !important;
                     color: #F8FAFC !important;
                     box-shadow: 0 20px 50px rgba(0,0,0,0.4) !important;
                 }
-                html:not(.light-theme) .notif-dropdown-box .notif-header,
+                html.dark-theme .notif-dropdown-box .notif-header,
                 body.dark-theme .notif-dropdown-box .notif-header {
                     background: rgba(15, 23, 42, 0.8) !important;
                     border-bottom: 1px solid rgba(255,255,255,0.1) !important;
                 }
-                html:not(.light-theme) .notif-dropdown-box .notif-header-title,
+                html.dark-theme .notif-dropdown-box .notif-header-title,
                 body.dark-theme .notif-dropdown-box .notif-header-title {
                     color: #FFFFFF !important;
                 }
-                html:not(.light-theme) .notif-dropdown-box .notif-item,
+                html.dark-theme .notif-dropdown-box .notif-item,
                 body.dark-theme .notif-dropdown-box .notif-item {
                     background: #1E293B !important;
                     color: #F8FAFC !important;
                     border-bottom: 1px solid rgba(255,255,255,0.06) !important;
                 }
-                html:not(.light-theme) .notif-dropdown-box .notif-item.unread,
+                html.dark-theme .notif-dropdown-box .notif-item.unread,
                 body.dark-theme .notif-dropdown-box .notif-item.unread {
                     background: rgba(6, 182, 212, 0.08) !important;
                 }
-                html:not(.light-theme) .notif-dropdown-box .notif-item:hover,
+                html.dark-theme .notif-dropdown-box .notif-item:hover,
                 body.dark-theme .notif-dropdown-box .notif-item:hover {
                     background: rgba(255,255,255,0.04) !important;
                 }
-                html:not(.light-theme) .notif-dropdown-box .notif-item-title-success,
+                html.dark-theme .notif-dropdown-box .notif-item-title-success,
                 body.dark-theme .notif-dropdown-box .notif-item-title-success {
                     color: #10B981 !important;
                 }
-                html:not(.light-theme) .notif-dropdown-box .notif-item-title-danger,
+                html.dark-theme .notif-dropdown-box .notif-item-title-danger,
                 body.dark-theme .notif-dropdown-box .notif-item-title-danger {
                     color: #F43F5E !important;
                 }
-                html:not(.light-theme) .notif-dropdown-box .notif-item-msg,
+                html.dark-theme .notif-dropdown-box .notif-item-msg,
                 body.dark-theme .notif-dropdown-box .notif-item-msg {
                     color: #CBD5E1 !important;
                 }
-                html:not(.light-theme) .notif-dropdown-box .notif-footer,
+                html.dark-theme .notif-dropdown-box .notif-footer,
                 body.dark-theme .notif-dropdown-box .notif-footer {
                     background: rgba(15, 23, 42, 0.9) !important;
                     border-top: 1px solid rgba(255,255,255,0.1) !important;
