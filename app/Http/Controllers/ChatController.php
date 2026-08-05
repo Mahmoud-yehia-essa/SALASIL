@@ -29,8 +29,12 @@ class ChatController extends Controller
             'delivery_status' => 'sent',
         ]);
 
-        // 2. إطلاق البث المباشر عبر Reverb
-        broadcast(new MessageSent($message))->toOthers();
+        // 2. إطلاق البث المباشر عبر Reverb (في حال عمل السيرفر)
+        try {
+            broadcast(new MessageSent($message))->toOthers();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Chat message broadcast skipped or failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,

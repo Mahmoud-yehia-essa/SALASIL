@@ -156,17 +156,21 @@ class ShipmentTrackingController extends Controller
             'lng'                  => $lng,
         ]);
 
-        // 3. Broadcast real-time event via Reverb
-        broadcast(new ShipmentLocationUpdated(
-            $shipmentId,
-            $lat,
-            $lng,
-            $speed,
-            $heading,
-            $isStopPoint,
-            $locationDesc,
-            $status
-        ))->toOthers();
+        // 3. Broadcast real-time event via Reverb (safely wrapped in try-catch)
+        try {
+            broadcast(new ShipmentLocationUpdated(
+                $shipmentId,
+                $lat,
+                $lng,
+                $speed,
+                $heading,
+                $isStopPoint,
+                $locationDesc,
+                $status
+            ))->toOthers();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Shipment location broadcast skipped or failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'status'   => 'success',
@@ -216,14 +220,18 @@ class ShipmentTrackingController extends Controller
             }
         }
 
-        // Broadcast event
-        broadcast(new ShipmentStatusUpdated(
-            $shipmentId,
-            $status,
-            $desc,
-            $lat,
-            $lng
-        ))->toOthers();
+        // Broadcast event (safely wrapped in try-catch)
+        try {
+            broadcast(new ShipmentStatusUpdated(
+                $shipmentId,
+                $status,
+                $desc,
+                $lat,
+                $lng
+            ))->toOthers();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Shipment status broadcast skipped or failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'status'   => 'success',

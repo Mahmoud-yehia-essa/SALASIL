@@ -1013,14 +1013,17 @@ function toggleAutoRouteSimulation() {
         })
         .then(res => res.json())
         .then(data => {
-            onLiveLocationReceived({
-                latitude: simLat,
-                longitude: simLng,
-                speed: simSpeed,
-                heading: simHeading < 0 ? simHeading + 360 : simHeading,
-                timestamp: new Date().toLocaleTimeString('en-US')
-            });
-        });
+            if (data && data.status === 'success') {
+                onLiveLocationReceived({
+                    latitude: simLat,
+                    longitude: simLng,
+                    speed: simSpeed,
+                    heading: simHeading < 0 ? simHeading + 360 : simHeading,
+                    timestamp: new Date().toLocaleTimeString('en-US')
+                });
+            }
+        })
+        .catch(err => console.error('Auto-sim update error:', err));
     }, 1200);
 }
 

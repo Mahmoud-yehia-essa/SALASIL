@@ -148,7 +148,11 @@ class CommunicationController extends Controller
                 'is_read'         => 0,
             ]);
 
-            broadcast(new \App\Events\MessageSent($initMsg))->toOthers();
+            try {
+                broadcast(new \App\Events\MessageSent($initMsg))->toOthers();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Initial message broadcast skipped or failed: ' . $e->getMessage());
+            }
         }
 
         if ($request->ajax()) {
@@ -337,8 +341,12 @@ class CommunicationController extends Controller
             'delivery_status' => 'sent',
         ]);
 
-        // Broadcast real-time live message via Reverb immediately
-        broadcast(new \App\Events\MessageSent($message));
+        // Broadcast real-time live message via Reverb immediately (safely wrapped)
+        try {
+            broadcast(new \App\Events\MessageSent($message));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Communication message broadcast skipped or failed: ' . $e->getMessage());
+        }
 
         // Touch conversation updated_at
         $conversation->touch();
