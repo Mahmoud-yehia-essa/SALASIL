@@ -185,6 +185,85 @@
       color: #080E24;
       box-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
     }
+
+    /* High contrast badge overrides for dark glass theme */
+    .glass-card .badge.bg-success,
+    .glass-card .badge.text-success,
+    .glass-card .badge.border-success,
+    .badge.bg-success {
+      background-color: rgba(16, 185, 129, 0.2) !important;
+      color: #34D399 !important;
+      border: 1px solid rgba(16, 185, 129, 0.6) !important;
+      font-weight: 700 !important;
+    }
+
+    .glass-card .badge.bg-warning,
+    .glass-card .badge.text-warning,
+    .glass-card .badge.border-warning,
+    .badge.bg-warning {
+      background-color: rgba(245, 158, 11, 0.2) !important;
+      color: #FBBF24 !important;
+      border: 1px solid rgba(245, 158, 11, 0.6) !important;
+      font-weight: 700 !important;
+    }
+
+    .glass-card .badge.bg-danger,
+    .glass-card .badge.text-danger,
+    .glass-card .badge.border-danger,
+    .badge.bg-danger {
+      background-color: rgba(244, 63, 94, 0.2) !important;
+      color: #F87171 !important;
+      border: 1px solid rgba(244, 63, 94, 0.6) !important;
+      font-weight: 700 !important;
+    }
+
+    .glass-card .badge.bg-secondary,
+    .glass-card .badge.text-secondary,
+    .glass-card .badge.border-secondary,
+    .badge.bg-secondary {
+      background-color: rgba(148, 163, 184, 0.25) !important;
+      color: #CBD5E1 !important;
+      border: 1px solid rgba(148, 163, 184, 0.6) !important;
+      font-weight: 700 !important;
+    }
+
+    .glass-card .badge.bg-info,
+    .glass-card .badge.text-info,
+    .glass-card .badge.border-info,
+    .badge.bg-info {
+      background-color: rgba(56, 189, 248, 0.2) !important;
+      color: #38BDF8 !important;
+      border: 1px solid rgba(56, 189, 248, 0.6) !important;
+      font-weight: 700 !important;
+    }
+
+    .glass-card .badge.bg-dark,
+    .badge.bg-dark {
+      background-color: rgba(8, 14, 36, 0.85) !important;
+      color: #FBBF24 !important;
+      border: 1px solid rgba(245, 158, 11, 0.5) !important;
+      font-weight: 700 !important;
+    }
+
+    /* Table styling high-contrast overrides */
+    .table-dark {
+      --bs-table-bg: rgba(8, 14, 36, 0.6) !important;
+      --bs-table-striped-bg: rgba(255, 255, 255, 0.03) !important;
+      border-color: rgba(78, 205, 196, 0.2) !important;
+    }
+    .table-dark th {
+      color: var(--teal) !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      font-size: 0.82rem !important;
+      letter-spacing: 0.05em !important;
+      border-bottom: 1px solid rgba(78, 205, 196, 0.25) !important;
+      background: rgba(13, 21, 53, 0.85) !important;
+    }
+    .table-dark td {
+      color: var(--text-white) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }
   </style>
 </head>
 <body>
