@@ -1972,23 +1972,53 @@ function renderMessagesStream(messages) {
     container.scrollTop(container[0].scrollHeight);
 }
 
-// Send Message Action
+// Instant Zero-Latency Send Message Action (Optimistic UI)
 function sendMessage() {
     const text = $('#messageTextInput').val().trim();
-    if (!text && !selectedFileType) return;
+    const fileInput = document.getElementById('hiddenFileInput');
+    const hasFile = fileInput && fileInput.files.length > 0;
+
+    if (!text && !hasFile && !selectedFileType) return;
+
+    const messageType = selectedFileType || (hasFile ? 'file' : 'text');
+    const tempId = 'temp_' + Date.now();
+    const activeReplyTo = currentReplyTo;
+    const authUserName = '{{ trim((auth()->user()->fname ?? "") . " " . (auth()->user()->lname ?? "")) ?: "Admin" }}';
+
+    // Clear input & reset state INSTANTLY (0ms latency feedback)
+    $('#messageTextInput').val('');
+    cancelReply();
+    const currentSelectedType = selectedFileType;
+    selectedFileType = null;
+
+    // Render Optimistic Message Bubble Immediately if text message
+    if (!hasFile && messageType === 'text') {
+        const optMessage = {
+            id: tempId,
+            conversation_id: currentConvId,
+            sender_id: {{ auth()->id() }},
+            is_me: true,
+            sender_name: authUserName,
+            sender_role: 'ADMIN',
+            message_type: 'text',
+            content: text,
+            created_at: 'Just now',
+            delivery_status: 'sending'
+        };
+        handleIncomingLiveMessage({ message: optMessage });
+    }
 
     const data = new FormData();
     data.append('_token', '{{ csrf_token() }}');
     data.append('conversation_id', currentConvId);
-    data.append('message_type', selectedFileType || 'text');
+    data.append('message_type', messageType);
     data.append('content', text);
 
-    if (currentReplyTo) {
-        data.append('reply_to_id', currentReplyTo);
+    if (activeReplyTo) {
+        data.append('reply_to_id', activeReplyTo);
     }
 
-    const fileInput = document.getElementById('hiddenFileInput');
-    if (fileInput.files.length > 0) {
+    if (hasFile) {
         data.append('file_attachment', fileInput.files[0]);
     }
 
@@ -1999,17 +2029,18 @@ function sendMessage() {
         contentType: false,
         processData: false,
         success: function(res) {
-            if (res.success) {
-                $('#messageTextInput').val('');
-                fileInput.value = '';
-                cancelReply();
-                selectedFileType = null;
-
-                if (res.message) {
-                    res.message.conversation_id = res.message.conversation_id || currentConvId;
-                    handleIncomingLiveMessage({ message: res.message });
-                }
+            if (fileInput) fileInput.value = '';
+            if (res.success && res.message) {
+                // Remove temporary optimistic bubble and replace with server confirmed message
+                $(`#msg-${tempId}`).remove();
+                res.message.conversation_id = res.message.conversation_id || currentConvId;
+                handleIncomingLiveMessage({ message: res.message });
             }
+        },
+        error: function() {
+            if (fileInput) fileInput.value = '';
+            $(`#msg-${tempId}`).addClass('opacity-50');
+            toastr.error('Failed to send message. Please try again.');
         }
     });
 }
