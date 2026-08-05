@@ -311,6 +311,43 @@ html.light-theme .detail-row .d-value {
     color: #0F172A !important;
     font-weight: 700 !important;
 }
+@media (max-width: 767.98px) {
+    .modal-sh-detail .modal-dialog {
+        margin: 0.5rem;
+    }
+    .modal-sh-detail .modal-header {
+        padding: 16px 20px;
+    }
+    .modal-sh-detail .modal-body {
+        padding: 20px 14px;
+        max-height: 82vh;
+    }
+    .modal-sh-detail .modal-footer {
+        padding: 14px 20px;
+    }
+    .detail-card-grid {
+        padding: 14px 12px;
+        margin-bottom: 16px;
+        overflow: hidden;
+    }
+    .detail-row {
+        flex-direction: column;
+        gap: 3px;
+        margin-bottom: 12px;
+        min-width: 0;
+    }
+    .detail-row .d-label {
+        min-width: auto;
+        font-size: 0.72rem;
+    }
+    .detail-row .d-value {
+        font-size: 0.84rem;
+        width: 100%;
+        min-width: 0;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+}
 .shipment-sub-card {
     background: rgba(15, 23, 42, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -832,7 +869,6 @@ function formatStatus(st) {
                     </div>
                     <div>
                         <h5 class="modal-title fw-bold text-white mb-0" id="modalTitle">Shipment Details</h5>
-                        <small class="text-muted" id="modalSubtitle">Full specs & 40+ database fields</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

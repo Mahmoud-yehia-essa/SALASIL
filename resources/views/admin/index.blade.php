@@ -16,13 +16,17 @@
             ['Invoices', {{ $invoicesCount }}],
         ]);
 
+        var isLight = document.documentElement.classList.contains('light-theme');
+        var titleColor = isLight ? '#0F172A' : '#F8FAFC';
+        var legendColor = isLight ? '#475569' : '#94A3B8';
+
         var options = {
             title: 'SALASIL Network Operational Distribution',
             fontName: 'Plus Jakarta Sans',
             fontSize: 14,
             backgroundColor: 'transparent',
-            titleTextStyle: { color: '#F8FAFC', fontSize: 16, bold: true },
-            legend: { position: 'right', alignment: 'center', textStyle: { color: '#94A3B8' } },
+            titleTextStyle: { color: titleColor, fontSize: 16, bold: true },
+            legend: { position: 'right', alignment: 'center', textStyle: { color: legendColor } },
             chartArea: { width: '85%', height: '80%' },
             colors: ['#06B6D4', '#14B8A6', '#0284C7', '#8B5CF6', '#F59E0B', '#10B981'],
             is3D: true
@@ -31,9 +35,28 @@
         var chart = new google.visualization.PieChart(document.getElementById('piechart'));
         chart.draw(data, options);
     }
+
+    // Re-draw chart on window resize or theme mode toggle
+    window.addEventListener('resize', drawChart);
+    document.addEventListener('DOMContentLoaded', function() {
+        var modeIcons = document.querySelectorAll('.mode-icon, .dark-mode, .light-mode');
+        modeIcons.forEach(function(icon) {
+            icon.addEventListener('click', function() {
+                setTimeout(drawChart, 150);
+            });
+        });
+    });
 </script>
 
 <style>
+    /* Google Charts SVG Light Theme Adaptive Styling */
+    html.light-theme #piechart text {
+        fill: #475569 !important;
+    }
+    html.light-theme #piechart text[text-anchor="start"] {
+        fill: #0F172A !important;
+    }
+
     .salasil-stat-card {
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 16px !important;

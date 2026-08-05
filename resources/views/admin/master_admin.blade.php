@@ -559,6 +559,10 @@
             position: relative !important;
         }
 
+        .sidebar-wrapper .metismenu a.has-arrow {
+            padding-right: 42px !important;
+        }
+
         .sidebar-wrapper .metismenu a:hover,
         .sidebar-wrapper .metismenu .mm-active > a {
             color: #38BDF8 !important;
@@ -580,12 +584,15 @@
         }
 
         .sidebar-wrapper .metismenu a .menu-title {
-            font-size: 14px !important;
+            font-size: 13.5px !important;
             font-weight: 600 !important;
             white-space: nowrap !important;
             text-align: left !important;
             margin: 0 !important;
             flex-grow: 1 !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
         }
 
         /* Simple Static Down/Up Arrow Indicator for Open/Closed Menu Items */

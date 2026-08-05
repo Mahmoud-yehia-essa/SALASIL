@@ -94,6 +94,54 @@
 .wz-step-item.active .wz-step-label { color: var(--wz-cyan-light); }
 .wz-step-item.done   .wz-step-label { color: var(--wz-success); }
 
+/* ─── Responsive Stepper for Mobile View ─── */
+@media (max-width: 767.98px) {
+    .wz-progress-wrap {
+        padding: 14px 10px;
+        margin-bottom: 20px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(6,182,212,0.4) transparent;
+        border-radius: 16px;
+    }
+    .wz-progress-wrap::-webkit-scrollbar {
+        height: 4px;
+    }
+    .wz-progress-wrap::-webkit-scrollbar-thumb {
+        background: rgba(6,182,212,0.4);
+        border-radius: 4px;
+    }
+    .wz-steps-track {
+        justify-content: flex-start;
+        gap: 12px;
+        min-width: max-content;
+        padding: 4px 6px;
+    }
+    .wz-steps-track::before {
+        left: 20px;
+        right: 20px;
+        top: 18px;
+    }
+    .wz-step-item {
+        flex: 0 0 auto;
+        width: 72px;
+    }
+    .wz-step-circle {
+        width: 36px;
+        height: 36px;
+        font-size: 12px;
+    }
+    .wz-step-label {
+        font-size: 10px;
+        margin-top: 6px;
+        max-width: 72px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
 /* ─── Wizard Card ─── */
 .wz-card {
     background: linear-gradient(135deg, rgba(30,41,59,0.95) 0%, rgba(15,23,42,0.98) 100%);
@@ -418,6 +466,7 @@
     gap: 12px;
     margin-bottom: 10px;
     align-items: flex-start;
+    min-width: 0;
 }
 .review-item:last-child { margin-bottom: 0; }
 .review-item .r-label {
@@ -433,8 +482,28 @@
     font-size: 0.88rem;
     color: #E2E8F0;
     font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 .review-item .r-value.highlight { color: var(--wz-cyan-light); font-weight: 700; }
+
+@media (max-width: 576px) {
+    .review-item {
+        flex-direction: column;
+        gap: 3px;
+        margin-bottom: 12px;
+    }
+    .review-item .r-label {
+        min-width: auto;
+        font-size: 0.72rem;
+    }
+    .review-item .r-value {
+        font-size: 0.84rem;
+        width: 100%;
+    }
+}
 
 /* ─── Buttons ─── */
 .btn-wz-next {
@@ -1689,6 +1758,14 @@ $(document).ready(function() {
             else $(this).find('.wz-step-circle').html(s);
         });
         currentStep = step;
+        // Auto-scroll mobile stepper track to keep active step centered
+        var $activeItem = $('.wz-step-item[data-step="' + step + '"]');
+        var $wrap = $('.wz-progress-wrap');
+        if ($activeItem.length && $wrap.length && $wrap.get(0).scrollWidth > $wrap.get(0).clientWidth) {
+            var itemLeft = $activeItem.offset().left - $wrap.offset().left + $wrap.scrollLeft();
+            var targetScroll = itemLeft - ($wrap.width() / 2) + ($activeItem.outerWidth() / 2);
+            $wrap.animate({ scrollLeft: Math.max(0, targetScroll) }, 300);
+        }
         if (step === 8) buildReview();
 
         if (step === 4) {

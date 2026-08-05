@@ -58,6 +58,25 @@
         background-color: #FFFFFF !important;
         color: #0F172A !important;
     }
+
+    /* ─── Guaranteed Horizontal Scroll for Clients Table ─── */
+    .table-responsive {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+        display: block !important;
+        margin-bottom: 0.5rem;
+    }
+    #example {
+        width: 100% !important;
+        min-width: 1100px !important;
+        margin-bottom: 0 !important;
+    }
+    #example th, 
+    #example td {
+        white-space: nowrap !important;
+    }
 </style>
 
 <!-- Page Header -->
@@ -302,7 +321,12 @@
                         // Re-initialize DataTable ONLY when there are active records (count > 0)
                         if (response.count > 0 && $.fn.DataTable) {
                             $('#example').DataTable({
-                                responsive: true
+                                autoWidth: false,
+                                language: {
+                                    search: "Search in loaded results:",
+                                    lengthMenu: "Display _MENU_ entries",
+                                    info: "Showing _START_ to _END_ of _TOTAL_ entries"
+                                }
                             });
                         }
                     }

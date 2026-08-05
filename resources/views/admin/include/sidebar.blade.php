@@ -37,7 +37,7 @@
 
         <li>
             <a href="javascript:;" class="has-arrow" aria-expanded="false">
-                <div class="parent-icon"><i class='bx bx-truck'></i></div>
+                <div class="parent-icon"><i class='bx bxs-truck'></i></div>
                 <div class="menu-title">Trucks</div>
             </a>
             <ul>

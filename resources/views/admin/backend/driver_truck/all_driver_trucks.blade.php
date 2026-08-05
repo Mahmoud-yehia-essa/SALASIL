@@ -4,6 +4,25 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
 <style>
+    /* ─── Guaranteed Horizontal Scroll for Driver Trucks Table ─── */
+    .table-responsive {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+        display: block !important;
+        margin-bottom: 0.5rem;
+    }
+    #example {
+        width: 100% !important;
+        min-width: 1100px !important;
+        margin-bottom: 0 !important;
+    }
+    #example th, 
+    #example td {
+        white-space: nowrap !important;
+    }
+
     /* Custom Styling for Status Badges & Selects */
     select.driver-truck-verified-select, select.driver-truck-default-select {
         width: 155px !important;
@@ -279,9 +298,16 @@
                         $('#total_records_count').text(response.count);
 
                         // Re-initialize DataTable
-                        $('#example').DataTable({
-                            responsive: true
-                        });
+                        if (response.count > 0 && $.fn.DataTable) {
+                            $('#example').DataTable({
+                                autoWidth: false,
+                                language: {
+                                    search: "Search in loaded results:",
+                                    lengthMenu: "Display _MENU_ entries",
+                                    info: "Showing _START_ to _END_ of _TOTAL_ entries"
+                                }
+                            });
+                        }
                     }
                 },
                 error: function() {

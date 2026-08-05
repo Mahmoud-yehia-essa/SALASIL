@@ -203,12 +203,14 @@
     border-radius: 14px;
     padding: 18px 20px;
     margin-bottom: 20px;
+    overflow: hidden;
 }
 .detail-row {
     display: flex;
     gap: 12px;
     margin-bottom: 10px;
     align-items: flex-start;
+    min-width: 0;
 }
 .detail-row:last-child { margin-bottom: 0; }
 .detail-row .d-label {
@@ -224,6 +226,10 @@
     font-size: 0.88rem;
     color: #E2E8F0;
     font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 /* ─── Submit Button ─── */
@@ -868,7 +874,6 @@ function formatStatus(st) {
                     </div>
                     <div>
                         <h5 class="modal-title fw-bold text-white mb-0" id="modalTitle">Shipment Details</h5>
-                        <small class="text-muted" id="modalSubtitle">Full specs & 40+ database fields</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

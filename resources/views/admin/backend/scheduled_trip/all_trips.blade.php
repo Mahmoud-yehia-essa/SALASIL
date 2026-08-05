@@ -174,11 +174,17 @@
     color: var(--tp-cyan-light); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
 }
 .detail-sec-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(6,182,212,0.4), transparent); }
-.detail-card-grid { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; }
-.detail-row { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+.detail-card-grid { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; overflow: hidden; }
+.detail-row { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; min-width: 0; }
 .detail-row:last-child { margin-bottom: 0; }
 .detail-row .d-label { font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.4px; min-width: 140px; flex-shrink: 0; }
-.detail-row .d-value { font-size: 0.88rem; color: #E2E8F0; font-weight: 500; }
+.detail-row .d-value { font-size: 0.88rem; color: #E2E8F0; font-weight: 500; flex: 1; min-width: 0; word-break: break-word; overflow-wrap: anywhere; }
+
+@media (max-width: 767.98px) {
+    .detail-row { flex-direction: column; gap: 3px; margin-bottom: 12px; }
+    .detail-row .d-label { min-width: auto; font-size: 0.72rem; }
+    .detail-row .d-value { font-size: 0.84rem; width: 100%; }
+}
 
 /* ═════════════════════════════════════════════════════════════
    LIGHT MODE OVERRIDES FOR ALL SCHEDULED TRIPS PAGE

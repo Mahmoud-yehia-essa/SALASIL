@@ -11,6 +11,8 @@
         border-radius: 1rem;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         transition: all 0.3s ease;
+        overflow: hidden;
+        max-width: 100%;
     }
 
     .preset-badge {
@@ -19,6 +21,10 @@
         background: rgba(15, 26, 69, 0.6);
         border: 1px solid rgba(78, 205, 196, 0.3);
         color: #72E8E0;
+        white-space: normal !important;
+        text-align: start !important;
+        word-break: break-word;
+        max-width: 100%;
     }
     .preset-badge:hover {
         background: rgba(78, 205, 196, 0.2);
@@ -33,6 +39,10 @@
         border-radius: 0.75rem;
         padding: 1.25rem;
         transition: all 0.3s ease;
+        overflow: hidden;
+        min-width: 0;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }
 
     .pulse-dot {
@@ -129,6 +139,52 @@
     }
     html.light-theme #error_container h6 {
         color: #9F1239 !important;
+    }
+
+    /* ─── Responsive Mobile View Fixes ─── */
+    @media (max-width: 767.98px) {
+        .hscode-card {
+            padding: 1.25rem 1rem !important;
+            border-radius: 0.85rem;
+        }
+        .info-tile {
+            padding: 1rem !important;
+        }
+        #hs_code_input {
+            font-size: 0.95rem !important;
+            height: 48px !important;
+        }
+        #btn_search_hscode {
+            height: 48px !important;
+            font-size: 0.95rem !important;
+        }
+        #res_description_en {
+            font-size: 1.15rem !important;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+        #res_description_ar {
+            font-size: 1.05rem !important;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+        .badge {
+            white-space: normal !important;
+            word-break: break-word;
+            text-align: start;
+            max-width: 100%;
+        }
+        .list-group-item {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+        .list-group-item > div,
+        .list-group-item > span {
+            min-width: 0;
+            flex: 1;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
     }
 </style>
 
@@ -437,8 +493,8 @@
             $.each(data.restrictions, function(index, rule) {
                 $list.append(`
                     <li class="list-group-item bg-transparent text-slate-300 border-secondary border-opacity-25 px-0 py-2.5 d-flex align-items-start gap-2">
-                        <i class="bx bx-check-circle text-info fs-5 mt-0.5"></i>
-                        <span>${rule}</span>
+                        <i class="bx bx-check-circle text-info fs-5 mt-0.5 flex-shrink-0"></i>
+                        <span style="min-width:0; flex:1; word-break:break-word; overflow-wrap:anywhere;">${rule}</span>
                     </li>
                 `);
             });
@@ -484,8 +540,8 @@
                 if (analysis.flags[item.key]) {
                     activeCount++;
                     $flagsContainer.append(`
-                        <span class="badge border px-3 py-1.5 rounded-pill fw-semibold font-monospace fs-7 d-flex align-items-center gap-1.5 ${item.badge}">
-                            <i class="bx ${item.icon} fs-6"></i> ${item.label}
+                        <span class="badge border px-3 py-1.5 rounded-pill fw-semibold font-monospace fs-7 d-inline-flex align-items-center gap-1.5 ${item.badge}" style="white-space:normal; text-align:start; word-break:break-word; max-width:100%;">
+                            <i class="bx ${item.icon} fs-6 flex-shrink-0"></i> <span>${item.label}</span>
                         </span>
                     `);
                 }
@@ -493,8 +549,8 @@
 
             if (activeCount === 0) {
                 $flagsContainer.append(`
-                    <span class="badge border border-secondary text-slate-300 px-3 py-1.5 rounded-pill fw-semibold font-monospace fs-7">
-                        <i class="bx bx-check-circle me-1 text-success"></i> Standard Non-Hazardous Cargo (بضائع عادية قياسية)
+                    <span class="badge border border-secondary text-slate-300 px-3 py-1.5 rounded-pill fw-semibold font-monospace fs-7" style="white-space:normal; text-align:start; word-break:break-word; max-width:100%;">
+                        <i class="bx bx-check-circle me-1 text-success flex-shrink-0"></i> <span>Standard Non-Hazardous Cargo (بضائع عادية قياسية)</span>
                     </span>
                 `);
             }
@@ -507,8 +563,8 @@
                 $.each(analysis.handling_instructions, function(idx, item) {
                     $handlingList.append(`
                         <li class="list-group-item bg-transparent text-slate-300 border-secondary border-opacity-25 px-0 py-2.5 d-flex align-items-start gap-2">
-                            <i class="bx bx-right-arrow-alt text-info fs-5 mt-0.5"></i>
-                            <div>
+                            <i class="bx bx-right-arrow-alt text-info fs-5 mt-0.5 flex-shrink-0"></i>
+                            <div style="min-width:0; flex:1; word-break:break-word; overflow-wrap:anywhere;">
                                 <div class="fw-semibold text-white">${item.en}</div>
                                 <div class="text-info fs-7" style="font-family: system-ui, sans-serif;">${item.ar}</div>
                             </div>

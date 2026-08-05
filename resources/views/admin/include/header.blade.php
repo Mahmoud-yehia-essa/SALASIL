@@ -11,16 +11,6 @@
                         </svg>
                     </div>
                 </button>
-
-                <!-- Global Search Input -->
-                <div class="search-bar-box d-none d-md-block">
-                    <span class="search-icon">
-                        <i class='bx bx-search'></i>
-                    </span>
-                    <input class="search-input" 
-                           type="search" 
-                           placeholder="Search shipments, clients, drivers...">
-                </div>
             </div>
 
             <!-- Right Section: Theme Toggle, Notifications & User Profile -->
@@ -416,12 +406,6 @@
                             <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2 text-white" href="{{ route('profile.edit') }}">
                                 <i class="bx bx-user fs-5 text-info"></i>
                                 <span>My Profile</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2 text-white" href="{{ route('profile.edit') }}">
-                                <i class="bx bx-cog fs-5 text-info"></i>
-                                <span>Account Settings</span>
                             </a>
                         </li>
                         <li>

@@ -231,12 +231,14 @@
     border-radius: 14px;
     padding: 18px 20px;
     margin-bottom: 20px;
+    overflow: hidden;
 }
 .detail-row {
     display: flex;
     gap: 12px;
     margin-bottom: 10px;
     align-items: flex-start;
+    min-width: 0;
 }
 .detail-row:last-child { margin-bottom: 0; }
 .detail-row .d-label {
@@ -252,6 +254,10 @@
     font-size: 0.88rem;
     color: #E2E8F0;
     font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .user-avatar-sm {
@@ -350,11 +356,65 @@ html.light-theme .detail-card-grid {
     background: #F8FAFC !important;
     border-color: #E2E8F0 !important;
 }
+html.light-theme .detail-row .d-label {
+    color: #475569 !important;
+}
 html.light-theme .detail-row .d-value {
     color: #0F172A !important;
 }
 html.light-theme .status-select-sm {
     background: #F8FAFC !important;
+}
+
+/* ─── Responsive Mobile View Fixes ─── */
+@media (max-width: 767.98px) {
+    .modal-sh-detail .modal-dialog {
+        margin: 0.5rem;
+    }
+    .modal-sh-detail .modal-header {
+        padding: 16px 20px;
+    }
+    .modal-sh-detail .modal-body {
+        padding: 20px 14px;
+        max-height: 82vh;
+    }
+    .modal-sh-detail .modal-footer {
+        padding: 14px 20px;
+    }
+    .modal-sh-detail .border-end {
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        padding-bottom: 1rem !important;
+        padding-right: 0 !important;
+        margin-bottom: 1rem !important;
+    }
+    html.light-theme .modal-sh-detail .border-end {
+        border-bottom-color: #E2E8F0 !important;
+    }
+    .modal-sh-detail .ps-3 {
+        padding-left: 0 !important;
+    }
+    .detail-card-grid {
+        padding: 14px 12px;
+        margin-bottom: 16px;
+    }
+    .detail-sec-title {
+        font-size: 0.75rem;
+        margin-bottom: 12px;
+    }
+    .detail-row {
+        flex-direction: column;
+        gap: 3px;
+        margin-bottom: 12px;
+    }
+    .detail-row .d-label {
+        min-width: auto;
+        font-size: 0.72rem;
+    }
+    .detail-row .d-value {
+        font-size: 0.84rem;
+        width: 100%;
+    }
 }
 </style>
 
@@ -589,7 +649,6 @@ html.light-theme .status-select-sm {
                     </div>
                     <div>
                         <h5 class="modal-title fw-bold text-white mb-0" id="modalTitle">Shipment Details</h5>
-                        <small class="text-muted" id="modalSubtitle">Full specs & 40+ database fields</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
