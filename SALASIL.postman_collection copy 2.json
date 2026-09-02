@@ -1,0 +1,5834 @@
+{
+	"info": {
+		"_postman_id": "salasil-api-collection-v1",
+		"name": "SALASIL",
+		"description": "مجموعة طلبات API الخاصة بمشروع سلاسل (SALASIL) للربط مع تطبيق الموبايل ولوحة التحكم.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "1. Login (تسجيل الدخول)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.collectionVariables.set(\"token\", jsonData.data.token);",
+									"        console.log(\"Token automatically saved to collection variable: token\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"mohammed.customer@example.com\",\n    \"password\": \"12345678\",\n    \"firebase_token\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						},
+						"description": "تسجيل الدخول باستخدام البريد الإلكتروني أو رقم الهاتف أو كود العميل مع كلمة المرور. يتم حفظ التوكن تلقائياً في المتغيرات."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Register - Individual Customer (عميل فردي)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201 || pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.collectionVariables.set(\"token\", jsonData.data.token);",
+									"        console.log(\"Token automatically saved to collection variable: token\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"fname\": \"محمد\",\n    \"lname\": \"علي\",\n    \"email\": \"mohammed.customer@example.com\",\n    \"password\": \"12345678\",\n    \"phone\": \"0501234567\",\n    \"secondary_phone\": \"0559876543\",\n    \"role\": \"individual_customer\",\n    \"country_code\": \"+966\",\n    \"country_id\": null,\n    \"city_id\": null,\n    \"dateofbirth\": \"1995-06-15\",\n    \"address\": \"الرياض - حي الياسمين\",\n    \"locale\": \"ar\",\n    \"firebase_token\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						},
+						"description": "تسجيل حساب عميل جديد (فردي). عند نجاح الطلب، يتم حفظ التوكن تلقائياً في متغيرات المجموعة."
+					},
+					"response": []
+				},
+				{
+					"name": "3. Register - Company Customer (عميل شركة)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201 || pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.collectionVariables.set(\"token\", jsonData.data.token);",
+									"        console.log(\"Token automatically saved to collection variable: token\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "fname",
+									"value": "أحمد",
+									"type": "text"
+								},
+								{
+									"key": "lname",
+									"value": "المنصور",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "info@almanar-logistics.com",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "12345678",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "0509988776",
+									"type": "text"
+								},
+								{
+									"key": "role",
+									"value": "company_customer",
+									"type": "text"
+								},
+								{
+									"key": "company_name",
+									"value": "شركة المنار للخدمات اللوجستية",
+									"type": "text"
+								},
+								{
+									"key": "commercial_register",
+									"value": "1010998877",
+									"type": "text"
+								},
+								{
+									"key": "civil_id",
+									"value": "1098765432",
+									"type": "text"
+								},
+								{
+									"key": "tax_number",
+									"value": "300123456700003",
+									"type": "text"
+								},
+								{
+									"key": "representative_name",
+									"value": "أحمد المنصور",
+									"type": "text"
+								},
+								{
+									"key": "representative_position",
+									"value": "المدير التنفيذي",
+									"type": "text"
+								},
+								{
+									"key": "representative_phone",
+									"value": "0509988776",
+									"type": "text"
+								},
+								{
+									"key": "country_code",
+									"value": "+966",
+									"type": "text"
+								},
+								{
+									"key": "address",
+									"value": "الرياض - طريق الملك فهد",
+									"type": "text"
+								},
+								{
+									"key": "locale",
+									"value": "ar",
+									"type": "text"
+								},
+								{
+									"key": "commercial_register_doc",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "photo",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						},
+						"description": "تسجيل حساب شركة جديد مع رفع وثائق السجل التجاري والشعار."
+					},
+					"response": []
+				},
+				{
+					"name": "4. Register - Driver (سائق)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201 || pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.collectionVariables.set(\"token\", jsonData.data.token);",
+									"        console.log(\"Token automatically saved to collection variable: token\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "fname",
+									"value": "خالد",
+									"type": "text"
+								},
+								{
+									"key": "lname",
+									"value": "السعيد",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "driver.khaled@example.com",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "12345678",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "0541122334",
+									"type": "text"
+								},
+								{
+									"key": "role",
+									"value": "driver",
+									"type": "text"
+								},
+								{
+									"key": "license_number",
+									"value": "LIC-998877",
+									"type": "text"
+								},
+								{
+									"key": "truck_type_id",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "country_code",
+									"value": "+966",
+									"type": "text"
+								},
+								{
+									"key": "address",
+									"value": "جدة - حي الصفا",
+									"type": "text"
+								},
+								{
+									"key": "locale",
+									"value": "ar",
+									"type": "text"
+								},
+								{
+									"key": "license_photo",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "truck_registration_photo",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "civil_id_photo",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "photo",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						},
+						"description": "تسجيل حساب سائق جديد مع رفع صور الرخصة واستمارة الشاحنة والهوية."
+					},
+					"response": []
+				},
+				{
+					"name": "5. Forgot Password (طلب كود الاستعادة)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"mohammed.customer@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/forgot-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forgot-password"
+							]
+						},
+						"description": "إرسال كود تحقق مكون من 6 أرقام إلى البريد الإلكتروني لاستعادة كلمة المرور."
+					},
+					"response": []
+				},
+				{
+					"name": "6. Verify Reset Code (التحقق من الكود)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"mohammed.customer@example.com\",\n    \"code\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/verify-reset-code",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"verify-reset-code"
+							]
+						},
+						"description": "التحقق من صحة كود الاستعادة المدخل قبل الانتقال لشاشة كلمة المرور الجديدة."
+					},
+					"response": []
+				},
+				{
+					"name": "7. Reset Password (تعيين كلمة المرور الجديدة)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.collectionVariables.set(\"token\", jsonData.data.token);",
+									"        console.log(\"Token automatically saved to collection variable: token\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"mohammed.customer@example.com\",\n    \"code\": \"123456\",\n    \"password\": \"newPassword123\",\n    \"password_confirmation\": \"newPassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/reset-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reset-password"
+							]
+						},
+						"description": "تعيين كلمة مرور جديدة باستخدام الكود الذي تم التحقق منه وتوليد توكن دخول جديد مباشرة."
+					},
+					"response": []
+				},
+				{
+					"name": "8. Logout (تسجيل الخروج)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logout"
+							]
+						},
+						"description": "تسجيل خروج المستخدم وإلغاء صلاحية الـ Bearer Token الحالي."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Profile",
+			"item": [
+				{
+					"name": "1. Get Profile (جلب الملف الشخصي)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"profile"
+							]
+						},
+						"description": "جلب الملف الشخصي الكامل للمستخدم المسجل دخوله مع ملفات الشركة أو السائق والشاحنات."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Update Profile - Individual (تعديل ملف عميل فردي)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "fname",
+									"value": "محمد",
+									"type": "text"
+								},
+								{
+									"key": "lname",
+									"value": "علي المحدث",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "mohammed.customer@example.com",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "0501234567",
+									"type": "text"
+								},
+								{
+									"key": "secondary_phone",
+									"value": "0559876543",
+									"type": "text"
+								},
+								{
+									"key": "country_code",
+									"value": "+966",
+									"type": "text"
+								},
+								{
+									"key": "address",
+									"value": "الرياض - حي النرجس",
+									"type": "text"
+								},
+								{
+									"key": "locale",
+									"value": "ar",
+									"type": "text"
+								},
+								{
+									"key": "photo",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/profile/update",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"profile",
+								"update"
+							]
+						},
+						"description": "تحديث الملف الشخصي للعميل الفردي مع إمكانية تحديث الصورة الشخصية."
+					},
+					"response": []
+				},
+				{
+					"name": "3. Update Profile - Company (تعديل ملف شركة)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "fname",
+									"value": "أحمد",
+									"type": "text"
+								},
+								{
+									"key": "lname",
+									"value": "المنصور",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "info@almanar-logistics.com",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "0509988776",
+									"type": "text"
+								},
+								{
+									"key": "company_name",
+									"value": "شركة المنار للخدمات اللوجستية المحدثة",
+									"type": "text"
+								},
+								{
+									"key": "commercial_register",
+									"value": "1010998877",
+									"type": "text"
+								},
+								{
+									"key": "civil_id",
+									"value": "1098765432",
+									"type": "text"
+								},
+								{
+									"key": "tax_number",
+									"value": "300123456700003",
+									"type": "text"
+								},
+								{
+									"key": "representative_name",
+									"value": "أحمد المنصور",
+									"type": "text"
+								},
+								{
+									"key": "representative_position",
+									"value": "الرئيس التنفيذي",
+									"type": "text"
+								},
+								{
+									"key": "representative_phone",
+									"value": "0509988776",
+									"type": "text"
+								},
+								{
+									"key": "address",
+									"value": "الرياض - برج المملكة",
+									"type": "text"
+								},
+								{
+									"key": "locale",
+									"value": "ar",
+									"type": "text"
+								},
+								{
+									"key": "commercial_register_doc",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "photo",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/profile/update",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"profile",
+								"update"
+							]
+						},
+						"description": "تحديث الملف الشخصي لحساب شركة مع تحديث مستندات السجل والشعار."
+					},
+					"response": []
+				},
+				{
+					"name": "4. Update Profile - Driver (تعديل ملف سائق)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "fname",
+									"value": "خالد",
+									"type": "text"
+								},
+								{
+									"key": "lname",
+									"value": "السعيد",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "driver.khaled@example.com",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "0541122334",
+									"type": "text"
+								},
+								{
+									"key": "license_number",
+									"value": "LIC-998877",
+									"type": "text"
+								},
+								{
+									"key": "truck_type_id",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "availability_status",
+									"value": "available",
+									"type": "text"
+								},
+								{
+									"key": "address",
+									"value": "جدة - حي الصفا",
+									"type": "text"
+								},
+								{
+									"key": "license_photo",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "truck_registration_photo",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "civil_id_photo",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "photo",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/profile/update",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"profile",
+								"update"
+							]
+						},
+						"description": "تحديث الملف الشخصي للسائق وحالة التوفر (available, busy, offline) والمستندات."
+					},
+					"response": []
+				},
+				{
+					"name": "5. Change Password (تغيير كلمة المرور)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"current_password\": \"12345678\",\n    \"new_password\": \"newPassword123\",\n    \"new_password_confirmation\": \"newPassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/profile/change-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"profile",
+								"change-password"
+							]
+						},
+						"description": "تغيير كلمة مرور المستخدم مع التحقق من كلمة المرور الحالية وتأكيد الجديدة."
+					},
+					"response": []
+				},
+				{
+					"name": "6. Update Firebase Token (تحديث رمز الإشعارات)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firebase_token\": \"fcm_token_device_string_here\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/profile/update-firebase-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"profile",
+								"update-firebase-token"
+							]
+						},
+						"description": "تحديث رمز جهاز الموبايل (FCM Token) لاستقبال إشعارات التطبيق."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Trucks",
+			"item": [
+				{
+					"name": "3.1 Truck Brands (ماركات الشاحنات)",
+					"item": [
+						{
+							"name": "1. List All Brands (قائمة الماركات)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-brands",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-brands"
+									]
+								},
+								"description": "جلب جميع ماركات الشاحنات مع عدد الموديلات المرتبطة بكل ماركة."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get Brand Details (تفاصيل ماركة مع موديلاتها)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-brands/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-brands",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل الماركة وقائمة الموديلات التابعة لها."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Create Brand (إضافة ماركة جديدة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name_en\": \"Mercedes-Benz\",\n    \"name_ar\": \"مرسيدس بنز\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-brands",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-brands"
+									]
+								},
+								"description": "إضافة ماركة شاحنة جديدة."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Update Brand (تعديل ماركة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name_en\": \"Mercedes-Benz Updated\",\n    \"name_ar\": \"مرسيدس بنز المحدثة\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-brands/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-brands",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات ماركة الشاحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Toggle Brand Status (تغيير حالة الماركة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-brands/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-brands",
+										"1",
+										"status"
+									]
+								},
+								"description": "تفعيل أو تعطيل ماركة الشاحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Delete Brand (حذف ماركة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-brands/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-brands",
+										"1"
+									]
+								},
+								"description": "حذف ماركة الشاحنة من النظام."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "3.2 Truck Models (موديلات الشاحنات)",
+					"item": [
+						{
+							"name": "1. List All Models (قائمة الموديلات)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-models",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-models"
+									]
+								},
+								"description": "جلب جميع الموديلات مع الماركة التابعة لها."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get Models by Brand ID (موديلات ماركة محددة)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-brands/1/models",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-brands",
+										"1",
+										"models"
+									]
+								},
+								"description": "جلب قائمة الموديلات التابعة لماركة محددة."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Get Single Model (تفاصيل موديل)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-models/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-models",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل موديل محدد."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Create Model (إضافة موديل جديد)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"truck_brand_id\": 1,\n    \"name_en\": \"Actros 2024\",\n    \"name_ar\": \"أكتروس 2024\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-models",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-models"
+									]
+								},
+								"description": "إضافة موديل شاحنة جديد مربوط بماركة معينة."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Update Model (تعديل موديل)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"truck_brand_id\": 1,\n    \"name_en\": \"Actros 2024 Updated\",\n    \"name_ar\": \"أكتروس 2024 المحدث\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-models/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-models",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات موديل الشاحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Toggle Model Status (تغيير حالة الموديل)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-models/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-models",
+										"1",
+										"status"
+									]
+								},
+								"description": "تفعيل أو تعطيل موديل الشاحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "7. Delete Model (حذف موديل)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-models/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-models",
+										"1"
+									]
+								},
+								"description": "حذف موديل الشاحنة من النظام."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "3.3 Truck Types (الأنواع الرئيسية للشاحنات)",
+					"item": [
+						{
+							"name": "1. List All Truck Types (قائمة الأنواع الرئيسية)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-types"
+									]
+								},
+								"description": "جلب قائمة الأنواع الرئيسية للشاحنات مع الأنواع الفرعية التابعة لها ورابط الصورة."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get Single Truck Type (تفاصيل نوع رئيسي)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-types/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-types",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل نوع رئيسي محدد."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Create Truck Type (إضافة نوع رئيسي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "name_en",
+											"value": "Heavy Truck",
+											"type": "text"
+										},
+										{
+											"key": "name_ar",
+											"value": "شاحنة ثقيلة",
+											"type": "text"
+										},
+										{
+											"key": "max_weight",
+											"value": "30000",
+											"type": "text"
+										},
+										{
+											"key": "status",
+											"value": "active",
+											"type": "text"
+										},
+										{
+											"key": "photo",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-types"
+									]
+								},
+								"description": "إضافة نوع شاحنة رئيسي مع إمكانية رفع صورة."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Update Truck Type (تعديل نوع رئيسي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "name_en",
+											"value": "Heavy Truck Updated",
+											"type": "text"
+										},
+										{
+											"key": "name_ar",
+											"value": "شاحنة ثقيلة محدثة",
+											"type": "text"
+										},
+										{
+											"key": "max_weight",
+											"value": "35000",
+											"type": "text"
+										},
+										{
+											"key": "status",
+											"value": "active",
+											"type": "text"
+										},
+										{
+											"key": "photo",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-types/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-types",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات النوع الرئيسي والصورة."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Toggle Truck Type Status (تغيير حالة النوع الرئيسي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"active\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-types/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-types",
+										"1",
+										"status"
+									]
+								},
+								"description": "تفعيل أو تعطيل النوع الرئيسي."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Delete Truck Type (حذف نوع رئيسي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-types/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-types",
+										"1"
+									]
+								},
+								"description": "حذف نوع الشاحنة الرئيسي وصورته."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "3.4 Truck Sub-Types (الأنواع الفرعية للشاحنات)",
+					"item": [
+						{
+							"name": "1. List All Sub-Types (قائمة الأنواع الفرعية)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-sub-types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-sub-types"
+									]
+								},
+								"description": "جلب قائمة الأنواع الفرعية مع تصنيفها الرئيسي."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get Sub-Types by Main Type (الأنواع الفرعية لنوع رئيسي)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-types/1/sub-types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-types",
+										"1",
+										"sub-types"
+									]
+								},
+								"description": "جلب قائمة الأنواع الفرعية التابعة لنوع رئيسي محدد."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Get Single Sub-Type (تفاصيل نوع فرعي)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-sub-types/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-sub-types",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل نوع فرعي محدد."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Create Sub-Type (إضافة نوع فرعي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"truck_type_id\": 1,\n    \"name_en\": \"Flatbed Trailer\",\n    \"name_ar\": \"تريلا سطحة\",\n    \"max_payload\": 25000,\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-sub-types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-sub-types"
+									]
+								},
+								"description": "إضافة نوع فرعي جديد مربوط بنوع رئيسي."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Update Sub-Type (تعديل نوع فرعي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"truck_type_id\": 1,\n    \"name_en\": \"Flatbed Trailer Updated\",\n    \"name_ar\": \"تريلا سطحة محدثة\",\n    \"max_payload\": 28000,\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-sub-types/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-sub-types",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات النوع الفرعي."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Toggle Sub-Type Status (تغيير حالة النوع الفرعي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/truck-sub-types/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-sub-types",
+										"1",
+										"status"
+									]
+								},
+								"description": "تفعيل أو تعطيل النوع الفرعي."
+							},
+							"response": []
+						},
+						{
+							"name": "7. Delete Sub-Type (حذف نوع فرعي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/truck-sub-types/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"truck-sub-types",
+										"1"
+									]
+								},
+								"description": "حذف النوع الفرعي من النظام."
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4. Driver & Trucks",
+			"item": [
+				{
+					"name": "1. List All Driver Trucks (قائمة شاحنات السائقين)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/driver-trucks",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"driver-trucks"
+							]
+						},
+						"description": "جلب قائمة شاحنات السائقين مع دعم الفلترة (حسب السائق، نوع الشاحنة، الماركة، الموديل، حالة التوثيق، الشاحنة الافتراضية)."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Get My Trucks (شاحنات السائق الحالي)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/driver-trucks/my-trucks",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"driver-trucks",
+								"my-trucks"
+							]
+						},
+						"description": "جلب قائمة الشاحنات التابعة للسائق المسجل دخوله حالياً."
+					},
+					"response": []
+				},
+				{
+					"name": "3. Get Single Driver Truck (تفاصيل شاحنة سائق)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/driver-trucks/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"driver-trucks",
+								"1"
+							]
+						},
+						"description": "جلب تفاصيل ارتباط شاحنة معينة بسائق."
+					},
+					"response": []
+				},
+				{
+					"name": "4. Assign Truck to Driver (ربط شاحنة بسائق)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"driver_id\": 1,\n    \"truck_type_id\": 1,\n    \"truck_sub_type_id\": 1,\n    \"truck_brand_id\": 1,\n    \"truck_model_id\": 1,\n    \"manufacturing_year\": 2023,\n    \"axles_count\": 3,\n    \"plate_number\": \"أ ب ج 1234\",\n    \"is_default\": 1,\n    \"is_verified\": 0\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/driver-trucks",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"driver-trucks"
+							]
+						},
+						"description": "ربط شاحنة بسائق وتحديد المواصفات (الماركة، الموديل، سنة الصنع، عدد المحاور، رقم اللوحة، والشاحنة الافتراضية)."
+					},
+					"response": []
+				},
+				{
+					"name": "5. Update Driver Truck (تعديل شاحنة السائق)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"driver_id\": 1,\n    \"truck_type_id\": 1,\n    \"truck_sub_type_id\": 1,\n    \"truck_brand_id\": 1,\n    \"truck_model_id\": 1,\n    \"manufacturing_year\": 2024,\n    \"axles_count\": 4,\n    \"plate_number\": \"أ ب ج 5678\",\n    \"is_default\": 1,\n    \"is_verified\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/driver-trucks/1/update",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"driver-trucks",
+								"1",
+								"update"
+							]
+						},
+						"description": "تحديث بيانات شاحنة السائق والمواصفات."
+					},
+					"response": []
+				},
+				{
+					"name": "6. Set Default Active Truck (تعيين الشاحنة الأساسية)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/driver-trucks/1/set-default",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"driver-trucks",
+								"1",
+								"set-default"
+							]
+						},
+						"description": "تعيين شاحنة معينة كشاحنة نشطة وافتراضية للسائق وإلغاء الافتراضي عن باقي شاحناته."
+					},
+					"response": []
+				},
+				{
+					"name": "7. Toggle Verification Status (توثيق الشاحنة)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"is_verified\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/driver-trucks/1/verify",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"driver-trucks",
+								"1",
+								"verify"
+							]
+						},
+						"description": "توثيق الشاحنة أو إلغاء توثيقها من قبل الإدارة."
+					},
+					"response": []
+				},
+				{
+					"name": "8. Delete Driver Truck (حذف شاحنة السائق)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/driver-trucks/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"driver-trucks",
+								"1"
+							]
+						},
+						"description": "حذف شاحنة السائق من النظام."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Countries & Cities",
+			"item": [
+				{
+					"name": "5.1 Countries (الدول)",
+					"item": [
+						{
+							"name": "1. List All Countries (قائمة جميع الدول)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/countries",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"countries"
+									]
+								},
+								"description": "جلب قائمة جميع الدول مع عدد المدن التابعة لكل دولة."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get Country Details (تفاصيل دولة مع مدنها)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/countries/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"countries",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل دولة مع قائمة المدن التابعة لها."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Get Cities for Country (مدن دولة محددة)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/countries/1/cities",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"countries",
+										"1",
+										"cities"
+									]
+								},
+								"description": "جلب قائمة المدن النشطة التابعة لدولة محددة (مهم جداً للقوائم المنسدلة في التطبيق والتسجيل)."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Create Country (إضافة دولة جديدة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name_ar\": \"المملكة العربية السعودية\",\n    \"name_en\": \"Saudi Arabia\",\n    \"code\": \"SA\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/countries",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"countries"
+									]
+								},
+								"description": "إضافة دولة جديدة في النظام."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Update Country (تعديل دولة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name_ar\": \"المملكة العربية السعودية المحدثة\",\n    \"name_en\": \"Saudi Arabia Updated\",\n    \"code\": \"SA\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/countries/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"countries",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات الدولة."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Toggle Country Status (تغيير حالة الدولة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/countries/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"countries",
+										"1",
+										"status"
+									]
+								},
+								"description": "تفعيل أو تعطيل الدولة."
+							},
+							"response": []
+						},
+						{
+							"name": "7. Delete Country (حذف دولة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/countries/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"countries",
+										"1"
+									]
+								},
+								"description": "حذف الدولة وجميع المدن المرتبطة بها."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "5.2 Cities (المدن)",
+					"item": [
+						{
+							"name": "1. List All Cities (قائمة جميع المدن)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/cities",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"cities"
+									]
+								},
+								"description": "جلب قائمة جميع المدن مع الدولة التابعة لها."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get Single City (تفاصيل مدينة)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/cities/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"cities",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل مدينة محددة."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Create City (إضافة مدينة جديدة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"country_id\": 1,\n    \"name_ar\": \"الرياض\",\n    \"name_en\": \"Riyadh\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/cities",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"cities"
+									]
+								},
+								"description": "إضافة مدينة جديدة تابعة لدولة معينة."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Update City (تعديل مدينة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"country_id\": 1,\n    \"name_ar\": \"الرياض المحدثة\",\n    \"name_en\": \"Riyadh Updated\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/cities/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"cities",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات المدينة."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Toggle City Status (تغيير حالة المدينة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/cities/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"cities",
+										"1",
+										"status"
+									]
+								},
+								"description": "تفعيل أو تعطيل المدينة."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Delete City (حذف مدينة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/cities/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"cities",
+										"1"
+									]
+								},
+								"description": "حذف المدينة من النظام."
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "6. Shipments",
+			"item": [
+				{
+					"name": "6.1 Shipment Types (أنواع الشحنات)",
+					"item": [
+						{
+							"name": "1. List All Shipment Types (قائمة أنواع الشحنات)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-types"
+									]
+								},
+								"description": "جلب قائمة بجميع أنواع الشحنات (مثل: شحنة عامة، بضائع قابلة للكسر، مواد غذائية)."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get Single Shipment Type (تفاصيل نوع شحنة)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-types/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-types",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل نوع شحنة محدد."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Create Shipment Type (إضافة نوع شحنة جديد)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name_ar\": \"شحنة عامة\",\n    \"name_en\": \"General Cargo\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-types"
+									]
+								},
+								"description": "إضافة نوع شحنة جديد إلى النظام."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Update Shipment Type (تعديل نوع شحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name_ar\": \"شحنة عامة محدثة\",\n    \"name_en\": \"General Cargo Updated\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-types/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-types",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات نوع الشحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Toggle Shipment Type Status (تغيير حالة نوع الشحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-types/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-types",
+										"1",
+										"status"
+									]
+								},
+								"description": "تفعيل أو تعطيل نوع الشحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Delete Shipment Type (حذف نوع شحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-types/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-types",
+										"1"
+									]
+								},
+								"description": "حذف نوع الشحنة من النظام."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "6.2 Shipment Natures (طبيعة الشحنات)",
+					"item": [
+						{
+							"name": "1. List All Shipment Natures (قائمة طبيعة الشحنات)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-natures",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-natures"
+									]
+								},
+								"description": "جلب قائمة بجميع طبيعة الشحنات (مثل: صلبة، سائلة، غازية، خطرة)."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get Single Shipment Nature (تفاصيل طبيعة شحنة)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-natures/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-natures",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل طبيعة شحنة محددة."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Create Shipment Nature (إضافة طبيعة شحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name_ar\": \"مواد صلبة\",\n    \"name_en\": \"Solid Goods\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-natures",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-natures"
+									]
+								},
+								"description": "إضافة طبيعة شحنة جديدة."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Update Shipment Nature (تعديل طبيعة شحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name_ar\": \"مواد صلبة محدثة\",\n    \"name_en\": \"Solid Goods Updated\",\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-natures/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-natures",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات طبيعة الشحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Toggle Shipment Nature Status (تغيير حالة طبيعة الشحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"is_active\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-natures/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-natures",
+										"1",
+										"status"
+									]
+								},
+								"description": "تفعيل أو تعطيل طبيعة الشحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Delete Shipment Nature (حذف طبيعة شحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-natures/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-natures",
+										"1"
+									]
+								},
+								"description": "حذف طبيعة الشحنة من النظام."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "6.3 HS Code Lookup (الاستعلام الجمركي والتحليل الذكي)",
+					"item": [
+						{
+							"name": "1. Lookup HS Code Details (الاستعلام عن البند الجمركي والرسوم)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"hs_code\": \"8517.13.00\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment/hscode/lookup",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment",
+										"hscode",
+										"lookup"
+									]
+								},
+								"description": "الاستعلام عن تفاصيل البند الجمركي (HS Code) وحساب نسب الرسوم الجمركية وضريبة القيمة المضافة والاشتراطات وتحليل متطلبات الشحن الذكية."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "6.4 Shipments Operations (إدارة الشحنات والطلبات)",
+					"item": [
+						{
+							"name": "1. List All Shipments (قائمة الشحنات مع الفلترة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipments?per_page=20",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipments"
+									],
+									"query": [
+										{
+											"key": "per_page",
+											"value": "20"
+										}
+									]
+								},
+								"description": "جلب قائمة الشحنات مع دعم التصفية حسب الحالة وحالة الدفع والعميل والسائق ونوع الشاحنة والمدينة."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get My Shipments (شحناتي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipments/my-shipments",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipments",
+										"my-shipments"
+									]
+								},
+								"description": "جلب شحنات المستخدم المسجل دخوله حالياً (للعميل أو السائق)."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Get Shipment Statistics (إحصائيات الشحنات)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipments/statistics",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipments",
+										"statistics"
+									]
+								},
+								"description": "جلب إحصائيات KPI overview لعدد الشحنات الجديدة والمعتمدة وقيد النقل والمسلمة وإجمالي القيمة."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Get Shipment Details (تفاصيل الشحنة الكاملة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipments/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipments",
+										"1"
+									]
+								},
+								"description": "جلب كافة تفاصيل الشحنة (أكثر من 40 حقلاً تشمل العميل، السائق، الفاتورة، المواقع، الشاحنة، جهات الاتصال، وسجل التتبع)."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Create Shipment Order (إنشاء طلب شحنة جديد)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"customer_id\": null,\n    \"shipment_name\": \"شحنة أجهزة إلكترونية ومعدات\",\n    \"shipment_description\": \"نقل كراتين هواتف وأجهزة ذكية بحالة ممتازة\",\n    \"shipment_type_id\": 1,\n    \"shipment_nature_id\": 1,\n    \"length\": 120,\n    \"width\": 80,\n    \"height\": 100,\n    \"weight\": 2500,\n    \"packages_count\": 10,\n    \"goods_description\": \"أجهزة إلكترونية وهواتف ذكية ملحقة\",\n    \"hs_code\": \"8517.13.00\",\n    \"hs_code_description\": \"الهواتف الذكية وأجهزة الاتصال اللاسلكية\",\n    \"is_fragile\": 1,\n    \"truck_type_id\": 1,\n    \"truck_sub_type_id\": 1,\n    \"pickup_country_id\": 2,\n    \"pickup_city_id\": 2,\n    \"pickup_area\": \"حي السلي الصناعي\",\n    \"pickup_address\": \"الرياض - مستودعات السلي - بوابة 4\",\n    \"pickup_lat\": 24.6333,\n    \"pickup_lng\": 46.8167,\n    \"dropoff_country_id\": 2,\n    \"dropoff_city_id\": 2,\n    \"dropoff_area\": \"حي الخمرة للمستودعات\",\n    \"dropoff_address\": \"جدة - منطقة المستودعات المركزية الخمرة\",\n    \"dropoff_lat\": 21.3250,\n    \"dropoff_lng\": 39.2450,\n    \"loading_contact_name\": \"عبدالله السبيعي\",\n    \"loading_contact_phone\": \"0501112233\",\n    \"arrival_contact_name\": \"سالم الغامدي\",\n    \"arrival_contact_phone\": \"0554445566\",\n    \"initial_price\": 3500.00,\n    \"scheduled_date\": \"2026-08-30 09:00:00\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipments",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipments"
+									]
+								},
+								"description": "إنشاء شحنة جديدة بجميع خطوات المعالج وتوليد الفاتورة المالية تلقائياً."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Update Shipment Order (تعديل الشحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"shipment_name\": \"شحنة أجهزة إلكترونية ومعدات - محدثة\",\n    \"weight\": 2800,\n    \"packages_count\": 12,\n    \"pickup_address\": \"الرياض - مستودعات السلي المحدثة\",\n    \"dropoff_address\": \"جدة - منطقة المستودعات المركزية الخمرة - مستودع B\",\n    \"initial_price\": 3800.00\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipments/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipments",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات الشحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "7. Change Shipment Status (تغيير حالة الشحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"approved\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipments/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipments",
+										"1",
+										"status"
+									]
+								},
+								"description": "تحديث حالة الشحنة (new, under_review, pending_approval, approved, in_transit, delivered, rejected, canceled)."
+							},
+							"response": []
+						},
+						{
+							"name": "8. Assign Driver to Shipment (تعيين سائق للشحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"driver_id\": 4\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipments/1/assign-driver",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipments",
+										"1",
+										"assign-driver"
+									]
+								},
+								"description": "تعيين سائق محدد للشحنة وتحديث حالتها إلى معتمدة (Approved)."
+							},
+							"response": []
+						},
+						{
+							"name": "9. Delete Shipment (حذف الشحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipments/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipments",
+										"1"
+									]
+								},
+								"description": "حذف سجل الشحنة من النظام."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "6.5 Live Shipment Tracking (التتبع الحي والموقع الجغرافي GPS)",
+					"item": [
+						{
+							"name": "1. List Shipments for Live Tracking (قائمة الشحنات للتتبع)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-tracking",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-tracking"
+									]
+								},
+								"description": "جلب قائمة الشحنات لمراقبة التتبع المباشر وحالة الحركة."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get Live Tracking Map Data (بيانات التتبع الحي للشحنة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-tracking/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-tracking",
+										"1"
+									]
+								},
+								"description": "جلب إحداثيات الموقع الحالي للشاحنة، نقاط البداية والوصول، مسار الحركة، وسجل المحطات."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Update Live GPS Location (إرسال إحداثيات GPS الحية)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"shipment_id\": 1,\n    \"latitude\": 24.6877,\n    \"longitude\": 46.7219,\n    \"speed\": 85.5,\n    \"heading\": 145,\n    \"is_stop_point\": 0,\n    \"location_description\": \"على طريق الرياض - الطائف السريع\",\n    \"status\": \"in_transit\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-tracking/update-location",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-tracking",
+										"update-location"
+									]
+								},
+								"description": "إرسال إحداثيات موقع الشاحنة الحالي من تطبيق السائق وبثها فورياً بالبث الحي (WebSocket/Reverb)."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Update Tracking Milestone Status (تحديث مرحلة التتبع)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"shipment_id\": 1,\n    \"status\": \"تم التحميل بنجاح وفي الطريق للتسليم\",\n    \"location_description\": \"نقطة تفتيش المجمع\",\n    \"lat\": 24.6877,\n    \"lng\": 46.7219\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-tracking/update-status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-tracking",
+										"update-status"
+									]
+								},
+								"description": "تسجيل مرحلة جديدة من مراحل الشحنة وبث الإشعار."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Get Tracking Trajectory Logs (سجل المسار والنقاط)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-tracking/1/logs",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-tracking",
+										"1",
+										"logs"
+									]
+								},
+								"description": "جلب جميع النقاط الجغرافية وسجل المسار الكامل للشحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Reset Tracking Logs (إعادة ضبط سجل التتبع)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-tracking/1/logs",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-tracking",
+										"1",
+										"logs"
+									]
+								},
+								"description": "حذف سجلات التتبع وإعادة ضبط مسار الشحنة."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "6.6 Driver Invitations (دعوات وتكليف السائقين)",
+					"item": [
+						{
+							"name": "1. List All Invitations (قائمة جميع الدعوات)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-invitations",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-invitations"
+									]
+								},
+								"description": "جلب قائمة بجميع الدعوات المرسلة للسائقين لنقل الشحنات."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get My Invitations (دعواتي - لتطبيق السائق)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-invitations/my-invitations",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-invitations",
+										"my-invitations"
+									]
+								},
+								"description": "جلب قائمة الدعوات الموجهة للسائق المسجل دخوله حالياً مع تفاصيل السعر والشحنة."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Get Single Invitation (تفاصيل الدعوة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-invitations/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-invitations",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل دعوة سائق محددة."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Create Driver Invitation (إرسال دعوة لسائق)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"driver_id\": 4,\n    \"driver_truck_id\": 5,\n    \"shipment_id\": 1,\n    \"offered_price\": 2800.00,\n    \"channel\": \"in_app\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-invitations",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-invitations"
+									]
+								},
+								"description": "إرسال دعوة عرض نقل شحنة لسائق محدد مع السعر المعروض والقناة (in_app, whatsapp, sms)."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Update Invitation (تعديل الدعوة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"driver_id\": 4,\n    \"driver_truck_id\": 5,\n    \"shipment_id\": 1,\n    \"offered_price\": 3000.00,\n    \"channel\": \"in_app\",\n    \"status\": \"pending\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-invitations/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-invitations",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات الدعوة."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Driver Response - Accept or Reject (قبول أو رفض الدعوة من السائق)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"action\": \"accept\",\n    \"rejection_reason\": \"\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/shipment-invitations/1/respond",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-invitations",
+										"1",
+										"respond"
+									]
+								},
+								"description": "رد السائق على الدعوة (قبول accept أو رفض reject مع ذكر السبب). في حال القبول، يتم تعيين السائق للشحنة تلقائياً."
+							},
+							"response": []
+						},
+						{
+							"name": "7. Delete Driver Invitation (حذف الدعوة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/shipment-invitations/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"shipment-invitations",
+										"1"
+									]
+								},
+								"description": "حذف دعوة السائق من النظام."
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "7. Scheduled Trips & Routes",
+			"item": [
+				{
+					"name": "7.1 Fixed Routes (المسارات الثابتة)",
+					"item": [
+						{
+							"name": "1. List All Routes (قائمة المسارات الثابتة)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/routes",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"routes"
+									]
+								},
+								"description": "جلب قائمة المسارات الثابتة (محلية / دولية) بين المدن والدول."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Route Statistics (إحصائيات المسارات)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/routes/statistics",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"routes",
+										"statistics"
+									]
+								},
+								"description": "إحصائيات إجمالي المسارات، المحلية، الدولية، والنشطة."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Get Single Route (تفاصيل مسار محدد)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/routes/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"routes",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل المسار والرحلات المجدولة التابعة له."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Create Fixed Route (إضافة مسار جديد)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"quote_type\": \"local\",\n    \"origin_country_id\": 2,\n    \"origin_city_id\": 2,\n    \"destination_country_id\": 2,\n    \"destination_city_id\": 3,\n    \"estimated_distance\": 950.5,\n    \"status\": \"active\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/routes",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"routes"
+									]
+								},
+								"description": "إنشاء مسار ثابت جديد بين مدينتين."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Update Fixed Route (تعديل مسار)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"quote_type\": \"local\",\n    \"origin_country_id\": 2,\n    \"origin_city_id\": 2,\n    \"destination_country_id\": 2,\n    \"destination_city_id\": 3,\n    \"estimated_distance\": 960.0,\n    \"status\": \"active\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/routes/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"routes",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات المسار."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Toggle Route Status (تغيير حالة المسار)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"active\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/routes/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"routes",
+										"1",
+										"status"
+									]
+								},
+								"description": "تفعيل أو تعطيل المسار."
+							},
+							"response": []
+						},
+						{
+							"name": "7. Delete Fixed Route (حذف مسار)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/routes/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"routes",
+										"1"
+									]
+								},
+								"description": "حذف المسار من النظام."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "7.2 Scheduled Trips (الرحلات المجدولة)",
+					"item": [
+						{
+							"name": "1. List All Scheduled Trips (قائمة الرحلات المجدولة مع الفلترة)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/scheduled-trips?per_page=20",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"scheduled-trips"
+									],
+									"query": [
+										{
+											"key": "per_page",
+											"value": "20"
+										}
+									]
+								},
+								"description": "جلب قائمة الرحلات المجدولة مع دعم الفلترة حسب الحالة، المسار، نوع الشاحنة، السائق، والتواريخ."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get My Scheduled Trips (رحلاتي المجدولة - لتطبيق السائق)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/scheduled-trips/my-trips",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"scheduled-trips",
+										"my-trips"
+									]
+								},
+								"description": "جلب الرحلات المجدولة المسندة للسائق المسجل دخوله حالياً."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Scheduled Trips Statistics (إحصائيات الرحلات المجدولة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/scheduled-trips/statistics",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"scheduled-trips",
+										"statistics"
+									]
+								},
+								"description": "إحصائيات عدد الرحلات المجدولة (المعروضة published، قيد التحميل boarding، في الطريق in_transit، المكتملة completed، والملغية canceled)."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Get Single Scheduled Trip (تفاصيل رحلة مجدولة)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/scheduled-trips/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"scheduled-trips",
+										"1"
+									]
+								},
+								"description": "جلب التفاصيل الكاملة لرحلة مجدولة محددة تشمل المسار والشاحنة والسائق والسعر والطاقة الاستيعابية."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Create Scheduled Trip (إنشاء رحلة مجدولة جديدة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"route_id\": 1,\n    \"truck_type_id\": 1,\n    \"truck_sub_type_id\": 1,\n    \"number_of_trucks\": 2,\n    \"total_weight_ton\": 25.0,\n    \"driver_id\": 4,\n    \"trip_date\": \"2026-09-01\",\n    \"trip_time\": \"08:00:00\",\n    \"price\": 1800.00,\n    \"total_capacity\": 10,\n    \"available_capacity\": 10,\n    \"status\": \"published\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/scheduled-trips",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"scheduled-trips"
+									]
+								},
+								"description": "إنشاء ونشر رحلة مجدولة جديدة."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Update Scheduled Trip (تعديل رحلة مجدولة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"route_id\": 1,\n    \"truck_type_id\": 1,\n    \"truck_sub_type_id\": 1,\n    \"number_of_trucks\": 2,\n    \"total_weight_ton\": 28.0,\n    \"driver_id\": 4,\n    \"trip_date\": \"2026-09-02\",\n    \"trip_time\": \"09:00:00\",\n    \"price\": 1950.00,\n    \"total_capacity\": 12,\n    \"available_capacity\": 12,\n    \"status\": \"published\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/scheduled-trips/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"scheduled-trips",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات الرحلة المجدولة."
+							},
+							"response": []
+						},
+						{
+							"name": "7. Change Trip Status (تحديث حالة الرحلة المجدولة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"in_transit\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/scheduled-trips/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"scheduled-trips",
+										"1",
+										"status"
+									]
+								},
+								"description": "تحديث حالة الرحلة (published, boarding, in_transit, completed, canceled)."
+							},
+							"response": []
+						},
+						{
+							"name": "8. Assign Driver to Trip (تعيين سائق للرحلة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"driver_id\": 4\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/scheduled-trips/1/assign-driver",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"scheduled-trips",
+										"1",
+										"assign-driver"
+									]
+								},
+								"description": "تعيين سائق محدد لقيادة الرحلة المجدولة."
+							},
+							"response": []
+						},
+						{
+							"name": "9. Delete Scheduled Trip (حذف رحلة مجدولة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/scheduled-trips/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"scheduled-trips",
+										"1"
+									]
+								},
+								"description": "حذف الرحلة المجدولة من النظام."
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "8. Invoices & Billing",
+			"item": [
+				{
+					"name": "8.1 Invoices (الفواتير المالية)",
+					"item": [
+						{
+							"name": "1. List All Invoices (قائمة الفواتير مع الفلترة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/invoices?per_page=20",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"invoices"
+									],
+									"query": [
+										{
+											"key": "per_page",
+											"value": "20"
+										}
+									]
+								},
+								"description": "جلب قائمة بجميع الفواتير مع تفاصيل العميل، الشحنة، والمدفوعات ودعم الفلترة حسب الحالة والعميل."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get My Invoices (فواتيري)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/invoices/my-invoices",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"invoices",
+										"my-invoices"
+									]
+								},
+								"description": "جلب الفواتير الخاصة بالعميل المسجل دخوله حالياً."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Invoices Statistics (إحصائيات الفواتير)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/invoices/statistics",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"invoices",
+										"statistics"
+									]
+								},
+								"description": "إحصائيات إجمالي الفواتير، غير المدفوعة، المدفوعة جزئياً، المدفوعة، وإجمالي الإيرادات والمبالغ المعلقة."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Get Invoice Details (تفاصيل الفاتورة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/invoices/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"invoices",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل الفاتورة الكاملة مع بيانات الشحنة والمواقع والمدفوعات المسجلة عليها."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Create Invoice (إنشاء فاتورة جديدة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"user_id\": 1,\n    \"shipment_id\": 1,\n    \"scheduled_trip_id\": null,\n    \"base_amount\": 2500.00,\n    \"tax_amount\": 375.00,\n    \"discount\": 0.00,\n    \"due_date\": \"2026-09-15\",\n    \"status\": \"unpaid\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/invoices",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"invoices"
+									]
+								},
+								"description": "إنشاء فاتورة مالية جديدة مع حساب الضريبة والخصم وتوليد رقم الفاتورة تلقائياً."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Update Invoice (تعديل الفاتورة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"base_amount\": 2600.00,\n    \"tax_amount\": 390.00,\n    \"discount\": 50.00,\n    \"due_date\": \"2026-09-20\",\n    \"status\": \"unpaid\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/invoices/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"invoices",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث مبالغ الفاتورة وتاريخ الاستحقاق."
+							},
+							"response": []
+						},
+						{
+							"name": "7. Change Invoice Status (تحديث حالة الفاتورة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"paid\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/invoices/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"invoices",
+										"1",
+										"status"
+									]
+								},
+								"description": "تحديث حالة الفاتورة (unpaid, partially_paid, paid, canceled)."
+							},
+							"response": []
+						},
+						{
+							"name": "8. Delete Invoice (حذف الفاتورة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/invoices/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"invoices",
+										"1"
+									]
+								},
+								"description": "حذف الفاتورة من النظام."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "8.2 Payments (عمليات الدفع والتحصيل)",
+					"item": [
+						{
+							"name": "1. List All Payments (قائمة المدفوعات والتحصيلات)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/payments?per_page=20",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"payments"
+									],
+									"query": [
+										{
+											"key": "per_page",
+											"value": "20"
+										}
+									]
+								},
+								"description": "جلب قائمة بجميع عمليات الدفع مع الفلترة حسب الحالة، طريقة الدفع، والعميل."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get My Payments (مدفوعاتي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/payments/my-payments",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"my-payments"
+									]
+								},
+								"description": "جلب سجل المدفوعات الخاص بالعميل المسجل دخوله."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Payments Statistics (إحصائيات المدفوعات)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/payments/statistics",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"statistics"
+									]
+								},
+								"description": "إحصائيات عمليات الدفع (المكتملة completed، المعلقة pending، الفاشلة failed، المستردة refunded، وإجمالي المبالغ المحصلة)."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Get Payment Details (تفاصيل عملية الدفع)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/payments/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"1"
+									]
+								},
+								"description": "جلب تفاصيل عملية دفع محددة مع إيصال الدفع والفاتورة التابعة لها."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Record Payment (تسجيل عملية دفع جديدة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"invoice_id\": 1,\n    \"amount\": 2875.00,\n    \"payment_method\": \"apple_pay\",\n    \"transaction_id\": \"TXN-AP-994821\",\n    \"receipt_url\": null,\n    \"status\": \"completed\",\n    \"paid_at\": \"2026-08-22 15:30:00\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/payments",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"payments"
+									]
+								},
+								"description": "تسجيل عملية دفع ومزامنة حالة الفاتورة والشحنة تلقائياً إلى مدفوعة (Paid)."
+							},
+							"response": []
+						},
+						{
+							"name": "6. Update Payment (تعديل عملية دفع)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"invoice_id\": 1,\n    \"amount\": 2940.00,\n    \"payment_method\": \"credit_card\",\n    \"transaction_id\": \"TXN-CC-102938\",\n    \"status\": \"completed\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/payments/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات عملية الدفع وإعادة مزامنة حالة الفاتورة."
+							},
+							"response": []
+						},
+						{
+							"name": "7. Change Payment Status (تغيير حالة الدفع)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"completed\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/payments/1/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"1",
+										"status"
+									]
+								},
+								"description": "تحديث حالة عملية الدفع (pending, completed, failed, refunded) ومزامنة الفاتورة."
+							},
+							"response": []
+						},
+						{
+							"name": "8. Delete Payment (حذف عملية دفع)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/payments/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"1"
+									]
+								},
+								"description": "حذف عملية الدفع وإعادة احتساب رصيد الفاتورة."
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "9. Wallets & Balances",
+			"item": [
+				{
+					"name": "9.1 Wallets Overview (محافظ وأرصدة المستخدمين)",
+					"item": [
+						{
+							"name": "1. List All Wallets (قائمة المحافظ والأرصدة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/wallets?per_page=20",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"wallets"
+									],
+									"query": [
+										{
+											"key": "per_page",
+											"value": "20"
+										}
+									]
+								},
+								"description": "جلب قائمة بمحافظ المستخدمين (عملاء وسائقين) مع رصيد كل مستخدم وعدد الحركات وتاريخ آخر نشاط."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get My Wallet (محفظتي ورصيدي الحالي)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/wallets/my-wallet",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"wallets",
+										"my-wallet"
+									]
+								},
+								"description": "جلب الرصيد الحالي للمستخدم المسجل دخوله وإجمالي الإيداعات والخصومات وآخر 10 حركات مالية."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Wallets Statistics Overview (إحصائيات المحافظ)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/wallets/statistics",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"wallets",
+										"statistics"
+									]
+								},
+								"description": "إحصائيات إجمالي عدد المحافظ، إجمالي الأرصدة المتداولة، وإجمالي الإيداعات والسحوبات."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Get User Wallet Details (تفاصيل محفظة مستخدم)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/wallets/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"wallets",
+										"1"
+									]
+								},
+								"description": "جلب رصيد محفظة مستخدم محدد مع كشف الحساب الكامل (Ledger History)."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "9.2 Transactions (سجل الحركات المالية)",
+					"item": [
+						{
+							"name": "1. List All Transactions (جميع الحركات المالية مع الفلترة)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/wallets/transactions?per_page=20",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"wallets",
+										"transactions"
+									],
+									"query": [
+										{
+											"key": "per_page",
+											"value": "20"
+										}
+									]
+								},
+								"description": "جلب قائمة بجميع حركات المحفظة مع الفلترة حسب المستخدم، نوع الحركة (إيداع، سحب، أرباح رحلة، خصم عمولة، استرداد)، والتاريخ."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Get My Transactions (حركاتي المالية)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/wallets/my-transactions",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"wallets",
+										"my-transactions"
+									]
+								},
+								"description": "جلب كشف حساب وحركات المحفظة الخاصة بالمستخدم المسجل دخوله حالياً."
+							},
+							"response": []
+						},
+						{
+							"name": "3. Record Wallet Transaction (تسجيل حركة إيداع أو سحب)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"user_id\": 1,\n    \"type\": \"deposit\",\n    \"amount\": 500.00,\n    \"description\": \"إيداع رصيد شحن إلكتروني\",\n    \"shipment_id\": null,\n    \"scheduled_trip_id\": null\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/wallets/transactions",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"wallets",
+										"transactions"
+									]
+								},
+								"description": "تسجيل حركة مالية جديدة في محفظة المستخدم واحتساب الرصيد بعد الحركة (balance_after) تلقائياً."
+							},
+							"response": []
+						},
+						{
+							"name": "4. Update Wallet Transaction (تعديل حركة مالية)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"user_id\": 1,\n    \"type\": \"deposit\",\n    \"amount\": 600.00,\n    \"description\": \"إيداع رصيد شحن إلكتروني - معدل\",\n    \"shipment_id\": null,\n    \"scheduled_trip_id\": null\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/wallets/transactions/1/update",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"wallets",
+										"transactions",
+										"1",
+										"update"
+									]
+								},
+								"description": "تحديث بيانات الحركة المالية وإعادة احتساب كشف الحساب الزمني للمستخدم تلقائياً."
+							},
+							"response": []
+						},
+						{
+							"name": "5. Delete Wallet Transaction (حذف حركة مالية)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/wallets/transactions/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"wallets",
+										"transactions",
+										"1"
+									]
+								},
+								"description": "حذف حركة مالية وإعادة ضبط وتحديث رصيد المحفظة المتسلسل."
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8888",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

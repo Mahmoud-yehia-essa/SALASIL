@@ -3,128 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SALASIL — Smart Freight & Logistics Platform. Coming Soon on App Store & Google Play.">
-    <title>SALASIL — Smart Logistics Platform</title>
+    <meta name="description" content="SALASIL — Find a Truck for Your Shipment. Find a Driver. Forget the Payment Worries.">
+    <title>SALASIL — Logistics Solution</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        html, body {
-            height: 100%;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: #080E1D;
-            color: #F8FAFC;
-            overflow-x: hidden;
+        :root {
+            --bg: #070B18;
+            --primary: #06B6D4;
+            --primary-light: #38BDF8;
+            --teal: #14B8A6;
+            --text-main: #F8FAFC;
+            --text-sub: #94A3B8;
+            --card-bg: rgba(15, 23, 42, 0.6);
+            --card-border: rgba(6, 182, 212, 0.18);
         }
 
-        /* ── Background ── */
-        .bg-layer {
+        html, body {
+            min-height: 100vh;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── Background Glow ── */
+        .bg-glow {
             position: fixed;
             inset: 0;
             z-index: 0;
             background:
-                radial-gradient(ellipse 70% 50% at 50% 0%, rgba(6,182,212,0.14) 0%, transparent 60%),
-                radial-gradient(ellipse 40% 40% at 85% 90%, rgba(2,132,199,0.1) 0%, transparent 55%),
-                radial-gradient(ellipse 30% 30% at 10% 80%, rgba(20,184,166,0.08) 0%, transparent 55%);
+                radial-gradient(ellipse 70% 50% at 50% -10%, rgba(6, 182, 212, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 85% 90%, rgba(2, 132, 199, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 40% at 15% 85%, rgba(20, 184, 166, 0.06) 0%, transparent 60%);
+            pointer-events: none;
         }
 
-        /* subtle grid */
         .bg-grid {
             position: fixed;
             inset: 0;
             z-index: 0;
             background-image:
-                linear-gradient(rgba(6,182,212,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(6,182,212,0.04) 1px, transparent 1px);
-            background-size: 56px 56px;
+                linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
         }
 
-        /* ── Wrapper ── */
-        .page {
+        /* ── Container ── */
+        .wrapper {
             position: relative;
             z-index: 1;
-            min-height: 100vh;
+            width: 100%;
+            max-width: 860px;
+            padding: 50px 24px;
+            margin: auto;
+            text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 60px 24px;
-            text-align: center;
         }
 
-        /* ── Logo block ── */
+        /* ── Logo ── */
         .logo-block {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            gap: 14px;
-            margin-bottom: 48px;
+            gap: 12px;
+            margin-bottom: 28px;
+            text-decoration: none;
             opacity: 0;
             animation: fadeUp 0.8s ease 0.1s forwards;
         }
-        .logo-img-wrap {
+        .logo-box {
             background: #FFFFFF;
-            border-radius: 18px;
-            padding: 12px 18px;
+            border-radius: 12px;
+            padding: 6px 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
         }
-        .logo-img-wrap img { height: 52px; width: auto; }
-        .logo-name {
+        .logo-box img { height: 36px; width: auto; display: block; }
+        .logo-text {
             font-family: 'Outfit', sans-serif;
-            font-size: 2.4rem;
-            font-weight: 900;
-            letter-spacing: -0.03em;
-            color: #fff;
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #FFFFFF;
         }
 
-        /* ── Tagline pill ── */
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 7px 18px;
-            background: rgba(6,182,212,0.1);
-            border: 1px solid rgba(6,182,212,0.3);
-            border-radius: 999px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: #38BDF8;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            margin-bottom: 28px;
+        /* ── Main Headline ── */
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            line-height: 1.18;
+            max-width: 800px;
+            margin-bottom: 18px;
             opacity: 0;
             animation: fadeUp 0.8s ease 0.25s forwards;
         }
-        .pill-dot {
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: #06B6D4;
-            box-shadow: 0 0 8px #06B6D4;
-            animation: blink 1.5s ease-in-out infinite;
-        }
-        @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-
-        /* ── Headline ── */
-        h1 {
-            font-family: 'Outfit', sans-serif;
-            font-size: clamp(2.6rem, 6vw, 4.8rem);
-            font-weight: 900;
-            letter-spacing: -0.03em;
-            line-height: 1.08;
-            max-width: 720px;
-            margin-bottom: 22px;
-            opacity: 0;
-            animation: fadeUp 0.9s ease 0.4s forwards;
-        }
-        h1 .accent {
-            background: linear-gradient(135deg, #38BDF8, #14B8A6);
+        .accent {
+            background: linear-gradient(135deg, #38BDF8 0%, #14B8A6 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -132,39 +122,114 @@
 
         /* ── Subtitle ── */
         .subtitle {
-            font-size: 1.05rem;
-            color: #94A3B8;
-            max-width: 480px;
-            line-height: 1.7;
-            margin-bottom: 56px;
-            font-weight: 400;
+            font-size: clamp(1.05rem, 2vw, 1.25rem);
+            color: var(--text-sub);
+            max-width: 650px;
+            line-height: 1.65;
+            margin-bottom: 36px;
             opacity: 0;
-            animation: fadeUp 0.9s ease 0.55s forwards;
+            animation: fadeUp 0.8s ease 0.35s forwards;
         }
 
-        /* ── Divider line ── */
-        .divider {
-            width: 48px;
+        /* ── 3 Core Feature Items ── */
+        .features-row {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 680px;
+            margin-bottom: 32px;
+            opacity: 0;
+            animation: fadeUp 0.8s ease 0.45s forwards;
+        }
+        .feature-item {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 14px 22px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-align: left;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #FFFFFF;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .feature-item:hover {
+            transform: translateX(6px);
+            border-color: rgba(6, 182, 212, 0.5);
+            background: rgba(15, 28, 56, 0.8);
+            box-shadow: 0 4px 20px rgba(6, 182, 212, 0.15);
+        }
+        .feature-item span.emoji {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        /* ── Partner Highlight ── */
+        .partner-box {
+            width: 100%;
+            max-width: 680px;
+            background: linear-gradient(135deg, rgba(14, 26, 52, 0.7) 0%, rgba(8, 14, 30, 0.8) 100%);
+            border: 1px solid rgba(6, 182, 212, 0.22);
+            border-radius: 16px;
+            padding: 22px 28px;
+            margin-bottom: 32px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            animation: fadeUp 0.8s ease 0.55s forwards;
+            position: relative;
+        }
+        .partner-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 20%; right: 20%;
             height: 2px;
-            background: linear-gradient(90deg, #06B6D4, #14B8A6);
-            border-radius: 2px;
-            margin: 0 auto 56px;
+            background: linear-gradient(90deg, transparent, #06B6D4, #14B8A6, transparent);
+        }
+        .partner-box p {
+            font-size: 1.05rem;
+            color: #E2E8F0;
+            line-height: 1.65;
+            font-weight: 400;
+        }
+
+        /* ── Brand Manifesto ── */
+        .manifesto-box {
+            margin-bottom: 36px;
             opacity: 0;
             animation: fadeUp 0.8s ease 0.65s forwards;
         }
-
-        /* ── App store section ── */
-        .app-section {
-            opacity: 0;
-            animation: fadeUp 0.9s ease 0.75s forwards;
+        .manifesto-lead {
+            font-size: 1.1rem;
+            color: var(--text-sub);
+            margin-bottom: 6px;
         }
-        .coming-soon-label {
-            font-size: 0.78rem;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: #64748B;
-            margin-bottom: 20px;
+        .manifesto-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(1.6rem, 3vw, 2.2rem);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        /* ── CTA & App Store ── */
+        .cta-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            opacity: 0;
+            animation: fadeUp 0.8s ease 0.75s forwards;
+        }
+        .cta-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #38BDF8;
+            letter-spacing: 0.02em;
         }
         .store-buttons {
             display: flex;
@@ -172,159 +237,147 @@
             justify-content: center;
             flex-wrap: wrap;
             align-items: center;
+            margin-top: 8px;
         }
         .store-badge-wrap {
             position: relative;
             display: inline-block;
+            padding-top: 12px;
             transition: transform 0.3s ease;
+            z-index: 1;
         }
         .store-badge-wrap:hover { transform: translateY(-3px); }
         .store-badge-wrap img {
-            height: 58px;
+            height: 48px;
             width: auto;
-            border-radius: 10px;
+            border-radius: 9px;
             display: block;
             filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+            position: relative;
+            z-index: 1;
         }
-        .store-badge-wrap .soon-ribbon {
+        .soon-ribbon {
             position: absolute;
-            top: -10px;
+            top: 0px;
             left: 50%;
             transform: translateX(-50%);
             background: linear-gradient(135deg, #06B6D4, #14B8A6);
-            color: #0F172A;
+            color: #070B18;
             font-family: 'Outfit', sans-serif;
-            font-size: 0.6rem;
+            font-size: 0.62rem;
             font-weight: 800;
             letter-spacing: 0.1em;
             text-transform: uppercase;
             padding: 3px 12px;
             border-radius: 999px;
             white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(6,182,212,0.5);
-        }
-
-        /* ── Features row ── */
-        .features {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            flex-wrap: wrap;
-            margin-top: 64px;
-            opacity: 0;
-            animation: fadeUp 0.9s ease 0.9s forwards;
-        }
-        .feature {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.83rem;
-            color: #64748B;
-            font-weight: 500;
-        }
-        .feature-icon {
-            width: 30px; height: 30px;
-            border-radius: 8px;
-            background: rgba(6,182,212,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.95rem;
+            box-shadow: 0 2px 10px rgba(6, 182, 212, 0.6);
+            pointer-events: none;
+            z-index: 20;
         }
 
         /* ── Footer ── */
-        .footer-note {
-            position: fixed;
-            bottom: 24px;
-            left: 0; right: 0;
-            text-align: center;
-            font-size: 0.78rem;
+        .footer {
+            margin-top: 40px;
+            font-size: 0.75rem;
             color: #334155;
             opacity: 0;
-            animation: fadeUp 0.8s ease 1.1s forwards;
+            animation: fadeUp 0.8s ease 0.85s forwards;
         }
-        .footer-note a { color: #06B6D4; text-decoration: none; }
 
-        /* ── Keyframes ── */
+        /* ── Animations ── */
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(24px); }
+            from { opacity: 0; transform: translateY(18px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* ── Responsive ── */
-        @media (max-width: 480px) {
-            .store-buttons { flex-direction: column; align-items: center; }
-            .store-btn { width: 100%; max-width: 280px; }
-            h1 { font-size: 2.4rem; }
+        @media (max-width: 600px) {
+            .wrapper { padding: 36px 16px; }
+            .feature-item { font-size: 0.95rem; padding: 12px 16px; }
+            .partner-box { padding: 18px 20px; }
         }
     </style>
 </head>
 <body>
 
-<div class="bg-layer"></div>
+<div class="bg-glow"></div>
 <div class="bg-grid"></div>
 
-<div class="page">
+<div class="wrapper">
 
     <!-- Logo -->
-    <div class="logo-block">
-        <div class="logo-img-wrap">
+    <a href="/" class="logo-block">
+        <div class="logo-box">
             <img src="/logo.png" alt="SALASIL Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
             <span style="display:none; font-family:'Outfit',sans-serif; font-size:1.1rem; font-weight:900; color:#06B6D4;">SL</span>
         </div>
-        <span class="logo-name">SALASIL</span>
-    </div>
+        <span class="logo-text">SALASIL</span>
+    </a>
 
-    <!-- Pill -->
-    <div class="pill">
-        <span class="pill-dot"></span>
-        Smart Freight & Logistics Platform
-    </div>
-
-    <!-- Headline -->
+    <!-- Headline (Exact Copy) -->
     <h1>
-        Shipment,<br>
-        <span class="accent">Simplified.</span>
+        Find a Truck for Your Shipment. Find a Driver.<br>
+        <span class="accent">Forget the Payment Worries.</span>
     </h1>
 
-    <!-- Subtitle -->
+    <!-- Subtitle (Exact Copy) -->
     <p class="subtitle">
-        Connect with verified drivers, track your cargo in real-time, and manage your entire supply chain — all from one powerful platform.
+        With Salasil, you don’t just find a driver — you find a complete logistics solution.
     </p>
 
-    <!-- Divider -->
-    <div class="divider"></div>
-
-    <!-- App Store section -->
-    <div class="app-section">
-        <p class="coming-soon-label">App Coming Soon On</p>
-        <div class="store-buttons">
-
-            <!-- Apple App Store Badge -->
-            <div class="store-badge-wrap">
-                <img src="/apple.png" alt="Download on the App Store" style="height:58px; width:auto; border-radius:10px; display:block; filter: drop-shadow(0 4px 14px rgba(0,0,0,0.6));">
-            </div>
-
-            <!-- Google Play Badge -->
-            <div class="store-badge-wrap">
-                <img src="/google.png" alt="Get it on Google Play" style="height:58px; width:auto; border-radius:10px; display:block; filter: drop-shadow(0 4px 14px rgba(0,0,0,0.6));">
-            </div>
-
+    <!-- 3 Items (Exact Copy) -->
+    <div class="features-row">
+        <div class="feature-item">
+            <span class="emoji">🚛</span>
+            <span>Find the right truck for your shipment.</span>
+        </div>
+        <div class="feature-item">
+            <span class="emoji">🤝</span>
+            <span>Connect with reliable drivers and transport partners.</span>
+        </div>
+        <div class="feature-item">
+            <span class="emoji">💳</span>
+            <span>Load Now. Pay Later.</span>
         </div>
     </div>
 
+    <!-- Partner Statement (Exact Copy) -->
+    <div class="partner-box">
+        <p>
+            If you’re our partner, you don’t have to worry about paying immediately. Salasil handles the payment solution so you can focus on your business.
+        </p>
+    </div>
 
+    <!-- Brand Statement (Exact Copy) -->
+    <div class="manifesto-box">
+        <p class="manifesto-lead">Salasil is not just a marketplace for finding drivers.</p>
+        <h2 class="manifesto-title">
+            <span class="accent">Salasil is a logistics solution.</span>
+        </h2>
+    </div>
 
+    <!-- CTA & Apps (Exact Copy Tagline) -->
+    <div class="cta-box">
+        <div class="cta-text">Load Now. Pay Later.</div>
+        
+        <div class="store-buttons">
+            <div class="store-badge-wrap">
+                <span class="soon-ribbon">Coming Soon</span>
+                <img src="/apple.png" alt="Download on the App Store">
+            </div>
+            <div class="store-badge-wrap">
+                <span class="soon-ribbon">Coming Soon</span>
+                <img src="/google.png" alt="Get it on Google Play">
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <p class="footer">
+        © 2026 SALASIL Platform. All rights reserved.
+    </p>
 
 </div>
 
-
-
-
-<p style="position:fixed; bottom:20px; left:0; right:0; text-align:center; font-size:0.75rem; color:#334155; letter-spacing:0.03em;">
-    © 2026 SALASIL Logistics Network. All rights reserved.
-</p>
-
 </body>
-
 </html>
