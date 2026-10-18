@@ -41,10 +41,8 @@ class OnboardingController extends Controller
                 "description_ar" => "nullable|string|max:1000",
                 "sort_order" => "nullable|integer|min:1",
                 "status" => "required|in:active,inactive",
-                "image" => "nullable|file|mimes:jpeg,png,jpg,webp,svg|max:5120",
             ], [
                 "title_en.required" => "Please enter the slide title in English.",
-                "image.max" => "The onboarding image must not exceed 5MB.",
             ]);
 
             $onboarding = new OnboardingScreen();
@@ -65,14 +63,30 @@ class OnboardingController extends Controller
                     ]);
                 }
 
+                // Check file size (5MB max)
+                if ($image->getSize() > 5242880) {
+                    return redirect()->back()->withInput()->with([
+                        "message" => "The onboarding image must not exceed 5MB.",
+                        "alert-type" => "error"
+                    ]);
+                }
+
+                // Safe extension check (bypasses php_fileinfo dependency)
+                $clientExt = strtolower($image->getClientOriginalExtension());
+                $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg', 'gif'];
+                if (!in_array($clientExt, $allowedExtensions)) {
+                    return redirect()->back()->withInput()->with([
+                        "message" => "Invalid image format. Allowed formats: " . implode(', ', $allowedExtensions),
+                        "alert-type" => "error"
+                    ]);
+                }
+
                 $destinationPath = public_path("upload/onboarding_images");
                 if (!is_dir($destinationPath)) {
                     @mkdir($destinationPath, 0777, true);
                 }
 
-                $extension = $image->getClientOriginalExtension() ?: ($image->extension() ?: 'jpg');
-                $filename = "onboarding_" . date("Ymd_His") . "_" . uniqid() . "." . $extension;
-
+                $filename = "onboarding_" . date("Ymd_His") . "_" . uniqid() . "." . $clientExt;
                 $image->move($destinationPath, $filename);
                 $onboarding->image = $filename;
             }
@@ -143,10 +157,8 @@ class OnboardingController extends Controller
                 "description_ar" => "nullable|string|max:1000",
                 "sort_order" => "nullable|integer|min:1",
                 "status" => "required|in:active,inactive",
-                "image" => "nullable|file|mimes:jpeg,png,jpg,webp,svg|max:5120",
             ], [
                 "title_en.required" => "Please enter the slide title in English.",
-                "image.max" => "The onboarding image must not exceed 5MB.",
             ]);
 
             $onboarding->title_en = trim($request->title_en);
@@ -166,6 +178,24 @@ class OnboardingController extends Controller
                     ]);
                 }
 
+                // Check file size (5MB max)
+                if ($image->getSize() > 5242880) {
+                    return redirect()->back()->withInput()->with([
+                        "message" => "The onboarding image must not exceed 5MB.",
+                        "alert-type" => "error"
+                    ]);
+                }
+
+                // Safe extension check (bypasses php_fileinfo dependency)
+                $clientExt = strtolower($image->getClientOriginalExtension());
+                $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg', 'gif'];
+                if (!in_array($clientExt, $allowedExtensions)) {
+                    return redirect()->back()->withInput()->with([
+                        "message" => "Invalid image format. Allowed formats: " . implode(', ', $allowedExtensions),
+                        "alert-type" => "error"
+                    ]);
+                }
+
                 // Delete old image if exists
                 if (!empty($onboarding->image)) {
                     $oldPath = public_path("upload/onboarding_images/" . $onboarding->image);
@@ -179,9 +209,7 @@ class OnboardingController extends Controller
                     @mkdir($destinationPath, 0777, true);
                 }
 
-                $extension = $image->getClientOriginalExtension() ?: ($image->extension() ?: 'jpg');
-                $filename = "onboarding_" . date("Ymd_His") . "_" . uniqid() . "." . $extension;
-
+                $filename = "onboarding_" . date("Ymd_His") . "_" . uniqid() . "." . $clientExt;
                 $image->move($destinationPath, $filename);
                 $onboarding->image = $filename;
             }
