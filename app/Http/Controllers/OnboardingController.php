@@ -33,20 +33,20 @@ class OnboardingController extends Controller
      */
     public function StoreOnboarding(Request $request)
     {
-        $request->validate([
-            "title_en" => "required|string|max:255",
-            "title_ar" => "nullable|string|max:255",
-            "description_en" => "nullable|string|max:1000",
-            "description_ar" => "nullable|string|max:1000",
-            "sort_order" => "nullable|integer|min:1",
-            "status" => "required|in:active,inactive",
-            "image" => "nullable|file|mimes:jpeg,png,jpg,webp,svg|max:5120",
-        ], [
-            "title_en.required" => "Please enter the slide title in English.",
-            "image.max" => "The onboarding image must not exceed 5MB.",
-        ]);
-
         try {
+            $request->validate([
+                "title_en" => "required|string|max:255",
+                "title_ar" => "nullable|string|max:255",
+                "description_en" => "nullable|string|max:1000",
+                "description_ar" => "nullable|string|max:1000",
+                "sort_order" => "nullable|integer|min:1",
+                "status" => "required|in:active,inactive",
+                "image" => "nullable|file|mimes:jpeg,png,jpg,webp,svg|max:5120",
+            ], [
+                "title_en.required" => "Please enter the slide title in English.",
+                "image.max" => "The onboarding image must not exceed 5MB.",
+            ]);
+
             $onboarding = new OnboardingScreen();
             $onboarding->title_en = trim($request->title_en);
             $onboarding->title_ar = $request->title_ar ? trim($request->title_ar) : trim($request->title_en);
@@ -85,6 +85,12 @@ class OnboardingController extends Controller
             ];
 
             return redirect()->route("all.onboarding")->with($notification);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            $errorMsg = implode(', ', $ve->validator->errors()->all());
+            return redirect()->back()->withInput()->with([
+                "message" => "Validation Error: " . $errorMsg,
+                "alert-type" => "error"
+            ]);
         } catch (\Throwable $e) {
             Log::error("Onboarding store failed: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
             return redirect()->back()->withInput()->with([
@@ -99,8 +105,15 @@ class OnboardingController extends Controller
      */
     public function EditOnboarding($id)
     {
-        $onboarding = OnboardingScreen::findOrFail($id);
-        return view("admin.backend.onboarding.edit_onboarding", compact("onboarding"));
+        try {
+            $onboarding = OnboardingScreen::findOrFail($id);
+            return view("admin.backend.onboarding.edit_onboarding", compact("onboarding"));
+        } catch (\Throwable $e) {
+            return redirect()->route("all.onboarding")->with([
+                "message" => "Slide not found.",
+                "alert-type" => "error"
+            ]);
+        }
     }
 
     /**
@@ -108,23 +121,34 @@ class OnboardingController extends Controller
      */
     public function UpdateOnboarding(Request $request)
     {
-        $id = $request->id;
-        $onboarding = OnboardingScreen::findOrFail($id);
-
-        $request->validate([
-            "title_en" => "required|string|max:255",
-            "title_ar" => "nullable|string|max:255",
-            "description_en" => "nullable|string|max:1000",
-            "description_ar" => "nullable|string|max:1000",
-            "sort_order" => "nullable|integer|min:1",
-            "status" => "required|in:active,inactive",
-            "image" => "nullable|file|mimes:jpeg,png,jpg,webp,svg|max:5120",
-        ], [
-            "title_en.required" => "Please enter the slide title in English.",
-            "image.max" => "The onboarding image must not exceed 5MB.",
-        ]);
+        if ($request->isMethod('get')) {
+            return redirect()->route('all.onboarding');
+        }
 
         try {
+            $id = $request->id;
+            if (!$id) {
+                return redirect()->route('all.onboarding')->with([
+                    "message" => "Slide ID is missing.",
+                    "alert-type" => "error"
+                ]);
+            }
+
+            $onboarding = OnboardingScreen::findOrFail($id);
+
+            $request->validate([
+                "title_en" => "required|string|max:255",
+                "title_ar" => "nullable|string|max:255",
+                "description_en" => "nullable|string|max:1000",
+                "description_ar" => "nullable|string|max:1000",
+                "sort_order" => "nullable|integer|min:1",
+                "status" => "required|in:active,inactive",
+                "image" => "nullable|file|mimes:jpeg,png,jpg,webp,svg|max:5120",
+            ], [
+                "title_en.required" => "Please enter the slide title in English.",
+                "image.max" => "The onboarding image must not exceed 5MB.",
+            ]);
+
             $onboarding->title_en = trim($request->title_en);
             $onboarding->title_ar = $request->title_ar ? trim($request->title_ar) : trim($request->title_en);
             $onboarding->description_en = $request->description_en ? trim($request->description_en) : null;
@@ -170,10 +194,21 @@ class OnboardingController extends Controller
             ];
 
             return redirect()->route("all.onboarding")->with($notification);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            $errorMsg = implode(', ', $ve->validator->errors()->all());
+            return redirect()->back()->withInput()->with([
+                "message" => "Validation Error: " . $errorMsg,
+                "alert-type" => "error"
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $me) {
+            return redirect()->route("all.onboarding")->with([
+                "message" => "Slide not found (ID: " . ($request->id ?? 'null') . ")",
+                "alert-type" => "error"
+            ]);
         } catch (\Throwable $e) {
             Log::error("Onboarding update failed: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
             return redirect()->back()->withInput()->with([
-                "message" => "Failed to update slide: " . $e->getMessage(),
+                "message" => "Update failed: " . $e->getMessage(),
                 "alert-type" => "error"
             ]);
         }

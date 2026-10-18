@@ -340,7 +340,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/onboarding/add', [OnboardingController::class, 'AddOnboarding'])->name('add.onboarding');
     Route::post('/admin/onboarding/store', [OnboardingController::class, 'StoreOnboarding'])->name('store.onboarding');
     Route::get('/admin/onboarding/edit/{id}', [OnboardingController::class, 'EditOnboarding'])->name('edit.onboarding');
-    Route::post('/admin/onboarding/update', [OnboardingController::class, 'UpdateOnboarding'])->name('update.onboarding');
+    Route::match(['get', 'post'], '/admin/onboarding/update', [OnboardingController::class, 'UpdateOnboarding'])->name('update.onboarding');
     Route::get('/admin/onboarding/delete/{id}', [OnboardingController::class, 'DeleteOnboarding'])->name('delete.onboarding');
     Route::match(['get', 'post'], '/admin/onboarding/change-status-ajax', [OnboardingController::class, 'ChangeStatusAjax'])->name('onboarding.status.ajax');
 
