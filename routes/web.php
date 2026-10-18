@@ -325,6 +325,25 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/about-settings', [AboutSalasilSettingController::class, 'EditSettings'])->name('admin.about.settings');
     Route::post('/admin/about-settings', [AboutSalasilSettingController::class, 'UpdateSettings'])->name('admin.about.settings.update');
 
+    // Company Required Documents Management Routes
+    Route::get('/admin/company-documents/all', [CompanyDocumentController::class, 'AllCompanyDocuments'])->name('all.company.documents');
+    Route::get('/admin/company-documents/add', [CompanyDocumentController::class, 'AddCompanyDocument'])->name('add.company.document');
+    Route::post('/admin/company-documents/store', [CompanyDocumentController::class, 'StoreCompanyDocument'])->name('store.company.document');
+    Route::get('/admin/company-documents/edit/{id}', [CompanyDocumentController::class, 'EditCompanyDocument'])->name('edit.company.document');
+    Route::post('/admin/company-documents/update', [CompanyDocumentController::class, 'UpdateCompanyDocument'])->name('update.company.document');
+    Route::match(['get', 'post'], '/admin/company-documents/toggle-required-ajax', [CompanyDocumentController::class, 'ToggleRequiredAjax'])->name('toggle.company.document.required.ajax');
+    Route::match(['get', 'post'], '/admin/company-documents/change-status-ajax', [CompanyDocumentController::class, 'ChangeStatusAjax'])->name('change.company.document.status.ajax');
+    Route::get('/admin/company-documents/delete/{id}', [CompanyDocumentController::class, 'DeleteCompanyDocument'])->name('delete.company.document');
+
+    // Onboarding Screens Management Routes
+    Route::get('/admin/onboarding/all', [OnboardingController::class, 'AllOnboarding'])->name('all.onboarding');
+    Route::get('/admin/onboarding/add', [OnboardingController::class, 'AddOnboarding'])->name('add.onboarding');
+    Route::post('/admin/onboarding/store', [OnboardingController::class, 'StoreOnboarding'])->name('store.onboarding');
+    Route::get('/admin/onboarding/edit/{id}', [OnboardingController::class, 'EditOnboarding'])->name('edit.onboarding');
+    Route::post('/admin/onboarding/update', [OnboardingController::class, 'UpdateOnboarding'])->name('update.onboarding');
+    Route::get('/admin/onboarding/delete/{id}', [OnboardingController::class, 'DeleteOnboarding'])->name('delete.onboarding');
+    Route::match(['get', 'post'], '/admin/onboarding/change-status-ajax', [OnboardingController::class, 'ChangeStatusAjax'])->name('onboarding.status.ajax');
+
     Route::get('/admin/about-salasil', function () {
         return view('admin.about_salasil');
     })->name('admin.about.salasil');
@@ -348,11 +367,14 @@ if (is_dir($adminIncludeDir)) {
         }
     }
 
+    app('router')->getRoutes()->refreshNameLookups();
+
     foreach (array_unique($foundRouteNames) as $routeName) {
         if ($routeName !== 'dashboard' && !Route::has($routeName)) {
             Route::get('/admin/stub/' . md5($routeName), function () {
                 return redirect()->route('dashboard');
             })->middleware('auth')->name($routeName);
+            app('router')->getRoutes()->refreshNameLookups();
         }
     }
 }
