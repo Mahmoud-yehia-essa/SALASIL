@@ -17,11 +17,18 @@ use App\Http\Controllers\ShipmentInvitationController;
 use App\Http\Controllers\HsCodeController;
 use App\Http\Controllers\RouteController;
 use App\Http\Controllers\ScheduledTripController;
+use App\Http\Controllers\ScheduledTripOrderController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\CommunicationController;
 use App\Http\Controllers\AdminNotificationController;
+use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\CompanyDocumentController;
+use App\Http\Controllers\SupportTicketController;
+use App\Http\Controllers\AboutSalasilSettingController;
+use App\Http\Controllers\FaqController;
+use App\Http\Controllers\SupportSettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -88,6 +95,11 @@ Route::middleware('auth')->group(function () {
     Route::match(['get', 'post'], '/admin/user/change-status-ajax', [UserController::class, 'ChangeStatusAjax'])->name('change.status.ajax');
     Route::get('/admin/user/status/{id}', [UserController::class, 'ToggleStatusUser'])->name('status.user');
     Route::get('/admin/user/delete/{id}', [UserController::class, 'DeleteUser'])->name('delete.user');
+    Route::post('/admin/user/document/status-ajax', [UserController::class, 'ChangeDocumentStatusAjax'])->name('user.document.status.ajax');
+    Route::get('/admin/user/document/delete/{id}', [UserController::class, 'DeleteUserDocument'])->name('user.document.delete');
+    Route::post('/admin/user/request-company-documents/{id}', [UserController::class, 'RequestCompanyDocuments'])->name('user.company.documents.request');
+    Route::post('/admin/user/{id}/custom-document/store', [UserController::class, 'StoreUserCustomDocument'])->name('user.custom.document.store');
+    Route::delete('/admin/user/{userId}/custom-document/{docId}/delete', [UserController::class, 'DeleteUserCustomDocument'])->name('user.custom.document.delete');
 
     // Truck Type Management Routes
     Route::get('/admin/truck-type/all', [TruckTypeController::class, 'AllTruckTypes'])->name('all.truck.types');
@@ -230,6 +242,18 @@ Route::middleware('auth')->group(function () {
     Route::match(['get', 'post'], '/admin/scheduled-trips/change-status-ajax', [ScheduledTripController::class, 'ChangeStatusAjax'])->name('scheduled.trip.status.ajax');
     Route::get('/admin/scheduled-trips/details/{id}', [ScheduledTripController::class, 'GetTripDetailsAjax'])->name('get.scheduled.trip.details.ajax');
 
+    // Scheduled Trip Orders Management Routes
+    Route::get('/admin/scheduled-trip-orders/all', [ScheduledTripOrderController::class, 'AllOrders'])->name('all.scheduled.trip.orders');
+    Route::get('/admin/scheduled-trip-orders/add', [ScheduledTripOrderController::class, 'AddOrder'])->name('add.scheduled.trip.order');
+    Route::post('/admin/scheduled-trip-orders/store', [ScheduledTripOrderController::class, 'StoreOrder'])->name('store.scheduled.trip.order');
+    Route::get('/admin/scheduled-trip-orders/trip-data-ajax/{id}', [ScheduledTripOrderController::class, 'GetTripDataAjax'])->name('get.trip.data.ajax');
+    Route::get('/admin/scheduled-trip-orders/trip-data-ajax-alias/{id}', [ScheduledTripOrderController::class, 'GetTripDataAjax'])->name('get.scheduled.trip.order.trip.data.ajax');
+    Route::get('/admin/scheduled-trip-orders/details/{id}', [ScheduledTripOrderController::class, 'GetOrderDetailsAjax'])->name('get.scheduled.trip.order.details.ajax');
+    Route::get('/admin/scheduled-trip-orders/document/view/{id}/{index}', [ScheduledTripOrderController::class, 'ViewOrderDocument'])->name('view.scheduled.trip.order.document');
+    Route::get('/admin/scheduled-trip-orders/document/download/{id}/{index}', [ScheduledTripOrderController::class, 'DownloadOrderDocument'])->name('download.scheduled.trip.order.document');
+    Route::match(['get', 'post'], '/admin/scheduled-trip-orders/change-status-ajax', [ScheduledTripOrderController::class, 'ChangeStatusAjax'])->name('scheduled.trip.order.status.ajax');
+    Route::get('/admin/scheduled-trip-orders/delete/{id}', [ScheduledTripOrderController::class, 'DeleteOrder'])->name('delete.scheduled.trip.order');
+
     // Financial & Billing System — Invoices Routes
     Route::get('/admin/invoices/all', [InvoiceController::class, 'AllInvoices'])->name('all.invoices');
     Route::get('/admin/invoices/edit/{id}', [InvoiceController::class, 'EditInvoice'])->name('edit.invoice');
@@ -277,6 +301,30 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/notifications/clear-all', [AdminNotificationController::class, 'clearAllNotifications'])->name('admin.notifications.clear_all');
 
     // About SALASIL Platform Route
+    // Support & Help Center Settings
+    // Frequently Asked Questions (FAQ) Management
+    Route::get('/admin/faq/all', [FaqController::class, 'AllFaqs'])->name('all.faqs');
+    Route::get('/admin/faq/add', [FaqController::class, 'AddFaq'])->name('add.faq');
+    Route::post('/admin/faq/store', [FaqController::class, 'StoreFaq'])->name('store.faq');
+    Route::get('/admin/faq/edit/{id}', [FaqController::class, 'EditFaq'])->name('edit.faq');
+    Route::post('/admin/faq/update', [FaqController::class, 'UpdateFaq'])->name('update.faq');
+    Route::match(['get', 'post'], '/admin/faq/change-status-ajax', [FaqController::class, 'ChangeStatusAjax'])->name('faq.status.ajax');
+    Route::get('/admin/faq/delete/{id}', [FaqController::class, 'DeleteFaq'])->name('delete.faq');
+
+    Route::get('/admin/support-settings', [SupportSettingController::class, 'EditSettings'])->name('admin.support.settings');
+    Route::post('/admin/support-settings', [SupportSettingController::class, 'UpdateSettings'])->name('admin.support.settings.update');
+
+    // About Salasil App Content Management
+    // Support Tickets Management Routes
+    Route::get('/admin/support-tickets', [SupportTicketController::class, 'AllTickets'])->name('all.support.tickets');
+    Route::get('/admin/support-tickets/{id}', [SupportTicketController::class, 'ShowTicket'])->name('show.support.ticket');
+    Route::post('/admin/support-tickets/{id}/reply', [SupportTicketController::class, 'ReplyTicket'])->name('reply.support.ticket');
+    Route::match(['get', 'post'], '/admin/support-tickets/change-status-ajax', [SupportTicketController::class, 'ChangeStatusAjax'])->name('support.ticket.status.ajax');
+    Route::get('/admin/support-tickets/delete/{id}', [SupportTicketController::class, 'DeleteTicket'])->name('delete.support.ticket');
+
+    Route::get('/admin/about-settings', [AboutSalasilSettingController::class, 'EditSettings'])->name('admin.about.settings');
+    Route::post('/admin/about-settings', [AboutSalasilSettingController::class, 'UpdateSettings'])->name('admin.about.settings.update');
+
     Route::get('/admin/about-salasil', function () {
         return view('admin.about_salasil');
     })->name('admin.about.salasil');

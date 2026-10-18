@@ -203,6 +203,10 @@ class PaymentController extends Controller
         // Auto-sync invoice & shipment status
         $this->syncInvoiceStatus($invoice->id);
 
+        try {
+            \App\Services\AdminNotificationService::paymentReceived($payment);
+        } catch (\Throwable $ignoreAdminNotif) {}
+
         $payment->load(['invoice', 'user']);
 
         return response()->json([

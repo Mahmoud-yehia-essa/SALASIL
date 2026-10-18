@@ -76,15 +76,31 @@
                         <div id="notif-dropdown-list" class="overflow-y-auto" style="max-height: 360px; direction: ltr !important; text-align: left !important;">
                             @forelse($latestNotifications as $n)
                                 @php
-                                    $d = $n->data;
+                                    $d = $n->data ?? [];
                                     $isUnread = is_null($n->read_at);
-                                    $isAccepted = ($d['status'] ?? '') === 'accepted';
-                                    $driverName = $d['driver_name'] ?? 'Driver';
-                                    $shipmentTitle = $d['shipment_title'] ?? ('Shipment #' . ($d['shipment_id'] ?? ''));
-                                    $title = $isAccepted ? 'Invitation Accepted' : 'Invitation Declined';
-                                    $message = $isAccepted 
-                                        ? "Driver {$driverName} accepted invitation for {$shipmentTitle}." 
-                                        : "Driver {$driverName} declined invitation for {$shipmentTitle}.";
+                                    
+                                    if (isset($d['driver_name']) || isset($d['invitation_id'])) {
+                                        $isAccepted = ($d['status'] ?? '') === 'accepted';
+                                        $driverName = $d['driver_name'] ?? 'Driver';
+                                        $shipmentTitle = $d['shipment_title'] ?? ('Shipment #' . ($d['shipment_id'] ?? ''));
+                                        $title = $isAccepted ? 'Invitation Accepted' : 'Invitation Declined';
+                                        $message = $isAccepted 
+                                            ? "Driver {$driverName} accepted invitation for {$shipmentTitle}." 
+                                            : "Driver {$driverName} declined invitation for {$shipmentTitle}.";
+                                        $iconClass = $isAccepted ? 'bx-check-shield' : 'bx-x-circle';
+                                        $iconStyle = $isAccepted 
+                                            ? 'background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' 
+                                            : 'background: rgba(244, 63, 94, 0.15); color: #F43F5E; border: 1px solid rgba(244, 63, 94, 0.3);';
+                                        $titleClass = $isAccepted ? 'notif-item-title-success' : 'notif-item-title-danger';
+                                    } else {
+                                        $title = $d['title_en'] ?? ($d['title'] ?? 'Notification');
+                                        $message = $d['message'] ?? ($d['body'] ?? '');
+                                        $iconClass = $d['icon'] ?? 'bx-bell';
+                                        $iconColor = $d['icon_color'] ?? '#0284C7';
+                                        $iconBg = $d['icon_bg'] ?? 'rgba(2, 132, 199, 0.15)';
+                                        $iconStyle = "background: {$iconBg}; color: {$iconColor}; border: 1px solid rgba(2, 132, 199, 0.3);";
+                                        $titleClass = ($d['status'] ?? '') === 'success' ? 'notif-item-title-success' : '';
+                                    }
                                 @endphp
                                 <div class="dropdown-item notif-item p-3 text-wrap d-flex align-items-start gap-2.5 transition-all {{ $isUnread ? 'unread' : '' }} position-relative"
                                      style="direction: ltr !important; text-align: left !important; cursor: pointer;"
@@ -92,14 +108,14 @@
                                     
                                     {{-- Status Icon --}}
                                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 mt-0.5" 
-                                         style="width: 36px; height: 36px; {{ $isAccepted ? 'background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' : 'background: rgba(244, 63, 94, 0.15); color: #F43F5E; border: 1px solid rgba(244, 63, 94, 0.3);' }}">
-                                        <i class="bx {{ $isAccepted ? 'bx-check-shield' : 'bx-x-circle' }} fs-5"></i>
+                                         style="width: 36px; height: 36px; {!! $iconStyle !!}">
+                                        <i class="bx {{ $iconClass }} fs-5"></i>
                                     </div>
 
                                     {{-- Body --}}
                                     <div class="flex-grow-1 min-w-0" style="text-align: left !important; direction: ltr !important;">
                                         <div class="d-flex align-items-center justify-content-between gap-1 mb-1" style="direction: ltr !important;">
-                                            <span class="fw-bold fs-7 {{ $isAccepted ? 'notif-item-title-success' : 'notif-item-title-danger' }}">
+                                            <span class="fw-bold fs-7 {{ $titleClass }}">
                                                 {{ $title }}
                                             </span>
                                             <small class="text-slate-400 fs-9 me-3">{{ $n->created_at ? $n->created_at->diffForHumans() : '' }}</small>
@@ -107,7 +123,7 @@
                                         <p class="mb-1 fs-8 notif-item-msg text-truncate-2" style="line-height: 1.35; text-align: left !important; direction: ltr !important;">
                                             {{ $message }}
                                         </p>
-                                        @if(!$isAccepted && !empty($d['rejection_reason']))
+                                        @if(isset($d['rejection_reason']) && !empty($d['rejection_reason']))
                                             <div class="fs-9 text-danger bg-danger bg-opacity-10 border border-danger border-opacity-20 rounded p-1 mt-1 text-truncate" style="text-align: left !important;">
                                                 <strong>Reason:</strong> {{ $d['rejection_reason'] }}
                                             </div>
@@ -139,8 +155,8 @@
 
                         {{-- Footer --}}
                         <div class="p-2.5 text-center notif-footer" style="direction: ltr !important;">
-                            <a href="{{ route('all.shipment.invitations', [], false) }}" class="fw-bold text-info fs-8 text-decoration-none d-inline-flex align-items-center gap-1">
-                                <span>View All Shipment Invitations</span> <i class="bx bx-right-arrow-alt fs-6"></i>
+                            <a href="javascript:;" onclick="markAllNotificationsAsRead(event)" class="fw-bold text-info fs-8 text-decoration-none d-inline-flex align-items-center gap-1">
+                                <span>Mark All as Read</span> <i class="bx bx-check-double fs-6"></i>
                             </a>
                         </div>
                     </div>
@@ -340,16 +356,16 @@
 
                             let html = '';
                             data.notifications.forEach(n => {
-                                const isAccepted = n.is_accepted === true || n.status === 'accepted';
-                                const iconClass = isAccepted ? 'bx-check-shield' : 'bx-x-circle';
-                                const statusColorClass = isAccepted ? 'notif-item-title-success' : 'notif-item-title-danger';
-                                const iconStyle = isAccepted 
-                                    ? 'background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' 
-                                    : 'background: rgba(244, 63, 94, 0.15); color: #F43F5E; border: 1px solid rgba(244, 63, 94, 0.3);';
+                                const iconClass = n.icon_class || 'bx-bell';
+                                const iconBg = n.icon_bg || 'rgba(2, 132, 199, 0.15)';
+                                const iconColor = n.icon_color || '#0284C7';
+                                const iconBorder = n.icon_border || 'rgba(2, 132, 199, 0.3)';
+                                const statusColorClass = n.title_color_class || '';
+                                const iconStyle = `background: ${iconBg}; color: ${iconColor}; border: 1px solid ${iconBorder};`;
                                 
                                 const bgClass = !n.is_read ? 'unread' : '';
                                 const dotHtml = !n.is_read ? '<span class="rounded-circle bg-info flex-shrink-0" style="width: 7px; height: 7px; box-shadow: 0 0 8px #06B6D4;"></span>' : '';
-                                const reasonHtml = (!isAccepted && n.rejection_reason) ? `<div class="fs-9 text-danger bg-danger bg-opacity-10 border border-danger border-opacity-20 rounded p-1 mt-1 text-truncate"><strong>Reason:</strong> ${n.rejection_reason}</div>` : '';
+                                const reasonHtml = (n.rejection_reason) ? `<div class="fs-9 text-danger bg-danger bg-opacity-10 border border-danger border-opacity-20 rounded p-1 mt-1 text-truncate"><strong>Reason:</strong> ${n.rejection_reason}</div>` : '';
 
                                 html += `
                                 <div class="dropdown-item notif-item p-3 text-wrap d-flex align-items-start gap-2.5 transition-all ${bgClass} position-relative" 

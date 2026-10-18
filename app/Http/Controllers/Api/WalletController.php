@@ -60,8 +60,36 @@ class WalletController extends Controller
     {
         $user = $request->user();
 
+        // 1. Authoritative credit from user model
+        $userCredit = (float) $user->credit;
+
+        // 2. Fetch last transaction
         $lastTxn = WalletTransaction::where('user_id', $user->id)->latest('id')->first();
-        $currentBalance = $lastTxn ? (float) $lastTxn->balance_after : 0.00;
+        $lastBalance = $lastTxn ? (float) $lastTxn->balance_after : null;
+
+        // If user has a credit that isn't reflected in a transaction, auto-record it so Activity shows it!
+        if ($lastBalance === null && $userCredit > 0) {
+            WalletTransaction::create([
+                'user_id'       => $user->id,
+                'amount'        => $userCredit,
+                'type'          => 'deposit',
+                'balance_after' => $userCredit,
+                'description'   => 'Balance recharge from Administration (شحن رصيد من الإدارة)',
+            ]);
+        } elseif ($lastBalance !== null && abs($userCredit - $lastBalance) > 0.001) {
+            $diff = $userCredit - $lastBalance;
+            WalletTransaction::create([
+                'user_id'       => $user->id,
+                'amount'        => abs($diff),
+                'type'          => $diff > 0 ? 'deposit' : 'withdrawal',
+                'balance_after' => $userCredit,
+                'description'   => $diff > 0
+                    ? 'Balance recharge from Administration (شحن رصيد من الإدارة)'
+                    : 'Balance adjustment by Administration (تعديل رصيد من الإدارة)',
+            ]);
+        }
+
+        $currentBalance = (float) $user->credit;
 
         $totalDeposits = WalletTransaction::where('user_id', $user->id)
             ->whereIn('type', ['deposit', 'trip_earnings', 'refund'])
@@ -74,7 +102,7 @@ class WalletController extends Controller
         $recentTransactions = WalletTransaction::with(['shipment:id,shipment_name', 'scheduledTrip.route'])
             ->where('user_id', $user->id)
             ->latest('id')
-            ->limit(10)
+            ->limit(25)
             ->get();
 
         return response()->json([
@@ -275,6 +303,12 @@ class WalletController extends Controller
             'shipment_id'       => $request->shipment_id ?: null,
             'scheduled_trip_id' => $request->scheduled_trip_id ?: null,
         ]);
+        $targetUser = User::find($userId);
+        if ($targetUser) {
+            $targetUser->credit = $newBalance;
+            $targetUser->save();
+        }
+
 
         $txn->load(['user:id,fname,lname,email,phone,client_code']);
 

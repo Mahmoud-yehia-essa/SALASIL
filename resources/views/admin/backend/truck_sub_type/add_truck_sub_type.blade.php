@@ -76,6 +76,26 @@
                                 @enderror
                             </div>
 
+                            <!-- Sub-Type Name (Arabic) -->
+                            <div class="col-12 col-md-6">
+                                <label for="name_ar" class="form-label fw-semibold">Sub-Type Name (Arabic) / الاسم بالعربية</label>
+                                <div class="position-relative">
+                                    <input type="text" 
+                                           name="name_ar" 
+                                           id="name_ar" 
+                                           class="form-control @error(\x27name_ar\x27) is-invalid @enderror" 
+                                           style="padding-left: 48px !important;"
+                                           placeholder="مثال: سطحة، مبردة، حاوية 40 قدم"
+                                           value="{{ old(\x27name_ar\x27) }}">
+                                    <span class="position-absolute text-info" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                        <i class="bx bx-font fs-5"></i>
+                                    </span>
+                                </div>
+                                @error(\x27name_ar\x27)
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <!-- Max Payload in Tons -->
                             <div class="col-12 col-md-6">
                                 <label for="max_payload" class="form-label fw-semibold">Max Payload (Tons)</label>

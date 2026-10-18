@@ -35,6 +35,14 @@ class Invoice extends Model
     }
 
     /**
+     * علاقة الفاتورة بطلب الرحلة المجدولة
+     */
+    public function scheduledTripOrder()
+    {
+        return $this->belongsTo(ScheduledTripOrder::class, 'scheduled_trip_order_id');
+    }
+
+    /**
      * مدفوعات الفاتورة
      */
     public function payments()

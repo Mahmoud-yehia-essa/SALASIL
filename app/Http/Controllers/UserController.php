@@ -8,6 +8,8 @@ use App\Models\CompanyProfile;
 use App\Models\DriverProfile;
 use App\Models\Country;
 use App\Models\City;
+use App\Models\UserCompanyDocument;
+use Illuminate\Support\Facades\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -36,6 +38,8 @@ class UserController extends Controller
             'password' => 'required|string|min:6',
             'role' => 'required|in:admin,individual_customer,company_customer,driver',
             'status' => 'required|in:active,inactive,pending,banned',
+            'is_verified' => 'nullable',
+            'credit' => 'nullable|numeric|min:0',
             'country_code' => 'nullable|string|max:10',
             'country_id' => 'nullable|exists:countries,id',
             'city_id' => 'nullable|exists:cities,id',
@@ -87,6 +91,8 @@ class UserController extends Controller
         $user->password = Hash::make($request->password);
         $user->role = $request->role;
         $user->status = $request->status;
+        $user->is_verified = $request->has('is_verified') ? (bool) $request->is_verified : false;
+        $user->credit = $request->filled('credit') ? (float) $request->credit : 0.00;
         $user->country_code = $request->country_code ?? '+966';
         $user->country_id = $request->country_id ? $request->country_id : null;
         $user->city_id = $request->city_id ? $request->city_id : null;
@@ -157,6 +163,10 @@ class UserController extends Controller
 
             $driver->save();
         }
+
+        try {
+            \App\Services\AdminNotificationService::newMemberRegistered($user);
+        } catch (\Throwable $ignoreAdminNotif) {}
 
         $notification = [
             'message' => 'New Client Created Successfully!',
@@ -254,10 +264,17 @@ class UserController extends Controller
      */
     public function EditUser($id)
     {
-        $user = User::with(['companyProfile', 'driverProfile', 'country', 'city'])->findOrFail($id);
+        $user = User::with(['companyProfile', 'driverProfile', 'country', 'city', 'companyDocuments.requiredDocument'])->findOrFail($id);
         $countries = Country::where('is_active', 1)->orderBy('name_en', 'asc')->get();
         $cities = $user->country_id ? City::where('country_id', $user->country_id)->where('is_active', 1)->orderBy('name_en', 'asc')->get() : collect();
-        return view('admin.backend.user.edit_user', compact('user', 'countries', 'cities'));
+        $availableCompanyDocuments = \App\Models\CompanyRequiredDocument::where('is_active', 1)
+            ->where(function ($q) use ($user) {
+                $q->whereNull('user_id')->orWhere('user_id', $user->id);
+            })
+            ->orderBy('sort_order', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+        return view('admin.backend.user.edit_user', compact('user', 'countries', 'cities', 'availableCompanyDocuments'));
     }
 
     /**
@@ -277,6 +294,8 @@ class UserController extends Controller
             'password' => 'nullable|string|min:6',
             'role' => 'required|in:admin,individual_customer,company_customer,driver',
             'status' => 'required|in:active,inactive,pending,banned',
+            'is_verified' => 'nullable',
+            'credit' => 'nullable|numeric|min:0',
             'country_code' => 'nullable|string|max:10',
             'country_id' => 'nullable|exists:countries,id',
             'city_id' => 'nullable|exists:cities,id',
@@ -324,6 +343,8 @@ class UserController extends Controller
         $user->secondary_phone = $request->secondary_phone;
         $user->role = $request->role;
         $user->status = $request->status;
+        $user->is_verified = $request->has('is_verified') ? (bool) $request->is_verified : false;
+        $user->credit = $request->filled('credit') ? (float) $request->credit : 0.00;
         $user->country_id = $request->country_id ? $request->country_id : null;
         $user->city_id = $request->city_id ? $request->city_id : null;
         $user->dateofbirth = $request->dateofbirth;
@@ -342,7 +363,44 @@ class UserController extends Controller
             $user->photo = $filename;
         }
 
-        $user->save();
+                $wasVerified = (bool) $user->getOriginal('is_verified');
+        $prevCredit  = (float) $user->getOriginal('credit');
+$user->save();
+        $newCreditVal = (float) $user->credit;
+        $diffCredit = $newCreditVal - $prevCredit;
+        if (abs($diffCredit) > 0.001) {
+            \App\Models\WalletTransaction::create([
+                'user_id'       => $user->id,
+                'amount'        => abs($diffCredit),
+                'type'          => $diffCredit > 0 ? 'deposit' : 'withdrawal',
+                'balance_after' => $newCreditVal,
+                'description'   => $diffCredit > 0 
+                    ? 'Balance recharge from Administration (شحن رصيد من الإدارة)' 
+                    : 'Balance adjustment by Administration (تعديل رصيد من الإدارة)',
+            ]);
+        }
+
+        try {
+            if (!$wasVerified && $user->is_verified) {
+                $user->notify(new \App\Notifications\CustomerActivityNotification([
+                    'title'        => 'Account Verified',
+                    'body'         => 'Congratulations! Your profile has been officially verified by Salasil Logistics.',
+                    'type'         => 'system',
+                    'reference_id' => 'VERIFIED-' . $user->id,
+                    'action_route' => '/personal_information_screen',
+                ]));
+            }
+            if ((float) $user->credit > $prevCredit) {
+                $diff = (float) $user->credit - $prevCredit;
+                $user->notify(new \App\Notifications\CustomerActivityNotification([
+                    'title'        => 'Wallet Credited',
+                    'body'         => 'An amount of ' . number_format($diff, 3) . ' KWD has been added to your balance by Salasil administration.',
+                    'type'         => 'payment',
+                    'reference_id' => 'CREDIT-' . $user->id,
+                    'action_route' => '/profile_screen',
+                ]));
+            }
+        } catch (\Throwable $ignoreUpdateNotif) {}
 
         if ($request->role === 'company_customer') {
             $company = CompanyProfile::firstOrNew(['user_id' => $user->id]);
@@ -366,7 +424,36 @@ class UserController extends Controller
                 $company->commercial_register_doc = $docName;
             }
 
+            // Save required documents selection for this company
+            if ($request->has('required_documents')) {
+                $company->required_documents = array_map('intval', (array)$request->required_documents);
+            }
+
             $company->save();
+
+            // Optional: Dispatch notification if admin checked send notification checkbox
+            if ($request->boolean('send_doc_request_notification')) {
+                try {
+                    $selectedIds = (array)($company->required_documents ?? []);
+                    $docNames = \App\Models\CompanyRequiredDocument::whereIn('id', $selectedIds)->pluck('name_en')->toArray();
+                    $docNamesList = !empty($docNames) ? implode(', ', $docNames) : 'Official company documents';
+                    $customNote = $request->filled('doc_request_custom_note') ? trim($request->doc_request_custom_note) : null;
+                    $body = $customNote ?: ("Administration requests you to upload required documents: {$docNamesList}. Please upload them in your Company Documents section to complete account verification.");
+
+                    $user->notify(new \App\Notifications\CustomerActivityNotification([
+                        'title'        => 'Company Documents Upload Requested',
+                        'body'         => $body,
+                        'type'         => 'system',
+                        'reference_id' => 'DOC-REQ-' . $user->id . '-' . time(),
+                        'action_route' => '/company_documents_screen',
+                        'metadata'     => [
+                            'user_id'       => $user->id,
+                            'documents'     => $docNames,
+                            'requested_ids' => $selectedIds,
+                        ],
+                    ]));
+                } catch (\Throwable $ignoreNotif) {}
+            }
         } elseif ($request->role === 'driver') {
             $driver = DriverProfile::firstOrNew(['user_id' => $user->id]);
             $driver->license_number = $request->license_number ? trim($request->license_number) : null;
@@ -473,6 +560,67 @@ class UserController extends Controller
     }
 
     /**
+     * Toggle user verification status via AJAX.
+     */
+    public function ToggleVerificationAjax(Request $request)
+    {
+        $oldCreditVal = (float) $user->credit;
+        $userId = $request->input('user_id') ?? $request->input('id');
+        $user = User::find($userId);
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'User not found.'], 404);
+        }
+
+        $user->is_verified = !$user->is_verified;
+        if ($request->filled('credit')) {
+            $user->credit = (float) $request->credit;
+        }
+        $user->save();
+        if ($request->filled('credit')) {
+            $diffCredit = (float) $user->credit - $oldCreditVal;
+            if (abs($diffCredit) > 0.001) {
+                \App\Models\WalletTransaction::create([
+                    'user_id'       => $user->id,
+                    'amount'        => abs($diffCredit),
+                    'type'          => $diffCredit > 0 ? 'deposit' : 'withdrawal',
+                    'balance_after' => (float) $user->credit,
+                    'description'   => $diffCredit > 0 
+                        ? 'Balance recharge from Administration (شحن رصيد من الإدارة)' 
+                        : 'Balance adjustment by Administration (تعديل رصيد من الإدارة)',
+                ]);
+            }
+        }
+
+        try {
+            if ($user->is_verified) {
+                $user->notify(new \App\Notifications\CustomerActivityNotification([
+                    'title'        => 'Account Verified',
+                    'body'         => 'Congratulations! Your profile has been officially verified by Salasil Logistics.',
+                    'type'         => 'system',
+                    'reference_id' => 'VERIFIED-' . $user->id,
+                    'action_route' => '/personal_information_screen',
+                ]));
+            }
+            if ($request->filled('credit') && (float) $request->credit > 0) {
+                $user->notify(new \App\Notifications\CustomerActivityNotification([
+                    'title'        => 'Wallet Credited',
+                    'body'         => 'An amount of ' . number_format((float)$request->credit, 3) . ' KWD has been added to your credit balance by Salasil administration.',
+                    'type'         => 'payment',
+                    'reference_id' => 'CREDIT-' . $user->id,
+                    'action_route' => '/profile_screen',
+                ]));
+            }
+        } catch (\Throwable $ignoreToggleNotif) {}
+
+        return response()->json([
+            'status' => 'success',
+            'is_verified' => (bool) $user->is_verified,
+            'credit' => (float) $user->credit,
+            'message' => $user->is_verified ? 'User marked as Verified successfully!' : 'User verification removed.'
+        ]);
+    }
+
+    /**
      * Delete client/user from database.
      */
     public function DeleteUser($id)
@@ -491,5 +639,241 @@ class UserController extends Controller
         ];
 
         return redirect()->back()->with($notification);
+    }
+
+    /**
+     * Change user uploaded document status (approved, rejected, pending) via AJAX.
+     */
+    public function ChangeDocumentStatusAjax(Request $request)
+    {
+        $doc = UserCompanyDocument::findOrFail($request->id);
+        $status = strtolower(trim((string)$request->status));
+
+        if (!in_array($status, ['approved', 'verified', 'rejected', 'pending'])) {
+            return response()->json(['status' => false, 'message' => 'Invalid status provided.'], 400);
+        }
+
+        $doc->status = ($status === 'verified') ? 'approved' : $status;
+        if ($doc->status === 'rejected') {
+            $doc->rejection_reason = $request->rejection_reason ?: 'Document does not meet verification requirements';
+        } else {
+            $doc->rejection_reason = null;
+        }
+        $doc->save();
+
+        return response()->json([
+            'status' => true,
+            'doc_status' => $doc->status,
+            'message' => 'Document marked as ' . ucfirst($doc->status) . ' successfully!'
+        ]);
+    }
+
+    /**
+     * Delete user uploaded document.
+     */
+    public function DeleteUserDocument($id)
+    {
+        $doc = UserCompanyDocument::findOrFail($id);
+        if ($doc->file_path && File::exists(public_path($doc->file_path))) {
+            File::delete(public_path($doc->file_path));
+        }
+        $doc->delete();
+
+        $notification = [
+            'message' => 'Document deleted successfully!',
+            'alert-type' => 'success'
+        ];
+
+        return redirect()->back()->with($notification);
+    }
+
+    /**
+     * AJAX endpoint to save required documents for a company client and immediately dispatch in-app notification.
+     */
+    public function RequestCompanyDocuments(Request $request, $id)
+    {
+        $user = User::with('companyProfile')->findOrFail($id);
+
+        if ($request->filled('single_document_id')) {
+            $singleId = (int)$request->single_document_id;
+            $company = CompanyProfile::firstOrNew(['user_id' => $user->id]);
+            $existing = is_array($company->required_documents) ? $company->required_documents : [];
+            if (!in_array($singleId, $existing, true)) {
+                $existing[] = $singleId;
+                $company->required_documents = array_values(array_unique(array_map('intval', $existing)));
+                $company->save();
+            }
+            $targetDoc = \App\Models\CompanyRequiredDocument::find($singleId);
+            $docName = $targetDoc ? $targetDoc->name_en : 'required document';
+            $selectedDocIds = [$singleId];
+            $docNames = [$docName];
+            $body = "Administration specifically requests you to upload your '{$docName}'. Please upload it in your Company Documents section to complete account verification.";
+        } else {
+            $selectedDocIds = $request->has('required_documents') 
+                ? array_map('intval', (array)$request->required_documents) 
+                : [];
+
+            $company = CompanyProfile::firstOrNew(['user_id' => $user->id]);
+            $company->required_documents = $selectedDocIds;
+            $company->save();
+
+            // Get document names in English and Arabic
+            $docs = \App\Models\CompanyRequiredDocument::whereIn('id', $selectedDocIds)->get();
+            $docNames = $docs->pluck('name_en')->toArray();
+            $docNamesList = !empty($docNames) ? implode(', ', $docNames) : 'Official company documents';
+            
+            $customNote = $request->filled('note') ? trim($request->note) : null;
+            $body = $customNote ?: ("Administration requests you to upload required documents: {$docNamesList}. Please upload them in your Company Documents section to complete account verification.");
+        }
+
+        try {
+            $user->notify(new \App\Notifications\CustomerActivityNotification([
+                'title'        => 'Company Documents Upload Requested',
+                'body'         => $body,
+                'type'         => 'system',
+                'reference_id' => 'DOC-REQ-' . $user->id . '-' . time(),
+                'action_route' => '/company_documents_screen',
+                'metadata'     => [
+                    'user_id'       => $user->id,
+                    'documents'     => $docNames,
+                    'requested_ids' => $selectedDocIds,
+                ],
+            ]));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error sending document request notification: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'status'        => true,
+            'message'       => 'Document requirements updated and notification sent to client successfully!',
+            'count'         => count($selectedDocIds),
+            'document_names'=> $docNames,
+        ]);
+    }
+
+    /**
+     * AJAX endpoint to create an additional custom document requirement specifically for this company user.
+     */
+    public function StoreUserCustomDocument(Request $request, $id)
+    {
+        $user = User::with('companyProfile')->findOrFail($id);
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'name_en'        => 'required|string|max:150',
+            'name_ar'        => 'nullable|string|max:150',
+            'description_en' => 'nullable|string|max:500',
+            'description_ar' => 'nullable|string|max:500',
+            'is_required'    => 'nullable',
+            'send_notif'     => 'nullable',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => false,
+                'message' => $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $isRequired = $request->has('is_required') ? (bool)$request->is_required : true;
+        $nameEn = trim($request->name_en);
+        $nameAr = $request->filled('name_ar') ? trim($request->name_ar) : $nameEn;
+        $descEn = $request->filled('description_en') ? trim($request->description_en) : 'Additional official document requested by administration';
+        $descAr = $request->filled('description_ar') ? trim($request->description_ar) : 'مستند إضافي مطلوب من قبل الإدارة لاستكمال التوثيق';
+
+        $doc = \App\Models\CompanyRequiredDocument::create([
+            'user_id'        => $user->id,
+            'name_en'        => $nameEn,
+            'name_ar'        => $nameAr,
+            'description_en' => $descEn,
+            'description_ar' => $descAr,
+            'is_required'    => $isRequired,
+            'is_active'      => 1,
+            'sort_order'     => 99,
+        ]);
+
+        // If required, ensure it is added to the user's required_documents array
+        $company = \App\Models\CompanyProfile::firstOrNew(['user_id' => $user->id]);
+        $reqList = is_array($company->required_documents) ? $company->required_documents : [];
+        if ($isRequired && !in_array((int)$doc->id, $reqList, true)) {
+            $reqList[] = (int)$doc->id;
+            $company->required_documents = array_values(array_unique(array_map('intval', $reqList)));
+            $company->save();
+        }
+
+        // Send in-app notification if requested
+        $sendNotif = $request->has('send_notif') ? (bool)$request->send_notif : true;
+        if ($sendNotif) {
+            $displayName = $nameEn . ($nameAr && $nameAr !== $nameEn ? " ({$nameAr})" : '');
+            try {
+                $user->notify(new \App\Notifications\CustomerActivityNotification([
+                    'title'        => 'Additional Document Requested',
+                    'body'         => "Administration requests you to upload an additional document: '{$displayName}'. Please upload it in your Company Documents section to complete account verification.",
+                    'type'         => 'system',
+                    'reference_id' => 'DOC-REQ-ADD-' . $doc->id . '-' . time(),
+                    'action_route' => '/company_documents_screen',
+                    'metadata'     => [
+                        'user_id'              => $user->id,
+                        'required_document_id' => $doc->id,
+                        'document_name_en'     => $nameEn,
+                        'document_name_ar'     => $nameAr,
+                    ],
+                ]));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Error sending custom doc request notification: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'status'   => true,
+            'message'  => "Additional document '{$nameEn}' added successfully!",
+            'document' => [
+                'id'             => $doc->id,
+                'name_en'        => $doc->name_en,
+                'name_ar'        => $doc->name_ar,
+                'description_en' => $doc->description_en,
+                'description_ar' => $doc->description_ar,
+                'is_required'    => (bool)$doc->is_required,
+                'user_id'        => $doc->user_id,
+            ],
+        ]);
+    }
+
+    /**
+     * AJAX endpoint to delete a custom document requirement created specifically for this user.
+     */
+    public function DeleteUserCustomDocument(Request $request, $userId, $docId)
+    {
+        $user = User::with('companyProfile')->findOrFail($userId);
+        $doc = \App\Models\CompanyRequiredDocument::where('id', $docId)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        // Remove from required_documents array if present
+        if ($user->companyProfile && is_array($user->companyProfile->required_documents)) {
+            $reqList = array_values(array_diff($user->companyProfile->required_documents, [(int)$docId]));
+            $user->companyProfile->required_documents = $reqList;
+            $user->companyProfile->save();
+        }
+
+        // Clean up any uploaded user document for this requirement
+        $uploadedDocs = \App\Models\UserCompanyDocument::where('required_document_id', $docId)
+            ->where('user_id', $user->id)
+            ->get();
+
+        foreach ($uploadedDocs as $uDoc) {
+            if (!empty($uDoc->file_path) && file_exists(public_path($uDoc->file_path))) {
+                @unlink(public_path($uDoc->file_path));
+            }
+            $uDoc->delete();
+        }
+
+        $docName = $doc->name_en;
+        $doc->delete();
+
+        return response()->json([
+            'status'  => true,
+            'message' => "Custom document requirement '{$docName}' removed successfully.",
+        ]);
     }
 }

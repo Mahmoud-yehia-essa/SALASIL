@@ -156,6 +156,10 @@ class ShipmentController extends Controller
             'due_date'          => now()->addDays(14)->format('Y-m-d'),
         ]);
 
+        try {
+            \App\Services\AdminNotificationService::newShipmentCreated($shipment);
+        } catch (\Throwable $ignoreAdminNotif) {}
+
         $notification = [
             'message'    => 'Shipment Order #' . $shipment->id . ' Created & Invoice Issued Successfully!',
             'alert-type' => 'success',

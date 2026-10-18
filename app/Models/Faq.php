@@ -1,0 +1,23 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Faq extends Model
+{
+    protected $table = 'faqs';
+
+    protected $fillable = [
+        'question',
+        'answer',
+        'category',
+        'order_sequence',
+        'status',
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
+        'order_sequence' => 'integer',
+    ];
+}

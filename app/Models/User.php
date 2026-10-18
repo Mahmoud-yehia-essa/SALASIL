@@ -45,6 +45,8 @@ class User extends Authenticatable
         'address',
         'role',
         'status',
+        'is_verified',
+        'credit',
         'provider',
         'firebase_token',
         'token',
@@ -127,13 +129,25 @@ class User extends Authenticatable
             'phone_verified_at' => 'datetime',
             'password' => 'hashed',
             'dateofbirth' => 'date',
+            'is_verified' => 'boolean',
+            'credit' => 'decimal:3',
         ];
     }
 
 
+    public function addresses()
+    {
+        return $this->hasMany(UserAddress::class);
+    }
+
     public function companyProfile()
     {
         return $this->hasOne(CompanyProfile::class);
+    }
+
+    public function companyDocuments()
+    {
+        return $this->hasMany(UserCompanyDocument::class, 'user_id')->latest();
     }
 
     
@@ -178,5 +192,10 @@ class User extends Authenticatable
     public function city()
     {
         return $this->belongsTo(City::class, 'city_id');
+    }
+
+    public function scheduledTripOrders()
+    {
+        return $this->hasMany(ScheduledTripOrder::class, 'customer_id');
     }
 }

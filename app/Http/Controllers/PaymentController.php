@@ -123,6 +123,10 @@ class PaymentController extends Controller
         // Auto-sync invoice status
         $this->syncInvoiceStatus($invoice->id);
 
+        try {
+            \App\Services\AdminNotificationService::paymentReceived($payment);
+        } catch (\Throwable $ignoreAdminNotif) {}
+
         $notification = [
             'message'    => 'Payment Transaction recorded successfully!',
             'alert-type' => 'success'

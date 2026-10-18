@@ -341,6 +341,10 @@ class ShipmentController extends Controller
             'due_date'          => now()->addDays(14)->format('Y-m-d'),
         ]);
 
+        try {
+            \App\Services\AdminNotificationService::newShipmentCreated($shipment);
+        } catch (\Throwable $ignoreAdminNotif) {}
+
         $shipment->load([
             'customer.companyProfile',
             'truckType',

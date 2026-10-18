@@ -22,6 +22,8 @@ class ScheduledTripController extends Controller
             'route.destinationCity:id,name_ar,name_en',
             'truckType',
             'truckSubType',
+            'shipmentType',
+            'shipmentNature',
             'driver:id,fname,lname,phone,email,photo,client_code'
         ])->latest();
 
@@ -40,6 +42,65 @@ class ScheduledTripController extends Controller
             $query->where('truck_type_id', $request->truck_type_id);
         }
 
+        // Truck Sub-Type Filter
+        if ($request->filled('truck_sub_type_id')) {
+            $query->where('truck_sub_type_id', $request->truck_sub_type_id);
+        }
+
+        // Shipment Type Filter (Trips with matching type or null/general)
+        if ($request->filled('shipment_type_id')) {
+            $query->where(function($q) use ($request) {
+                $q->whereNull('shipment_type_id')
+                  ->orWhere('shipment_type_id', $request->shipment_type_id);
+            });
+        } elseif ($request->filled('shipment_type')) {
+            $stName = trim($request->shipment_type);
+            $query->where(function($q) use ($stName) {
+                $q->whereNull('shipment_type_id')
+                  ->orWhereHas('shipmentType', function($sq) use ($stName) {
+                      $sq->where('name_en', 'like', "%{$stName}%")
+                        ->orWhere('name_ar', 'like', "%{$stName}%");
+                  });
+            });
+        }
+
+        // Shipment Nature Filter (Trips with matching nature or null/general)
+        if ($request->filled('shipment_nature_id')) {
+            $query->where(function($q) use ($request) {
+                $q->whereNull('shipment_nature_id')
+                  ->orWhere('shipment_nature_id', $request->shipment_nature_id);
+            });
+        } elseif ($request->filled('shipment_nature')) {
+            $snName = trim($request->shipment_nature);
+            $query->where(function($q) use ($snName) {
+                $q->whereNull('shipment_nature_id')
+                  ->orWhereHas('shipmentNature', function($sq) use ($snName) {
+                      $sq->where('name_en', 'like', "%{$snName}%")
+                        ->orWhere('name_ar', 'like', "%{$snName}%");
+                  });
+            });
+        }
+
+        // Available Capacity / Number of Trucks Filter
+        if ($request->filled('truck_count') || $request->filled('number_of_trucks')) {
+            $count = intval($request->truck_count ?: $request->number_of_trucks);
+            if ($count > 0) {
+                $query->where('available_capacity', '>=', $count);
+            }
+        }
+
+        // Cargo Weight vs Truck Max Payload Filter (in Tons)
+        if ($request->filled('weight')) {
+            $cleanW = floatval(preg_replace('/[^0-9.]/', '', $request->weight));
+            if ($cleanW > 100) { $cleanW = $cleanW / 1000.0; }
+            if ($cleanW > 0) {
+                $query->where(function($wq) use ($cleanW) {
+                    $wq->whereNull('total_weight_ton')
+                       ->orWhere('total_weight_ton', '>=', $cleanW);
+                });
+            }
+        }
+
         // Driver Filter
         if ($request->filled('driver_id')) {
             $query->where('driver_id', $request->driver_id);
@@ -52,6 +113,67 @@ class ScheduledTripController extends Controller
 
         if ($request->filled('to_date')) {
             $query->whereDate('trip_date', '<=', $request->to_date);
+        }
+
+        // Customs Clearance Filter
+        if ($request->has('customs_clearance') && $request->customs_clearance !== '') {
+            $query->where('customs_clearance', filter_var($request->customs_clearance, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        // Origin / From City Filter
+        if ($request->filled('from_city') || $request->filled('origin_city')) {
+            $from = trim($request->from_city ?: $request->origin_city);
+            if (str_contains($from, ' - ')) {
+                $from = trim(explode(' - ', $from)[0]);
+            }
+            $query->whereHas('route.originCity', function ($q) use ($from) {
+                $q->where('name_en', 'like', "%{$from}%")
+                  ->orWhere('name_ar', 'like', "%{$from}%");
+            });
+        }
+
+        if ($request->filled('origin_city_id') || $request->filled('from_city_id')) {
+            $cityId = $request->origin_city_id ?: $request->from_city_id;
+            $query->whereHas('route', function ($q) use ($cityId) {
+                $q->where('origin_city_id', $cityId);
+            });
+        }
+
+        // Destination / To City Filter
+        if ($request->filled('to_city') || $request->filled('destination_city')) {
+            $to = trim($request->to_city ?: $request->destination_city);
+            if (str_contains($to, ' - ')) {
+                $to = trim(explode(' - ', $to)[0]);
+            }
+            $query->whereHas('route.destinationCity', function ($q) use ($to) {
+                $q->where('name_en', 'like', "%{$to}%")
+                  ->orWhere('name_ar', 'like', "%{$to}%");
+            });
+        }
+
+        if ($request->filled('destination_city_id') || $request->filled('to_city_id')) {
+            $cityId = $request->destination_city_id ?: $request->to_city_id;
+            $query->whereHas('route', function ($q) use ($cityId) {
+                $q->where('destination_city_id', $cityId);
+            });
+        }
+
+        // Truck Type by name
+        if ($request->filled('truck_type')) {
+            $truckType = trim($request->truck_type);
+            $query->whereHas('truckType', function ($q) use ($truckType) {
+                $q->where('name_en', 'like', "%{$truckType}%")
+                  ->orWhere('name_ar', 'like', "%{$truckType}%");
+            });
+        }
+
+        // Truck Sub-Type by name
+        if ($request->filled('truck_sub_type')) {
+            $truckSubType = trim($request->truck_sub_type);
+            $query->whereHas('truckSubType', function ($q) use ($truckSubType) {
+                $q->where('name_en', 'like', "%{$truckSubType}%")
+                  ->orWhere('name_ar', 'like', "%{$truckSubType}%");
+            });
         }
 
         // Search Filter
@@ -96,7 +218,9 @@ class ScheduledTripController extends Controller
             'route.destinationCountry',
             'route.destinationCity',
             'truckType',
-            'truckSubType'
+            'truckSubType',
+            'shipmentType',
+            'shipmentNature'
         ])->where('driver_id', $user->id)->latest();
 
         if ($request->filled('status')) {
@@ -152,6 +276,8 @@ class ScheduledTripController extends Controller
             'route.destinationCity',
             'truckType',
             'truckSubType',
+            'shipmentType',
+            'shipmentNature',
             'driver:id,fname,lname,phone,email,photo,client_code'
         ])->find($id);
 
@@ -178,6 +304,8 @@ class ScheduledTripController extends Controller
             'route_id'           => 'required|exists:routes,id',
             'truck_type_id'      => 'required|exists:truck_types,id',
             'truck_sub_type_id'  => 'nullable|exists:truck_sub_types,id',
+            'shipment_type_id'   => 'nullable|exists:shipment_types,id',
+            'shipment_nature_id' => 'nullable|exists:shipment_natures,id',
             'number_of_trucks'   => 'nullable|integer|min:1',
             'total_weight_ton'   => 'nullable|numeric|min:0',
             'driver_id'          => 'nullable|exists:users,id',
@@ -208,6 +336,8 @@ class ScheduledTripController extends Controller
             'route_id'           => $request->route_id,
             'truck_type_id'      => $request->truck_type_id,
             'truck_sub_type_id'  => $request->truck_sub_type_id ?: null,
+            'shipment_type_id'   => $request->shipment_type_id ?: null,
+            'shipment_nature_id' => $request->shipment_nature_id ?: null,
             'number_of_trucks'   => $request->number_of_trucks ?: 1,
             'total_weight_ton'   => $request->total_weight_ton ?: null,
             'driver_id'          => $request->driver_id ?: null,
@@ -217,6 +347,9 @@ class ScheduledTripController extends Controller
             'total_capacity'     => $request->total_capacity ?: 1,
             'available_capacity' => $request->available_capacity ?: 1,
             'status'             => $request->status,
+            'customs_clearance'  => $request->has('customs_clearance') ? (bool) $request->customs_clearance : true,
+            'notes'              => $request->notes ?: null,
+            'required_documents' => $request->required_documents ?: null,
         ]);
 
         $trip->load([
@@ -226,6 +359,8 @@ class ScheduledTripController extends Controller
             'route.destinationCity',
             'truckType',
             'truckSubType',
+            'shipmentType',
+            'shipmentNature',
             'driver:id,fname,lname,phone,email'
         ]);
 
@@ -253,6 +388,8 @@ class ScheduledTripController extends Controller
             'route_id'           => 'required|exists:routes,id',
             'truck_type_id'      => 'required|exists:truck_types,id',
             'truck_sub_type_id'  => 'nullable|exists:truck_sub_types,id',
+            'shipment_type_id'   => 'nullable|exists:shipment_types,id',
+            'shipment_nature_id' => 'nullable|exists:shipment_natures,id',
             'number_of_trucks'   => 'nullable|integer|min:1',
             'total_weight_ton'   => 'nullable|numeric|min:0',
             'driver_id'          => 'nullable|exists:users,id',
@@ -276,6 +413,8 @@ class ScheduledTripController extends Controller
             'route_id'           => $request->route_id,
             'truck_type_id'      => $request->truck_type_id,
             'truck_sub_type_id'  => $request->truck_sub_type_id ?: null,
+            'shipment_type_id'   => $request->has('shipment_type_id') ? ($request->shipment_type_id ?: null) : $trip->shipment_type_id,
+            'shipment_nature_id' => $request->has('shipment_nature_id') ? ($request->shipment_nature_id ?: null) : $trip->shipment_nature_id,
             'number_of_trucks'   => $request->number_of_trucks ?: $trip->number_of_trucks,
             'total_weight_ton'   => $request->total_weight_ton ?: $trip->total_weight_ton,
             'driver_id'          => $request->filled('driver_id') ? $request->driver_id : $trip->driver_id,
@@ -285,6 +424,9 @@ class ScheduledTripController extends Controller
             'total_capacity'     => $request->total_capacity ?: $trip->total_capacity,
             'available_capacity' => $request->available_capacity ?: $trip->available_capacity,
             'status'             => $request->status,
+            'customs_clearance'  => $request->has('customs_clearance') ? (bool) $request->customs_clearance : $trip->customs_clearance,
+            'notes'              => $request->has('notes') ? $request->notes : $trip->notes,
+            'required_documents' => $request->has('required_documents') ? $request->required_documents : $trip->required_documents,
         ]);
 
         $trip->load([
@@ -294,6 +436,8 @@ class ScheduledTripController extends Controller
             'route.destinationCity',
             'truckType',
             'truckSubType',
+            'shipmentType',
+            'shipmentNature',
             'driver:id,fname,lname,phone,email'
         ]);
 

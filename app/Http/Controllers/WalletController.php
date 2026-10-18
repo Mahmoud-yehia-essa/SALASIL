@@ -109,6 +109,25 @@ class WalletController extends Controller
             'shipment_id'       => $request->shipment_id ?: null,
             'scheduled_trip_id' => $request->scheduled_trip_id ?: null,
         ]);
+        $targetUser = User::find($userId);
+        if ($targetUser) {
+            $targetUser->credit = $newBalance;
+            $targetUser->save();
+        }
+
+
+        try {
+            if ($targetUser = User::find($userId)) {
+                $isCredit = in_array($type, ['deposit', 'trip_earnings', 'refund']);
+                $targetUser->notify(new \App\Notifications\CustomerActivityNotification([
+                    'title'        => $isCredit ? 'Wallet Balance Credited' : 'Wallet Deduction',
+                    'body'         => ($request->description ?: ucfirst(str_replace('_', ' ', $type))) . ' — Amount: ' . number_format($amount, 3) . ' KWD (Balance: ' . number_format($newBalance, 3) . ' KWD)',
+                    'type'         => 'payment',
+                    'reference_id' => 'TXN-' . $txn->id,
+                    'action_route' => '/profile_screen',
+                ]));
+            }
+        } catch (\Throwable $ignoreWalletNotif) {}
 
         $notification = [
             'message'    => 'Wallet Transaction Recorded! New Balance: KWD ' . number_format($newBalance, 2),
@@ -250,7 +269,13 @@ class WalletController extends Controller
             $amt = (float) $t->amount;
             if (in_array($t->type, ['deposit', 'trip_earnings', 'refund'])) {
                 $runningBalance += $amt;
-            } else {
+            
+        $targetUser = User::find($userId);
+        if ($targetUser) {
+            $targetUser->credit = $runningBalance;
+            $targetUser->save();
+        }
+} else {
                 $runningBalance -= $amt;
             }
             $t->balance_after = $runningBalance;

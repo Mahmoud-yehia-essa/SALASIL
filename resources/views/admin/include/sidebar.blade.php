@@ -37,6 +37,17 @@
 
         <li>
             <a href="javascript:;" class="has-arrow" aria-expanded="false">
+                <div class="parent-icon"><i class='bx bx-file-blank'></i></div>
+                <div class="menu-title">Company Documents</div>
+            </a>
+            <ul>
+                <li><a href="{{ route('add.company.document') }}"><i class='bx bx-radio-circle'></i>Add Document</a></li>
+                <li><a href="{{ route('all.company.documents') }}"><i class='bx bx-radio-circle'></i>All Documents</a></li>
+            </ul>
+        </li>
+
+        <li>
+            <a href="javascript:;" class="has-arrow" aria-expanded="false">
                 <div class="parent-icon"><i class='bx bxs-truck'></i></div>
                 <div class="menu-title">Trucks</div>
             </a>
@@ -114,6 +125,8 @@
                 <li><a href="{{ route('all.routes') }}"><i class='bx bx-radio-circle'></i>All Routes</a></li>
                 <li><a href="{{ route('add.scheduled.trip') }}"><i class='bx bx-radio-circle'></i>Add Scheduled Trip</a></li>
                 <li><a href="{{ route('all.scheduled.trips') }}"><i class='bx bx-radio-circle'></i>All Scheduled Trips</a></li>
+                <li><a href="{{ route('add.scheduled.trip.order') }}"><i class='bx bx-radio-circle'></i>Add Trip Order</a></li>
+                <li><a href="{{ route('all.scheduled.trip.orders') }}"><i class='bx bx-radio-circle'></i>All Trip Orders</a></li>
             </ul>
         </li>
 
@@ -139,6 +152,33 @@
             <ul>
                 <li><a href="{{ route('add.wallet.transaction') }}"><i class='bx bx-radio-circle'></i>Deposit / Withdraw</a></li>
                 <li><a href="{{ route('all.wallets') }}"><i class='bx bx-radio-circle'></i>All User Wallets</a></li>
+            </ul>
+        </li>
+
+        <li class="menu-label">App Content & Settings</li>
+
+        <li>
+            <a href="javascript:;" class="has-arrow" aria-expanded="false">
+                <div class="parent-icon"><i class='bx bx-slideshow text-info'></i></div>
+                <div class="menu-title">Onboarding Screens</div>
+            </a>
+            <ul>
+                <li><a href="{{ route('add.onboarding') }}"><i class='bx bx-radio-circle'></i>Add New Slide</a></li>
+                <li><a href="{{ route('all.onboarding') }}"><i class='bx bx-radio-circle'></i>All Onboarding Slides</a></li>
+            </ul>
+        </li>
+
+        <li>
+            <a href="javascript:;" class="has-arrow" aria-expanded="false">
+                <div class="parent-icon"><i class='bx bx-headphone text-warning'></i></div>
+                <div class="menu-title">Support & Help Center</div>
+            </a>
+            <ul>
+                <li><a href="{{ route('admin.support.settings') }}"><i class='bx bx-radio-circle'></i>Contact Channels</a></li>
+                <li><a href="{{ route('all.support.tickets') }}"><i class='bx bx-radio-circle'></i>User Tickets</a></li>
+                <li><a href="{{ route('admin.about.settings') }}"><i class='bx bx-radio-circle'></i>About Salasil Screen</a></li>
+                <li><a href="{{ route('all.faqs') }}"><i class='bx bx-radio-circle'></i>All FAQs</a></li>
+                <li><a href="{{ route('add.faq') }}"><i class='bx bx-radio-circle'></i>Add FAQ</a></li>
             </ul>
         </li>
 

@@ -277,6 +277,66 @@
                         </div>
                     </div>
 
+
+                    <!-- Account Verification & Credit Balance Section -->
+                    <div class="mb-4 p-3 rounded-4 border border-primary border-opacity-25" style="background: rgba(58, 119, 187, 0.08);">
+                        <h6 class="text-primary fw-bold text-uppercase fs-7 mb-3 d-flex align-items-center gap-2" style="letter-spacing: 0.5px;">
+                            <i class="bx bxs-badge-check fs-5 text-info"></i> Account Verification & Credit Limit (توثيق الحساب والرصيد الائتماني)
+                        </h6>
+                        <div class="row g-3 align-items-center">
+                            <!-- Verification Toggle Switch -->
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold d-block">Official Verification Status (حالة التوثيق)</label>
+                                <div class="form-check form-switch p-0 d-flex align-items-center gap-3">
+                                    <input class="form-check-input ms-0 mt-0" 
+                                           type="checkbox" 
+                                           name="is_verified" 
+                                           id="is_verified" 
+                                           value="1" 
+                                           style="width: 3.2rem; height: 1.8rem; cursor: pointer;"
+                                           {{ old('is_verified') ? 'checked' : '' }}
+                                           onchange="updateVerificationBadge(this.checked)">
+                                    <label class="form-check-label fw-bold d-flex align-items-center gap-2 cursor-pointer" for="is_verified">
+                                        <span id="verificationStatusBadge" class="badge {{ old('is_verified') ? 'bg-success bg-opacity-20 text-success border border-success' : 'bg-secondary bg-opacity-20 text-slate-400 border border-secondary' }} px-3 py-2 rounded-pill fs-7">
+                                            <i id="verificationStatusIcon" class="bx {{ old('is_verified') ? 'bxs-badge-check text-info' : 'bx-shield' }} me-1"></i>
+                                            <span id="verificationStatusText">{{ old('is_verified') ? 'Verified Account (حساب موثق)' : 'Unverified Account (غير موثق)' }}</span>
+                                        </span>
+                                    </label>
+                                </div>
+                                <small class="text-slate-400 mt-1 d-block">
+                                    <i class="bx bx-info-circle me-1 text-info"></i> When enabled, a verified badge is prominently displayed on the client's app profile.
+                                </small>
+                            </div>
+
+                            <!-- Credit Balance / Limit -->
+                            <div class="col-12 col-md-6">
+                                <label for="credit" class="form-label fw-semibold">
+                                    Credit Balance / Limit (الرصيد الائتماني المتاح للسحب)
+                                </label>
+                                <div class="position-relative input-group">
+                                    <input type="number" 
+                                           step="0.001" 
+                                           min="0" 
+                                           name="credit" 
+                                           id="credit" 
+                                           class="form-control" 
+                                           style="padding-left: 48px !important;" 
+                                           placeholder="0.000"
+                                           value="{{ old('credit', '0.000') }}">
+                                    <span class="position-absolute text-info" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                        <i class="bx bx-wallet fs-5"></i>
+                                    </span>
+                                    <span class="input-group-text bg-dark border-secondary border-opacity-50 text-info fw-semibold">
+                                        KWD / SAR
+                                    </span>
+                                </div>
+                                <small class="text-slate-400 mt-1 d-block">
+                                    <i class="bx bx-credit-card me-1 text-info"></i> Available credit limit granted to this user for automatic shipping deductions.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
                     <hr class="border-secondary opacity-25 my-4">
 
                     <!-- Dynamic Corporate Company Profile Section -->
@@ -722,6 +782,24 @@
             toggleIcon.classList.add('bx-show');
         }
     }
+</script>
+
+
+<script>
+function updateVerificationBadge(checked) {
+    var badge = document.getElementById('verificationStatusBadge');
+    var icon = document.getElementById('verificationStatusIcon');
+    var text = document.getElementById('verificationStatusText');
+    if (checked) {
+        badge.className = 'badge bg-success bg-opacity-20 text-success border border-success px-3 py-2 rounded-pill fs-7';
+        icon.className = 'bx bxs-badge-check text-info me-1';
+        text.innerText = 'Verified Account (حساب موثق)';
+    } else {
+        badge.className = 'badge bg-secondary bg-opacity-20 text-slate-400 border border-secondary px-3 py-2 rounded-pill fs-7';
+        icon.className = 'bx bx-shield me-1';
+        text.innerText = 'Unverified Account (غير موثق)';
+    }
+}
 </script>
 
 @endsection

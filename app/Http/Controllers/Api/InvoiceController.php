@@ -78,7 +78,14 @@ class InvoiceController extends Controller
         $query = Invoice::with([
             'shipment.pickupCity',
             'shipment.dropoffCity',
-            'scheduledTrip.route',
+            'scheduledTrip.route.originCity',
+            'scheduledTrip.route.destinationCity',
+            'scheduledTrip.truckType',
+            'scheduledTripOrder.scheduledTrip.route.originCity',
+            'scheduledTripOrder.scheduledTrip.route.destinationCity',
+            'scheduledTripOrder.pickupCity',
+            'scheduledTripOrder.dropoffCity',
+            'scheduledTripOrder.truckType',
             'payments'
         ])->where('user_id', $user->id)->latest();
 
@@ -135,12 +142,30 @@ class InvoiceController extends Controller
             'shipment.dropoffCountry',
             'shipment.dropoffCity',
             'shipment.truckType',
-            'scheduledTrip.route',
+            'scheduledTrip.route.originCity',
+            'scheduledTrip.route.destinationCity',
+            'scheduledTrip.truckType',
+            'scheduledTripOrder.scheduledTrip.route.originCountry',
+            'scheduledTripOrder.scheduledTrip.route.originCity',
+            'scheduledTripOrder.scheduledTrip.route.destinationCountry',
+            'scheduledTripOrder.scheduledTrip.route.destinationCity',
+            'scheduledTripOrder.scheduledTrip.truckType',
+            'scheduledTripOrder.truckType',
+            'scheduledTripOrder.truckSubType',
+            'scheduledTripOrder.pickupCity',
+            'scheduledTripOrder.dropoffCity',
+            'scheduledTripOrder.pickupCountry',
+            'scheduledTripOrder.dropoffCountry',
+            'scheduledTripOrder.customer',
             'user:id,fname,lname,email,phone,client_code,photo',
             'payments' => function ($q) {
                 $q->latest();
             }
-        ])->find($id);
+        ])->where(function ($q) use ($id) {
+            $q->where('id', $id)
+              ->orWhere('invoice_number', $id)
+              ->orWhere('scheduled_trip_order_id', $id);
+        })->first();
 
         if (!$invoice) {
             return response()->json([
@@ -152,6 +177,62 @@ class InvoiceController extends Controller
         return response()->json([
             'status'  => true,
             'message' => 'Invoice details retrieved successfully',
+            'data'    => $invoice
+        ], 200);
+    }
+
+    /**
+     * Get invoice by Scheduled Trip Order ID.
+     */
+    public function byOrder($orderId)
+    {
+        $invoice = Invoice::with([
+            'scheduledTripOrder.scheduledTrip.route.originCountry',
+            'scheduledTripOrder.scheduledTrip.route.originCity',
+            'scheduledTripOrder.scheduledTrip.route.destinationCountry',
+            'scheduledTripOrder.scheduledTrip.route.destinationCity',
+            'scheduledTripOrder.scheduledTrip.truckType',
+            'scheduledTripOrder.truckType',
+            'scheduledTripOrder.truckSubType',
+            'scheduledTripOrder.pickupCity',
+            'scheduledTripOrder.dropoffCity',
+            'scheduledTripOrder.pickupCountry',
+            'scheduledTripOrder.dropoffCountry',
+            'scheduledTripOrder.customer',
+            'user:id,fname,lname,email,phone,client_code,photo',
+            'payments'
+        ])->where('scheduled_trip_order_id', $orderId)->latest()->first();
+
+        if (!$invoice) {
+            // Also check if order exists
+            $order = \App\Models\ScheduledTripOrder::with([
+                'scheduledTrip.route.originCity',
+                'scheduledTrip.route.destinationCity',
+                'truckType',
+                'customer',
+                'invoice'
+            ])->find($orderId);
+
+            if ($order && $order->invoice) {
+                $invoice = $order->invoice->load([
+                    'scheduledTripOrder.scheduledTrip.route.originCity',
+                    'scheduledTripOrder.scheduledTrip.route.destinationCity',
+                    'scheduledTripOrder.truckType',
+                    'user'
+                ]);
+            }
+        }
+
+        if (!$invoice) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Invoice not found for this order'
+            ], 404);
+        }
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Invoice retrieved successfully',
             'data'    => $invoice
         ], 200);
     }

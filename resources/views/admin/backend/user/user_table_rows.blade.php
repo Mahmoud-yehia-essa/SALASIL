@@ -10,7 +10,19 @@
     </td>
     <td class="fw-bold fs-6 client-name-text">
         <div class="d-flex flex-column gap-1">
-            <span class="fw-bold text-white">{{ $user->fname }} {{ $user->lname }}</span>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="fw-bold text-white">{{ $user->fname }} {{ $user->lname }}</span>
+                @if($user->is_verified)
+                    <span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-40 px-2 py-0.5 rounded-pill d-inline-flex align-items-center gap-1" style="font-size: 0.72rem;" title="Officially Verified Account (حساب موثق)">
+                        <i class="bx bxs-badge-check text-info fs-6"></i> Verified
+                    </span>
+                @endif
+                @if(($user->credit ?? 0) > 0)
+                    <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 px-2 py-0.5 rounded-pill font-monospace" style="font-size: 0.72rem;" title="Credit Balance">
+                        <i class="bx bx-credit-card me-1"></i>Credit: {{ number_format($user->credit, 3) }}
+                    </span>
+                @endif
+            </div>
             @if($user->client_code)
                 <div class="d-flex align-items-center gap-1">
                     <span class="badge bg-dark text-info border border-info border-opacity-40 px-2 py-1 rounded-2 font-monospace" style="width: max-content; font-size: 0.76rem; letter-spacing: 0.5px;" title="Client Unique Code">

@@ -308,6 +308,9 @@ class ProfileController extends Controller
     private function formatUserData(User $user): array
     {
         $userData = $user->toArray();
+        $userData['is_verified'] = (bool) ($user->is_verified ?? false);
+        $userData['credit'] = (float) ($user->credit ?? 0.000);
+        $userData['formatted_credit'] = number_format((float) ($user->credit ?? 0), 3) . ' KWD';
         $userData['photo_url'] = $user->photo ? asset('upload/user_images/' . $user->photo) : null;
 
         if ($user->companyProfile && $user->companyProfile->commercial_register_doc) {

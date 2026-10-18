@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use App\Mail\ResetPasswordOtpMail;
 
 class AuthController extends Controller
 {
@@ -100,7 +103,7 @@ class AuthController extends Controller
             $user->secondary_phone = $request->filled('secondary_phone') ? trim($request->secondary_phone) : null;
             $user->password        = Hash::make($request->password);
             $user->role            = $request->role;
-            $user->status          = $request->status ?? 'active';
+            $user->status          = $request->status ?? 'pending';
             $user->country_code    = $request->country_code ?? '+966';
             $user->country_id      = $request->filled('country_id') ? $request->country_id : null;
             $user->city_id         = $request->filled('city_id') ? $request->city_id : null;
@@ -191,7 +194,21 @@ class AuthController extends Controller
                 $driver->save();
             }
 
-            DB::commit();
+                        DB::commit();
+
+            try {
+                $user->notify(new \App\Notifications\CustomerActivityNotification([
+                    'title'        => 'Welcome to Salasil Logistics',
+                    'body'         => 'Welcome ' . ($user->fname ?? 'Valued Customer') . '! Your account has been registered successfully. Start booking scheduled trips and tracking shipments with ease.',
+                    'type'         => 'system',
+                    'reference_id' => $user->client_code ?? ('CLI-' . $user->id),
+                    'action_route' => '/profile_screen',
+                ]));
+            } catch (\Throwable $ignoreWelcome) {}
+
+            try {
+                \App\Services\AdminNotificationService::newMemberRegistered($user);
+            } catch (\Throwable $ignoreAdminNotif) {}
 
             // 5. Generate Sanctum Bearer Token
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -234,7 +251,7 @@ class AuthController extends Controller
             'password'       => 'required|string',
             'firebase_token' => 'nullable|string',
         ], [
-            'login.required_without_all' => 'Please provide an email or phone number to login.',
+            'login.required_without_all' => 'Please provide an email to login.',
             'password.required'          => 'Password is required.',
         ]);
 
@@ -258,7 +275,7 @@ class AuthController extends Controller
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'status'  => false,
-                'message' => 'Invalid email/phone or password.',
+                'message' => 'Invalid email or password.',
             ], 401);
         }
 
@@ -357,8 +374,8 @@ class AuthController extends Controller
         $email = strtolower(trim($request->email));
         $user = User::where('email', $email)->first();
 
-        // Generate 6-digit OTP
-        $otp = (string) rand(100000, 999999);
+        // Generate 4-digit OTP
+        $otp = (string) rand(1000, 9999);
 
         // Store or update OTP in password_reset_tokens table
         DB::table('password_reset_tokens')->updateOrInsert(
@@ -368,6 +385,13 @@ class AuthController extends Controller
                 'created_at' => now()
             ]
         );
+
+        // Send OTP verification code to user email
+        try {
+            Mail::to($email)->send(new ResetPasswordOtpMail($user, $otp));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send reset password email: ' . $e->getMessage());
+        }
 
         return response()->json([
             'status'     => true,
@@ -515,6 +539,9 @@ class AuthController extends Controller
     private function formatUserData(User $user): array
     {
         $userData = $user->toArray();
+        $userData['is_verified'] = (bool) ($user->is_verified ?? false);
+        $userData['credit'] = (float) ($user->credit ?? 0.000);
+        $userData['formatted_credit'] = number_format((float) ($user->credit ?? 0), 3) . ' KWD';
         $userData['photo_url'] = $user->photo ? asset('upload/user_images/' . $user->photo) : null;
 
         if ($user->companyProfile && $user->companyProfile->commercial_register_doc) {

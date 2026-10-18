@@ -20,6 +20,12 @@ class CountryController extends Controller
             $query->where('is_active', (int)$request->is_active);
         }
 
+        if ($request->has('include') && $request->include == 'cities' || $request->boolean('with_cities')) {
+            $query->with(['cities' => function ($q) {
+                $q->where('is_active', 1)->orderBy('name_en', 'asc');
+            }]);
+        }
+
         if ($request->filled('search')) {
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {

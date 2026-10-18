@@ -21,6 +21,11 @@ class CompanyProfile extends Model
         'representative_phone',
         'verification_status',
         'rejection_reason',
+        'required_documents',
+    ];
+
+    protected $casts = [
+        'required_documents' => 'array',
     ];
 
     /**

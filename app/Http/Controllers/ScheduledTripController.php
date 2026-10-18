@@ -8,6 +8,8 @@ use App\Models\Route;
 use App\Models\TruckType;
 use App\Models\TruckSubType;
 use App\Models\User;
+use App\Models\ShipmentType;
+use App\Models\ShipmentNature;
 
 class ScheduledTripController extends Controller
 {
@@ -23,6 +25,8 @@ class ScheduledTripController extends Controller
             'route.destinationCity',
             'truckType',
             'truckSubType',
+            'shipmentType',
+            'shipmentNature',
             'driver.driverProfile'
         ])->latest();
 
@@ -90,11 +94,13 @@ class ScheduledTripController extends Controller
      */
     public function AddTrip()
     {
-        $routes     = Route::with(['originCountry', 'originCity', 'destinationCountry', 'destinationCity'])->where('status', 'active')->get();
-        $truckTypes = TruckType::orderBy('id', 'asc')->get();
-        $drivers    = User::where('role', 'driver')->orderBy('fname', 'asc')->get();
+        $routes          = Route::with(['originCountry', 'originCity', 'destinationCountry', 'destinationCity'])->where('status', 'active')->get();
+        $truckTypes      = TruckType::orderBy('id', 'asc')->get();
+        $drivers         = User::where('role', 'driver')->orderBy('fname', 'asc')->get();
+        $shipmentTypes   = ShipmentType::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $shipmentNatures = ShipmentNature::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        return view('admin.backend.scheduled_trip.add_trip', compact('routes', 'truckTypes', 'drivers'));
+        return view('admin.backend.scheduled_trip.add_trip', compact('routes', 'truckTypes', 'drivers', 'shipmentTypes', 'shipmentNatures'));
     }
 
     /**
@@ -115,12 +121,21 @@ class ScheduledTripController extends Controller
             'total_capacity'     => 'required|integer|min:1',
             'available_capacity' => 'required|integer|min:0',
             'status'             => 'required|in:published,boarding,in_transit,completed,canceled',
+            'shipment_type_id'   => 'nullable|exists:shipment_types,id',
+            'shipment_nature_id' => 'nullable|exists:shipment_natures,id',
+            'customs_clearance'  => 'nullable|boolean',
+            'notes'              => 'nullable|string',
+            'required_documents' => 'nullable|array',
         ]);
+
+        $docs = $request->filled('required_documents') ? array_values(array_filter($request->required_documents)) : null;
 
         $trip = ScheduledTrip::create([
             'route_id'           => $request->route_id,
             'truck_type_id'      => $request->truck_type_id,
             'truck_sub_type_id'  => $request->truck_sub_type_id ?: null,
+            'shipment_type_id'   => $request->shipment_type_id ?: null,
+            'shipment_nature_id' => $request->shipment_nature_id ?: null,
             'number_of_trucks'   => $request->number_of_trucks ?: 1,
             'total_weight_ton'   => $request->total_weight_ton ?: null,
             'driver_id'          => $request->driver_id ?: null,
@@ -130,6 +145,9 @@ class ScheduledTripController extends Controller
             'total_capacity'     => $request->total_capacity ?: 1,
             'available_capacity' => $request->available_capacity ?: 1,
             'status'             => $request->status,
+            'customs_clearance'  => $request->has('customs_clearance') ? (bool) $request->customs_clearance : true,
+            'notes'              => $request->notes ?: null,
+            'required_documents' => $docs,
         ]);
 
         $notification = [
@@ -155,12 +173,14 @@ class ScheduledTripController extends Controller
             'driver'
         ])->findOrFail($id);
 
-        $routes        = Route::with(['originCountry', 'originCity', 'destinationCountry', 'destinationCity'])->where('status', 'active')->get();
-        $truckTypes    = TruckType::orderBy('id', 'asc')->get();
-        $truckSubTypes = TruckSubType::where('truck_type_id', $trip->truck_type_id)->where('is_active', 1)->get();
-        $drivers       = User::where('role', 'driver')->orderBy('fname', 'asc')->get();
+        $routes          = Route::with(['originCountry', 'originCity', 'destinationCountry', 'destinationCity'])->where('status', 'active')->get();
+        $truckTypes      = TruckType::orderBy('id', 'asc')->get();
+        $truckSubTypes   = TruckSubType::where('truck_type_id', $trip->truck_type_id)->where('is_active', 1)->get();
+        $drivers         = User::where('role', 'driver')->orderBy('fname', 'asc')->get();
+        $shipmentTypes   = ShipmentType::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $shipmentNatures = ShipmentNature::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        return view('admin.backend.scheduled_trip.edit_trip', compact('trip', 'routes', 'truckTypes', 'truckSubTypes', 'drivers'));
+        return view('admin.backend.scheduled_trip.edit_trip', compact('trip', 'routes', 'truckTypes', 'truckSubTypes', 'drivers', 'shipmentTypes', 'shipmentNatures'));
     }
 
     /**
@@ -184,12 +204,21 @@ class ScheduledTripController extends Controller
             'total_capacity'     => 'required|integer|min:1',
             'available_capacity' => 'required|integer|min:0',
             'status'             => 'required|in:published,boarding,in_transit,completed,canceled',
+            'shipment_type_id'   => 'nullable|exists:shipment_types,id',
+            'shipment_nature_id' => 'nullable|exists:shipment_natures,id',
+            'customs_clearance'  => 'nullable|boolean',
+            'notes'              => 'nullable|string',
+            'required_documents' => 'nullable|array',
         ]);
+
+        $docs = $request->filled('required_documents') ? array_values(array_filter($request->required_documents)) : null;
 
         $trip->update([
             'route_id'           => $request->route_id,
             'truck_type_id'      => $request->truck_type_id,
             'truck_sub_type_id'  => $request->truck_sub_type_id ?: null,
+            'shipment_type_id'   => $request->shipment_type_id ?: null,
+            'shipment_nature_id' => $request->shipment_nature_id ?: null,
             'number_of_trucks'   => $request->number_of_trucks ?: 1,
             'total_weight_ton'   => $request->total_weight_ton ?: null,
             'driver_id'          => $request->driver_id ?: null,
@@ -199,6 +228,9 @@ class ScheduledTripController extends Controller
             'total_capacity'     => $request->total_capacity ?: 1,
             'available_capacity' => $request->available_capacity ?: 1,
             'status'             => $request->status,
+            'customs_clearance'  => $request->has('customs_clearance') ? (bool) $request->customs_clearance : true,
+            'notes'              => $request->notes ?: null,
+            'required_documents' => $docs,
         ]);
 
         $notification = [
@@ -283,6 +315,9 @@ class ScheduledTripController extends Controller
                 'price'             => number_format($trip->price, 2),
                 'total_capacity'    => $trip->total_capacity,
                 'available_capacity'=> $trip->available_capacity,
+                'customs_clearance' => (bool) $trip->customs_clearance,
+                'notes'             => $trip->notes,
+                'required_documents'=> $trip->required_documents ?: [],
                 'status'            => $trip->status,
                 'created_at'        => $trip->created_at ? $trip->created_at->format('Y-m-d H:i') : '—',
             ]

@@ -497,6 +497,32 @@ html.light-theme .detail-row .d-value {
                         <div class="text-muted" style="font-size:0.78rem;">
                             Trucks: {{ $t->number_of_trucks ?? 1 }} | {{ $t->total_weight_ton ? $t->total_weight_ton . ' Tons' : 'No Weight' }}
                         </div>
+                        <div class="mt-1 d-flex flex-wrap gap-1">
+                            @if($t->customs_clearance)
+                            <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25" style="font-size:0.7rem; color:#34D399 !important;">
+                                <i class="bx bx-check-shield me-1"></i>Customs: Yes
+                            </span>
+                            @else
+                            <span class="badge bg-secondary bg-opacity-25 text-slate-400 border border-secondary border-opacity-25" style="font-size:0.7rem;">
+                                <i class="bx bx-x-circle me-1"></i>Customs: No
+                            </span>
+                            @endif
+                            @if(!empty($t->required_documents) && is_array($t->required_documents) && count($t->required_documents) > 0)
+                            <span class="badge bg-purple bg-opacity-25 text-purple border border-purple border-opacity-25" style="font-size:0.7rem; color: #C084FC !important;">
+                                <i class="bx bx-file me-1"></i>{{ count($t->required_documents) }} Docs
+                            </span>
+                            @endif
+                            @if($t->shipmentType)
+                            <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25" style="font-size:0.7rem;">
+                                <i class="bx bx-package me-1"></i>{{ $t->shipmentType->name_en }}
+                            </span>
+                            @endif
+                            @if($t->shipmentNature)
+                            <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25" style="font-size:0.7rem;">
+                                <i class="bx bx-category me-1"></i>{{ $t->shipmentNature->name_en }}
+                            </span>
+                            @endif
+                        </div>
                     </td>
 
                     {{-- Driver & Date --}}
@@ -535,6 +561,9 @@ html.light-theme .detail-row .d-value {
                     {{-- Actions --}}
                     <td class="text-end">
                         <div class="d-inline-flex gap-2">
+                            <a href="{{ route('add.scheduled.trip.order', ['trip_id' => $t->id]) }}" class="btn-action" style="color:var(--tp-cyan-light);" title="Book / Add Order on this Trip">
+                                <i class="bx bx-calendar-plus fs-5"></i>
+                            </a>
                             <button type="button" class="btn-action" onclick="openTripDetails({{ $t->id }})" title="View Full Specs">
                                 <i class="bx bx-show fs-5"></i>
                             </button>
@@ -631,6 +660,10 @@ html.light-theme .detail-row .d-value {
         html += dRow('Total Approx. Weight', t.total_weight_ton);
         html += dRow('Booking Capacity', t.available_capacity + ' / ' + t.total_capacity + ' Available');
         html += dRow('Trip Price', '<strong class="text-warning">KWD ' + t.price + '</strong>');
+        html += dRow('Customs Clearance', t.customs_clearance ? '<span class="text-success fw-bold"><i class="bx bx-check-shield me-1"></i>Included (Yes)</span>' : '<span class="text-secondary"><i class="bx bx-x-circle me-1"></i>Not Included (No)</span>');
+        if (t.notes) {
+            html += dRow('Cargo / Trip Notes', t.notes);
+        }
         html += '</div></div>';
 
         // Section 3: Driver & Timing
@@ -642,6 +675,17 @@ html.light-theme .detail-row .d-value {
         html += dRow('Trip Status', '<span class="badge bg-info text-dark fw-bold">' + t.status.toUpperCase() + '</span>');
         html += dRow('Created At', t.created_at);
         html += '</div></div>';
+
+        // Section 4: Required Trip Documents
+        if (t.required_documents && t.required_documents.length > 0) {
+            html += '<div class="detail-sec-title"><i class="bx bx-file me-1"></i>Mandatory Trip Documents (' + t.required_documents.length + ')</div>';
+            html += '<div class="detail-card-grid"><div class="d-flex flex-wrap gap-2">';
+            t.required_documents.forEach(function(doc) {
+                html += '<span class="badge bg-info bg-opacity-10 text-cyan border border-info border-opacity-25 px-3 py-2 fw-semibold" style="font-size:0.82rem; border-radius:8px;">'
+                      + '<i class="bx bx-check-shield text-info me-1"></i>' + doc + '</span>';
+            });
+            html += '</div></div>';
+        }
 
         $('#modalDataWrap').html(html);
     }

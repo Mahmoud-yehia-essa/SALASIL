@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\UserAddressController;
 use App\Http\Controllers\Api\TruckBrandController;
 use App\Http\Controllers\Api\TruckModelController;
 use App\Http\Controllers\Api\TruckTypeController;
@@ -20,9 +21,18 @@ use App\Http\Controllers\Api\ShipmentTrackingController;
 use App\Http\Controllers\Api\ShipmentInvitationController;
 use App\Http\Controllers\Api\RouteController as ApiRouteController;
 use App\Http\Controllers\Api\ScheduledTripController;
+use App\Http\Controllers\Api\ScheduledTripOrderController as ApiScheduledTripOrderController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\WalletController;
+use App\Http\Controllers\Api\OnboardingController as ApiOnboardingController;
+use App\Http\Controllers\Api\SupportTicketController as ApiSupportTicketController;
+use App\Http\Controllers\Api\AboutSalasilSettingController;
+use App\Http\Controllers\Api\FaqController as ApiFaqController;
+use App\Http\Controllers\Api\SupportSettingController;
+use App\Http\Controllers\Api\DriverLookupController;
+use App\Http\Controllers\Api\NotificationController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +46,23 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-reset-code', [AuthController::class, 'verifyResetCode']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+// Public Onboarding Screens Data (For Mobile App Introduction)
+// Public Support & Help Center Channels Configurations
+// Public Frequently Asked Questions (FAQ) Data
+// Public About Salasil Settings & Legal Content
+
+// Driver Lookup & Pay to a Driver (Search by name, DR-XXXXX code, phone, or QR)
+Route::get('/drivers/lookup', [DriverLookupController::class, 'lookup']);
+Route::get('/drivers/search', [DriverLookupController::class, 'search']);
+Route::post('/drivers/pay', [DriverLookupController::class, 'payDriver']);
+
+Route::get('/about-settings', [AboutSalasilSettingController::class, 'getSettings']);
+Route::get('/faqs', [ApiFaqController::class, 'index']);
+Route::get('/support-settings', [SupportSettingController::class, 'getSettings']);
+Route::get('/onboarding-screens', [ApiOnboardingController::class, 'index']);
+Route::get('/onboarding-screens/{id}', [ApiOnboardingController::class, 'show']);
+Route::get('/onboarding', [ApiOnboardingController::class, 'index']);
 
 // Public Countries & Cities Data (For Registration & Address Selection)
 Route::get('/countries', [CountryController::class, 'index']);
@@ -77,12 +104,34 @@ Route::get('/routes/{id}', [ApiRouteController::class, 'show']);
 Route::get('/scheduled-trips', [ScheduledTripController::class, 'index']);
 Route::get('/scheduled-trips/statistics', [ScheduledTripController::class, 'statistics']);
 Route::get('/scheduled-trips/{id}', [ScheduledTripController::class, 'show']);
+Route::get('/scheduled-trip-orders/my-orders', [ApiScheduledTripOrderController::class, 'myOrders']);
+Route::get('/invoices/my-invoices', [InvoiceController::class, 'myInvoices'])->middleware('auth:sanctum');
+Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->where('id', '[0-9]+');
+Route::get('/invoices/by-order/{orderId}', [InvoiceController::class, 'byOrder']);
 
 // Protected Routes (Requires Sanctum Token)
 Route::middleware('auth:sanctum')->group(function () {
     // Auth & User Profile
     Route::get('/user', [AuthController::class, 'me']);
+// Support Tickets Endpoints
+    Route::post('/support-tickets', [ApiSupportTicketController::class, 'store']);
+    Route::get('/support-tickets', [ApiSupportTicketController::class, 'myTickets']);
+    Route::get('/support-tickets/{id}', [ApiSupportTicketController::class, 'show']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // User Address Book Management
+    Route::get('/user-addresses', [UserAddressController::class, 'index']);
+    Route::post('/user-addresses', [UserAddressController::class, 'store']);
+    Route::put('/user-addresses/{id}', [UserAddressController::class, 'update']);
+    Route::post('/user-addresses/{id}', [UserAddressController::class, 'update']);
+    Route::delete('/user-addresses/{id}', [UserAddressController::class, 'destroy']);
+    Route::post('/user-addresses/{id}/set-default', [UserAddressController::class, 'setDefault']);
+
+    // Company Documents Management
+    Route::get('/company-documents', [App\Http\Controllers\Api\CompanyDocumentController::class, 'index']);
+    Route::post('/company-documents/upload', [App\Http\Controllers\Api\CompanyDocumentController::class, 'upload']);
+    Route::delete('/company-documents/{id}', [App\Http\Controllers\Api\CompanyDocumentController::class, 'destroy']);
+
 
     // Profile Management
     Route::get('/profile', [ProfileController::class, 'getProfile']);
@@ -190,11 +239,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/scheduled-trips/{id}/assign-driver', [ScheduledTripController::class, 'assignDriver']);
     Route::delete('/scheduled-trips/{id}', [ScheduledTripController::class, 'destroy']);
 
+    // Scheduled Trip Orders Management (طلبات وحجوزات الرحلات المجدولة المستقلة)
+    Route::get('/scheduled-trip-orders', [ApiScheduledTripOrderController::class, 'index']);
+    Route::get('/scheduled-trip-orders/statistics', [ApiScheduledTripOrderController::class, 'statistics']);
+    Route::get('/scheduled-trip-orders/{id}', [ApiScheduledTripOrderController::class, 'show']);
+    Route::post('/scheduled-trip-orders', [ApiScheduledTripOrderController::class, 'store']);
+    Route::post('/scheduled-trip-orders/{id}/update', [ApiScheduledTripOrderController::class, 'update']);
+    Route::post('/scheduled-trip-orders/{id}/status', [ApiScheduledTripOrderController::class, 'changeStatus']);
+    Route::delete('/scheduled-trip-orders/{id}', [ApiScheduledTripOrderController::class, 'destroy']);
+
     // Invoices Management
     Route::get('/invoices', [InvoiceController::class, 'index']);
     Route::get('/invoices/my-invoices', [InvoiceController::class, 'myInvoices']);
     Route::get('/invoices/statistics', [InvoiceController::class, 'statistics']);
-    Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
     Route::post('/invoices', [InvoiceController::class, 'store']);
     Route::post('/invoices/{id}/update', [InvoiceController::class, 'update']);
     Route::post('/invoices/{id}/status', [InvoiceController::class, 'changeStatus']);
@@ -221,6 +278,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/wallets/transactions/{id}/update', [WalletController::class, 'updateTransaction']);
     Route::delete('/wallets/transactions/{id}', [WalletController::class, 'deleteTransaction']);
 
+    // Onboarding Screens Management
+    Route::post('/onboarding-screens', [ApiOnboardingController::class, 'store']);
+    Route::post('/onboarding-screens/{id}/update', [ApiOnboardingController::class, 'update']);
+    Route::delete('/onboarding-screens/{id}', [ApiOnboardingController::class, 'destroy']);
+
     // Direct Chat & System Communications
     Route::get('/chat/conversations', [ChatController::class, 'index']);
     Route::get('/chat/statistics', [ChatController::class, 'statistics']);
@@ -231,4 +293,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/chat/conversations/{id}/channel', [ChatController::class, 'changeChannel']);
     Route::delete('/chat/messages/{id}', [ChatController::class, 'deleteMessage']);
     Route::delete('/chat/conversations/{id}', [ChatController::class, 'destroy']);
+
+    // In-App Notifications Management
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/clear-all', [NotificationController::class, 'clearAll']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 });
