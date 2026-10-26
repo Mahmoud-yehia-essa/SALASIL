@@ -81,13 +81,7 @@ class ScheduledTripController extends Controller
             });
         }
 
-        // Available Capacity / Number of Trucks Filter
-        if ($request->filled('truck_count') || $request->filled('number_of_trucks')) {
-            $count = intval($request->truck_count ?: $request->number_of_trucks);
-            if ($count > 0) {
-                $query->where('available_capacity', '>=', $count);
-            }
-        }
+        // Available Capacity / Number of Trucks Filter removed (Open Booking Capacity without restrictions)
 
         // Cargo Weight vs Truck Max Payload Filter (in Tons)
         if ($request->filled('weight')) {
@@ -312,8 +306,8 @@ class ScheduledTripController extends Controller
             'trip_date'          => 'nullable|date',
             'trip_time'          => 'nullable',
             'price'              => 'required|numeric|min:0',
-            'total_capacity'     => 'required|integer|min:1',
-            'available_capacity' => 'required|integer|min:0',
+            'total_capacity'     => 'nullable|integer|min:1',
+            'available_capacity' => 'nullable|integer|min:0',
             'status'             => 'required|in:published,boarding,in_transit,completed,canceled',
         ], [
             'route_id.required'           => 'Please select a route.',
@@ -344,8 +338,8 @@ class ScheduledTripController extends Controller
             'trip_date'          => $request->trip_date ?: null,
             'trip_time'          => $request->trip_time ?: null,
             'price'              => $request->price,
-            'total_capacity'     => $request->total_capacity ?: 1,
-            'available_capacity' => $request->available_capacity ?: 1,
+            'total_capacity'     => $request->filled('total_capacity') ? $request->total_capacity : 9999,
+            'available_capacity' => $request->filled('available_capacity') ? $request->available_capacity : 9999,
             'status'             => $request->status,
             'customs_clearance'  => $request->has('customs_clearance') ? (bool) $request->customs_clearance : true,
             'notes'              => $request->notes ?: null,
@@ -396,8 +390,8 @@ class ScheduledTripController extends Controller
             'trip_date'          => 'nullable|date',
             'trip_time'          => 'nullable',
             'price'              => 'required|numeric|min:0',
-            'total_capacity'     => 'required|integer|min:1',
-            'available_capacity' => 'required|integer|min:0',
+            'total_capacity'     => 'nullable|integer|min:1',
+            'available_capacity' => 'nullable|integer|min:0',
             'status'             => 'required|in:published,boarding,in_transit,completed,canceled',
         ]);
 
@@ -421,8 +415,8 @@ class ScheduledTripController extends Controller
             'trip_date'          => $request->trip_date ?: null,
             'trip_time'          => $request->trip_time ?: null,
             'price'              => $request->price,
-            'total_capacity'     => $request->total_capacity ?: $trip->total_capacity,
-            'available_capacity' => $request->available_capacity ?: $trip->available_capacity,
+            'total_capacity'     => $request->filled('total_capacity') ? $request->total_capacity : ($trip->total_capacity ?: 9999),
+            'available_capacity' => $request->filled('available_capacity') ? $request->available_capacity : ($trip->available_capacity ?: 9999),
             'status'             => $request->status,
             'customs_clearance'  => $request->has('customs_clearance') ? (bool) $request->customs_clearance : $trip->customs_clearance,
             'notes'              => $request->has('notes') ? $request->notes : $trip->notes,

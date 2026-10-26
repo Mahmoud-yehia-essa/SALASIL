@@ -544,8 +544,12 @@ html.light-theme .detail-row .d-value {
 
                     {{-- Capacity --}}
                     <td>
-                        <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25">
-                            {{ $t->available_capacity }} / {{ $t->total_capacity }} Available
+                        <span class="badge {{ ($t->available_capacity >= 999 || $t->total_capacity >= 999) ? 'bg-success bg-opacity-25 text-success border border-success border-opacity-25' : 'bg-info bg-opacity-25 text-info border border-info border-opacity-25' }}">
+                            @if($t->available_capacity >= 999 || $t->total_capacity >= 999)
+                                <i class="bx bx-infinite me-1"></i>Open (مفتوح)
+                            @else
+                                {{ $t->available_capacity }} / {{ $t->total_capacity }} Available
+                            @endif
                         </span>
                     </td>
 
@@ -675,7 +679,8 @@ html.light-theme .detail-row .d-value {
         html += dRow('Truck Sub-Type', t.truck_sub_type);
         html += dRow('Number of Trucks', t.number_of_trucks);
         html += dRow('Total Approx. Weight', t.total_weight_ton);
-        html += dRow('Booking Capacity', t.available_capacity + ' / ' + t.total_capacity + ' Available');
+        var capStr = (t.available_capacity >= 999 || t.total_capacity >= 999) ? '<span class="text-success fw-bold"><i class="bx bx-infinite me-1"></i>Open (مفتوح بدون تحديد)</span>' : (t.available_capacity + ' / ' + t.total_capacity + ' Available');
+        html += dRow('Booking Capacity', capStr);
         html += dRow('Trip Price', '<strong class="text-warning">KWD ' + t.price + '</strong>');
         html += dRow('Customs Clearance', t.customs_clearance ? '<span class="text-success fw-bold"><i class="bx bx-check-shield me-1"></i>Included (Yes)</span>' : '<span class="text-secondary"><i class="bx bx-x-circle me-1"></i>Not Included (No)</span>');
         if (t.notes) {

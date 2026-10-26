@@ -500,10 +500,10 @@ html.light-theme .btn-customs-toggle.active-no {
 
             <div class="my-4" style="height:1px;background:rgba(255,255,255,0.06);"></div>
 
-            {{-- ════ 4. PRICING & CAPACITY ════ --}}
-            <div class="tp-section-title"><i class="bx bx-purchase-tag-alt me-1"></i>Step 4: Pricing & Capacity</div>
+            {{-- ════ 4. PRICING ════ --}}
+            <div class="tp-section-title"><i class="bx bx-purchase-tag-alt me-1"></i>Step 4: Pricing (التسعير)</div>
             <div class="row g-4 mb-4">
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-6">
                     <label class="form-label">Price per Unit / Order (KWD) <span class="text-danger">*</span></label>
                     <div class="input-group">
                         <input type="number" step="0.01" name="price" class="form-control @error('price') is-invalid @enderror" placeholder="0.00" value="{{ old('price') }}">
@@ -513,20 +513,9 @@ html.light-theme .btn-customs-toggle.active-no {
                         <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
                     @enderror
                 </div>
-                <div class="col-12 col-md-4">
-                    <label class="form-label">Total Booking Capacity <span class="text-danger">*</span></label>
-                    <input type="number" name="total_capacity" id="total_capacity" class="form-control @error('total_capacity') is-invalid @enderror" placeholder="1" value="{{ old('total_capacity', 1) }}" min="1">
-                    @error('total_capacity')
-                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-12 col-md-4">
-                    <label class="form-label">Available Capacity <span class="text-danger">*</span></label>
-                    <input type="number" name="available_capacity" id="available_capacity" class="form-control @error('available_capacity') is-invalid @enderror" placeholder="1" value="{{ old('available_capacity', 1) }}" min="0">
-                    @error('available_capacity')
-                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
-                    @enderror
-                </div>
+                {{-- Open Booking Capacity without limit --}}
+                <input type="hidden" name="total_capacity" value="9999">
+                <input type="hidden" name="available_capacity" value="9999">
             </div>
 
             <div class="my-4" style="height:1px;background:rgba(255,255,255,0.06);"></div>
@@ -747,14 +736,6 @@ $(document).ready(function() {
         });
     });
 
-    // Sync available capacity when total capacity changes if available is empty
-    $('#total_capacity').on('keyup change', function() {
-        var val = $(this).val();
-        if ($('#available_capacity').val() === '' || $('#available_capacity').val() == $(this).attr('data-old')) {
-            $('#available_capacity').val(val);
-        }
-        $(this).attr('data-old', val);
-    });
 
     // Customs clearance toggle handler (Matching App)
     $(document).on('click', '.btn-customs-toggle', function() {

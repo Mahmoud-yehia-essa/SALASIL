@@ -484,24 +484,19 @@ html.light-theme .btn-customs-toggle.active-no {
 
             <div class="my-4" style="height:1px;background:rgba(255,255,255,0.06);"></div>
 
-            {{-- ════ 4. PRICING & CAPACITY ════ --}}
-            <div class="tp-section-title"><i class="bx bx-purchase-tag-alt me-1"></i>Step 4: Pricing & Capacity</div>
+            {{-- ════ 4. PRICING ════ --}}
+            <div class="tp-section-title"><i class="bx bx-purchase-tag-alt me-1"></i>Step 4: Pricing (التسعير)</div>
             <div class="row g-4 mb-4">
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-6">
                     <label class="form-label">Price per Unit / Order (KWD) <span class="text-danger">*</span></label>
                     <div class="input-group">
                         <input type="number" step="0.01" name="price" class="form-control" placeholder="0.00" value="{{ old('price', $trip->price) }}">
                         <span class="input-group-text bg-dark border-secondary border-opacity-25 text-warning fw-bold">KWD</span>
                     </div>
                 </div>
-                <div class="col-12 col-md-4">
-                    <label class="form-label">Total Booking Capacity <span class="text-danger">*</span></label>
-                    <input type="number" name="total_capacity" id="total_capacity" class="form-control" placeholder="1" value="{{ old('total_capacity', $trip->total_capacity) }}" min="1">
-                </div>
-                <div class="col-12 col-md-4">
-                    <label class="form-label">Available Capacity <span class="text-danger">*</span></label>
-                    <input type="number" name="available_capacity" id="available_capacity" class="form-control" placeholder="1" value="{{ old('available_capacity', $trip->available_capacity) }}" min="0">
-                </div>
+                {{-- Open Booking Capacity without limit --}}
+                <input type="hidden" name="total_capacity" value="{{ $trip->total_capacity ?: 9999 }}">
+                <input type="hidden" name="available_capacity" value="{{ $trip->available_capacity ?: 9999 }}">
             </div>
 
             <div class="my-4" style="height:1px;background:rgba(255,255,255,0.06);"></div>
