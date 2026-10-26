@@ -313,6 +313,19 @@ html.light-theme .btn-customs-toggle.active-no {
         </div>
     </div>
     <div class="tp-card-body">
+        @if($errors->any())
+            <div class="alert alert-danger border-0 rounded-4 p-3 mb-4 shadow-sm" style="background: rgba(244,63,94,0.18); border: 1px solid rgba(244,63,94,0.4) !important;">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bx bx-error-circle fs-4 text-danger"></i>
+                    <h6 class="fw-bold mb-0 text-danger">Validation Errors (تنبيه: يوجد أخطاء في البيانات المدخلة يرجى تصحيحها):</h6>
+                </div>
+                <ul class="mb-0 ps-3 text-white">
+                    @foreach($errors->all() as $error)
+                        <li style="margin-bottom: 4px;">{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <form method="POST" action="{{ route('store.scheduled.trip') }}" id="tripForm" autocomplete="off">
             @csrf
 
@@ -321,7 +334,7 @@ html.light-theme .btn-customs-toggle.active-no {
             <div class="row g-4 mb-4">
                 <div class="col-12 col-md-8">
                     <label class="form-label">Route <span class="text-danger">*</span></label>
-                    <select name="route_id" id="route_id" class="form-select">
+                    <select name="route_id" id="route_id" class="form-select @error('route_id') is-invalid @enderror">
                         <option value="">-- Select a Fixed Route --</option>
                         @foreach($routes as $rt)
                             <option value="{{ $rt->id }}" {{ old('route_id') == $rt->id ? 'selected' : '' }}>
@@ -329,16 +342,22 @@ html.light-theme .btn-customs-toggle.active-no {
                             </option>
                         @endforeach
                     </select>
+                    @error('route_id')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-12 col-md-4">
                     <label class="form-label">Trip Status <span class="text-danger">*</span></label>
-                    <select name="status" id="status" class="form-select">
+                    <select name="status" id="status" class="form-select @error('status') is-invalid @enderror">
                         <option value="published" {{ old('status') === 'published' ? 'selected' : '' }}>Published (Open)</option>
                         <option value="boarding" {{ old('status') === 'boarding' ? 'selected' : '' }}>Boarding</option>
                         <option value="in_transit" {{ old('status') === 'in_transit' ? 'selected' : '' }}>In Transit</option>
                         <option value="completed" {{ old('status') === 'completed' ? 'selected' : '' }}>Completed</option>
                         <option value="canceled" {{ old('status') === 'canceled' ? 'selected' : '' }}>Canceled</option>
                     </select>
+                    @error('status')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
 
@@ -349,12 +368,15 @@ html.light-theme .btn-customs-toggle.active-no {
             <div class="row g-4 mb-4">
                 <div class="col-12 col-md-6">
                     <label class="form-label">Truck Type <span class="text-danger">*</span></label>
-                    <select name="truck_type_id" id="truck_type_id" class="form-select">
+                    <select name="truck_type_id" id="truck_type_id" class="form-select @error('truck_type_id') is-invalid @enderror">
                         <option value="">-- Select Truck Type --</option>
                         @foreach($truckTypes as $type)
                             <option value="{{ $type->id }}" {{ old('truck_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name_en }} ({{ $type->name_ar }})</option>
                         @endforeach
                     </select>
+                    @error('truck_type_id')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label">Truck Sub-Type (Optional)</label>
@@ -364,12 +386,15 @@ html.light-theme .btn-customs-toggle.active-no {
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label">Number of Trucks <span class="text-danger">*</span></label>
-                    <input type="number" name="number_of_trucks" id="number_of_trucks" class="form-control" placeholder="1" value="{{ old('number_of_trucks', 1) }}" min="1">
+                    <input type="number" name="number_of_trucks" id="number_of_trucks" class="form-control @error('number_of_trucks') is-invalid @enderror" placeholder="1" value="{{ old('number_of_trucks', 1) }}" min="1">
+                    @error('number_of_trucks')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label">Total Approx. Weight (Tons)</label>
                     <div class="input-group">
-                        <input type="number" step="0.1" name="total_weight_ton" class="form-control" placeholder="e.g. 24.5" value="{{ old('total_weight_ton') }}">
+                        <input type="number" step="0.1" name="total_weight_ton" class="form-control @error('total_weight_ton') is-invalid @enderror" placeholder="e.g. 24.5" value="{{ old('total_weight_ton') }}">
                         <span class="input-group-text bg-dark border-secondary border-opacity-25 text-info fw-bold">Tons</span>
                     </div>
                 </div>
@@ -405,7 +430,7 @@ html.light-theme .btn-customs-toggle.active-no {
                         <span><i class="bx bx-package text-info me-1"></i>Shipment Type <span class="text-info">(نوع الشحنة)</span></span>
                         <small class="text-muted">Optional</small>
                     </label>
-                    <select name="shipment_type_id" id="shipment_type_id" class="form-select">
+                    <select name="shipment_type_id" id="shipment_type_id" class="form-select @error('shipment_type_id') is-invalid @enderror">
                         <option value="">-- All / Any Shipment Type (أي نوع) --</option>
                         @foreach($shipmentTypes as $type)
                             <option value="{{ $type->id }}" {{ old('shipment_type_id') == $type->id ? 'selected' : '' }}>
@@ -413,13 +438,16 @@ html.light-theme .btn-customs-toggle.active-no {
                             </option>
                         @endforeach
                     </select>
+                    @error('shipment_type_id')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label d-flex justify-content-between align-items-center">
                         <span><i class="bx bx-check-shield text-info me-1"></i>Shipment Nature <span class="text-info">(طبيعة الشحنة)</span></span>
                         <small class="text-muted">Optional</small>
                     </label>
-                    <select name="shipment_nature_id" id="shipment_nature_id" class="form-select">
+                    <select name="shipment_nature_id" id="shipment_nature_id" class="form-select @error('shipment_nature_id') is-invalid @enderror">
                         <option value="">-- All / Any Shipment Nature (أي طبيعة) --</option>
                         @foreach($shipmentNatures as $nature)
                             <option value="{{ $nature->id }}" {{ old('shipment_nature_id') == $nature->id ? 'selected' : '' }}>
@@ -427,6 +455,9 @@ html.light-theme .btn-customs-toggle.active-no {
                             </option>
                         @endforeach
                     </select>
+                    @error('shipment_nature_id')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
 
                 {{-- Cargo & Carrier Notes --}}
@@ -442,16 +473,18 @@ html.light-theme .btn-customs-toggle.active-no {
             <div class="tp-section-title"><i class="bx bx-time me-1"></i>Step 3: Driver & Schedule Timing</div>
             <div class="row g-4 mb-4">
                 <div class="col-12 col-md-4">
-                    <label class="form-label">Trip Date <span class="text-danger">*</span></label>
-                    <input type="date" name="trip_date" class="form-control" value="{{ old('trip_date', date('Y-m-d')) }}" onclick="this.showPicker()">
+                    <label class="form-label">Trip Date <span class="badge bg-secondary bg-opacity-25 text-warning ms-1" style="font-size:0.72rem;">غير فعال / يحدد لاحقاً في الطلب</span></label>
+                    <input type="date" name="trip_date" class="form-control" value="" disabled style="background-color: rgba(255,255,255,0.05); cursor: not-allowed; opacity: 0.6;">
+                    <div class="form-text text-muted" style="font-size:0.75rem;"><i class="bx bx-lock-alt me-1 text-warning"></i>تم تعطيل الحقل هنا، ويتم تحديد التاريخ لاحقاً عند إنشاء الطلب (Add Scheduled Trip Order).</div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <label class="form-label">Trip Departure Time</label>
-                    <input type="time" name="trip_time" class="form-control" value="{{ old('trip_time', '08:00') }}" onclick="this.showPicker()">
+                    <label class="form-label">Trip Departure Time <span class="badge bg-secondary bg-opacity-25 text-warning ms-1" style="font-size:0.72rem;">غير فعال / يحدد لاحقاً</span></label>
+                    <input type="time" name="trip_time" class="form-control" value="" disabled style="background-color: rgba(255,255,255,0.05); cursor: not-allowed; opacity: 0.6;">
+                    <div class="form-text text-muted" style="font-size:0.75rem;"><i class="bx bx-lock-alt me-1 text-warning"></i>تم تعطيل الحقل هنا، ويتم تحديد الوقت لاحقاً عند إنشاء الطلب.</div>
                 </div>
                 <div class="col-12 col-md-4">
                     <label class="form-label">Assigned Driver (Optional)</label>
-                    <select name="driver_id" class="form-select">
+                    <select name="driver_id" class="form-select @error('driver_id') is-invalid @enderror">
                         <option value="">-- Unassigned (Assign Later) --</option>
                         @foreach($drivers as $d)
                             <option value="{{ $d->id }}" {{ old('driver_id') == $d->id ? 'selected' : '' }}>
@@ -459,6 +492,9 @@ html.light-theme .btn-customs-toggle.active-no {
                             </option>
                         @endforeach
                     </select>
+                    @error('driver_id')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
 
@@ -470,17 +506,26 @@ html.light-theme .btn-customs-toggle.active-no {
                 <div class="col-12 col-md-4">
                     <label class="form-label">Price per Unit / Order (KWD) <span class="text-danger">*</span></label>
                     <div class="input-group">
-                        <input type="number" step="0.01" name="price" class="form-control" placeholder="0.00" value="{{ old('price') }}">
+                        <input type="number" step="0.01" name="price" class="form-control @error('price') is-invalid @enderror" placeholder="0.00" value="{{ old('price') }}">
                         <span class="input-group-text bg-dark border-secondary border-opacity-25 text-warning fw-bold">KWD</span>
                     </div>
+                    @error('price')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-12 col-md-4">
                     <label class="form-label">Total Booking Capacity <span class="text-danger">*</span></label>
-                    <input type="number" name="total_capacity" id="total_capacity" class="form-control" placeholder="1" value="{{ old('total_capacity', 1) }}" min="1">
+                    <input type="number" name="total_capacity" id="total_capacity" class="form-control @error('total_capacity') is-invalid @enderror" placeholder="1" value="{{ old('total_capacity', 1) }}" min="1">
+                    @error('total_capacity')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-12 col-md-4">
                     <label class="form-label">Available Capacity <span class="text-danger">*</span></label>
-                    <input type="number" name="available_capacity" id="available_capacity" class="form-control" placeholder="1" value="{{ old('available_capacity', 1) }}" min="0">
+                    <input type="number" name="available_capacity" id="available_capacity" class="form-control @error('available_capacity') is-invalid @enderror" placeholder="1" value="{{ old('available_capacity', 1) }}" min="0">
+                    @error('available_capacity')
+                        <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
 

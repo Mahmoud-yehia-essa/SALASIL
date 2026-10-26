@@ -989,7 +989,7 @@ html.light-theme .doc-preview-box .file-name-text {
                 <option value="">-- Choose an Active Scheduled Trip --</option>
                 @foreach($trips as $t)
                     <option value="{{ $t->id }}" {{ (isset($selectedTripId) && $selectedTripId == $t->id) ? 'selected' : '' }}>
-                        Trip #{{ $t->id }}: {{ $t->route->originCity->name_en ?? 'Origin' }} ➔ {{ $t->route->destinationCity->name_en ?? 'Dest' }} ({{ $t->trip_date }}) — KWD {{ number_format($t->price, 2) }}
+                        Trip #{{ $t->id }}: {{ $t->route->originCity->name_en ?? 'Origin' }} ➔ {{ $t->route->destinationCity->name_en ?? 'Dest' }} ({{ $t->trip_date ?: 'Flexible Schedule' }}) — KWD {{ number_format($t->price, 2) }}
                     </option>
                 @endforeach
             </select>
@@ -1224,7 +1224,7 @@ html.light-theme .doc-preview-box .file-name-text {
                         <input type="number" step="0.1" name="height" id="height" class="form-control" placeholder="0.0">
                     </div>
                     <div class="col-6 col-md-3">
-                        <label class="form-label">Total Weight (kg)</label>
+                        <label class="form-label">Total Weight (Tons)</label>
                         <input type="number" step="0.1" name="weight" id="weight" class="form-control" placeholder="0.0">
                     </div>
                     <div class="col-12 col-md-4">
@@ -2765,7 +2765,7 @@ $(document).ready(function() {
 
         $('#rvCargoLabel').text($('#shipment_name').val() || 'Scheduled Trip Cargo');
         $('#rvPackagesCount').text($('#packages_count').val() + ' Pcs');
-        var wt = $('#weight').val() ? ($('#weight').val() + ' kg') : '—';
+        var wt = $('#weight').val() ? ($('#weight').val() + ' Tons') : '—';
         var dim = ($('#length').val() || '0') + 'x' + ($('#width').val() || '0') + 'x' + ($('#height').val() || '0') + ' cm';
         $('#rvWeightDim').text(wt + ' | ' + dim);
         $('#rvTruckType').text($('#truck_type_id option:selected').text() || '—');

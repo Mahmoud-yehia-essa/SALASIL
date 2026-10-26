@@ -461,6 +461,7 @@ html.light-theme .detail-row .d-value {
                     <th>Capacity</th>
                     <th>Price</th>
                     <th>Status</th>
+                    <th>Created At</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
@@ -528,7 +529,13 @@ html.light-theme .detail-row .d-value {
                     {{-- Driver & Date --}}
                     <td>
                         <div class="fw-bold text-white">
-                            <i class="bx bx-calendar me-1 text-info"></i>{{ $t->trip_date }} {{ $t->trip_time ? '('.date('h:i A', strtotime($t->trip_time)).')' : '' }}
+                            @if($t->trip_date)
+                                <i class="bx bx-calendar me-1 text-info"></i>{{ $t->trip_date }} {{ $t->trip_time ? '('.date('h:i A', strtotime($t->trip_time)).')' : '' }}
+                            @else
+                                <span class="badge bg-secondary bg-opacity-25 text-info border border-secondary border-opacity-25 fw-normal">
+                                    <i class="bx bx-calendar me-1"></i>To be scheduled
+                                </span>
+                            @endif
                         </div>
                         <div class="text-muted" style="font-size:0.78rem;">
                             <i class="bx bx-user me-1"></i>{{ $t->driver ? ($t->driver->fname . ' ' . $t->driver->lname) : 'Unassigned' }}
@@ -558,6 +565,16 @@ html.light-theme .detail-row .d-value {
                         </select>
                     </td>
 
+                    {{-- Created At --}}
+                    <td>
+                        <div class="text-white small fw-semibold">
+                            <i class="bx bx-calendar-plus me-1 text-info"></i>{{ $t->created_at ? $t->created_at->format('Y-m-d') : '—' }}
+                        </div>
+                        <div class="text-muted" style="font-size:0.75rem;">
+                            <i class="bx bx-time me-1"></i>{{ $t->created_at ? $t->created_at->format('h:i A') : '—' }}
+                        </div>
+                    </td>
+
                     {{-- Actions --}}
                     <td class="text-end">
                         <div class="d-inline-flex gap-2">
@@ -578,7 +595,7 @@ html.light-theme .detail-row .d-value {
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" class="text-center py-5 text-muted">
+                    <td colspan="9" class="text-center py-5 text-muted">
                         <i class="bx bx-calendar-x fs-1 text-slate-500 mb-2 d-block"></i>
                         No scheduled trips found matching your criteria.
                     </td>
@@ -670,8 +687,8 @@ html.light-theme .detail-row .d-value {
         html += '<div class="detail-sec-title"><i class="bx bx-time me-1"></i>Driver Assignment & Timing</div>';
         html += '<div class="detail-card-grid"><div class="row g-2">';
         html += dRow('Assigned Driver', t.driver_name + ' (' + t.driver_phone + ')');
-        html += dRow('Departure Date', t.trip_date);
-        html += dRow('Departure Time', t.trip_time);
+        html += dRow('Departure Date', t.trip_date || '<span class="text-muted">To be scheduled upon order</span>');
+        html += dRow('Departure Time', (t.trip_time && t.trip_time !== '—') ? t.trip_time : '<span class="text-muted">Flexible / TBD</span>');
         html += dRow('Trip Status', '<span class="badge bg-info text-dark fw-bold">' + t.status.toUpperCase() + '</span>');
         html += dRow('Created At', t.created_at);
         html += '</div></div>';

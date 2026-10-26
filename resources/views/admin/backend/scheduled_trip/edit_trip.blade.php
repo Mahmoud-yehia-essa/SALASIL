@@ -313,6 +313,19 @@ html.light-theme .btn-customs-toggle.active-no {
         </div>
     </div>
     <div class="tp-card-body">
+        @if($errors->any())
+            <div class="alert alert-danger border-0 rounded-4 p-3 mb-4 shadow-sm" style="background: rgba(244,63,94,0.18); border: 1px solid rgba(244,63,94,0.4) !important;">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bx bx-error-circle fs-4 text-danger"></i>
+                    <h6 class="fw-bold mb-0 text-danger">Validation Errors (تنبيه: يوجد أخطاء في البيانات المدخلة يرجى تصحيحها):</h6>
+                </div>
+                <ul class="mb-0 ps-3 text-white">
+                    @foreach($errors->all() as $error)
+                        <li style="margin-bottom: 4px;">{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <form method="POST" action="{{ route('update.scheduled.trip') }}" id="tripForm" autocomplete="off">
             @csrf
             <input type="hidden" name="id" value="{{ $trip->id }}">
@@ -458,12 +471,14 @@ html.light-theme .btn-customs-toggle.active-no {
                     </select>
                 </div>
                 <div class="col-12 col-md-4">
-                    <label class="form-label">Trip Date <span class="text-danger">*</span></label>
-                    <input type="date" name="trip_date" class="form-control" value="{{ old('trip_date', $trip->trip_date) }}" onclick="this.showPicker()">
+                    <label class="form-label">Trip Date <span class="badge bg-secondary bg-opacity-25 text-warning ms-1" style="font-size:0.72rem;">غير فعال / يحدد لاحقاً في الطلب</span></label>
+                    <input type="date" name="trip_date" class="form-control" value="{{ old('trip_date', $trip->trip_date) }}" disabled style="background-color: rgba(255,255,255,0.05); cursor: not-allowed; opacity: 0.6;">
+                    <div class="form-text text-muted" style="font-size:0.75rem;"><i class="bx bx-lock-alt me-1 text-warning"></i>تم تعطيل الحقل هنا، ويتم تحديد التاريخ لاحقاً عند إنشاء الطلب (Add Scheduled Trip Order).</div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <label class="form-label">Trip Departure Time</label>
-                    <input type="time" name="trip_time" class="form-control" value="{{ old('trip_time', $trip->trip_time) }}" onclick="this.showPicker()">
+                    <label class="form-label">Trip Departure Time <span class="badge bg-secondary bg-opacity-25 text-warning ms-1" style="font-size:0.72rem;">غير فعال / يحدد لاحقاً</span></label>
+                    <input type="time" name="trip_time" class="form-control" value="{{ old('trip_time', $trip->trip_time) }}" disabled style="background-color: rgba(255,255,255,0.05); cursor: not-allowed; opacity: 0.6;">
+                    <div class="form-text text-muted" style="font-size:0.75rem;"><i class="bx bx-lock-alt me-1 text-warning"></i>تم تعطيل الحقل هنا، ويتم تحديد الوقت لاحقاً عند إنشاء الطلب.</div>
                 </div>
             </div>
 

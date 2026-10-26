@@ -463,7 +463,7 @@ html.light-theme .doc-card-title {
                         <div class="fw-bold text-slate-200 text-truncate" style="max-width:180px;">{{ $o->shipment_name ?: 'Cargo' }}</div>
                         <div class="text-muted small">
                             <span class="badge bg-secondary bg-opacity-25 text-slate-300 me-1">{{ $o->packages_count }} Pcs</span>
-                            @if($o->weight) {{ $o->weight }} kg @endif
+                            @if($o->weight) {{ $o->weight }} Tons @endif
                         </div>
                         <div class="mt-1 d-flex flex-wrap gap-1">
                             @if($o->customs_clearance)
@@ -676,7 +676,7 @@ html.light-theme .doc-card-title {
         html += '<div class="detail-grid-box">';
         html += '<div class="detail-item"><div class="lbl">Cargo Label</div><div class="val text-white">' + (o.shipment_name || '—') + '</div></div>';
         html += '<div class="detail-item"><div class="lbl">Packages Count</div><div class="val">' + (o.packages_count || 1) + ' Pcs</div></div>';
-        html += '<div class="detail-item"><div class="lbl">Total Weight</div><div class="val">' + (o.weight ? (o.weight + ' kg') : '—') + '</div></div>';
+        html += '<div class="detail-item"><div class="lbl">Total Weight</div><div class="val">' + (o.weight ? (o.weight + ' Tons') : '—') + '</div></div>';
         html += '<div class="detail-item"><div class="lbl">Dimensions (LxWxH)</div><div class="val">' + (o.length||0) + ' x ' + (o.width||0) + ' x ' + (o.height||0) + ' cm</div></div>';
         html += '<div class="detail-item"><div class="lbl">Truck Type</div><div class="val text-info">' + (o.truck_type ? o.truck_type.name_en : '—') + '</div></div>';
         if (o.number_of_trucks) {
