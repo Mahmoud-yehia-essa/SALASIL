@@ -20,6 +20,7 @@ class ScheduledTrip extends Model
     protected $casts = [
         'required_documents' => 'array',
         'customs_clearance'  => 'boolean',
+        'pricing_additions'  => 'array',
     ];
 
     public function route()

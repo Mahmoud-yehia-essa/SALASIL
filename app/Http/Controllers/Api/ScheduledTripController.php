@@ -326,6 +326,22 @@ class ScheduledTripController extends Controller
             ], 422);
         }
 
+        $pricingAdditions = [];
+        if ($request->filled('pricing_additions') && is_array($request->pricing_additions)) {
+            foreach ($request->pricing_additions as $addition) {
+                $name = trim($addition['name'] ?? '');
+                $type = in_array(strtolower($addition['type'] ?? ''), ['percentage', 'fixed']) ? strtolower($addition['type']) : 'percentage';
+                $val  = floatval($addition['value'] ?? 0);
+                if ($name !== '' && $val > 0) {
+                    $pricingAdditions[] = [
+                        'name'  => $name,
+                        'type'  => $type,
+                        'value' => $val,
+                    ];
+                }
+            }
+        }
+
         $trip = ScheduledTrip::create([
             'route_id'           => $request->route_id,
             'truck_type_id'      => $request->truck_type_id,
@@ -338,6 +354,7 @@ class ScheduledTripController extends Controller
             'trip_date'          => $request->trip_date ?: null,
             'trip_time'          => $request->trip_time ?: null,
             'price'              => $request->price,
+            'pricing_additions'  => count($pricingAdditions) ? $pricingAdditions : null,
             'total_capacity'     => $request->filled('total_capacity') ? $request->total_capacity : 9999,
             'available_capacity' => $request->filled('available_capacity') ? $request->available_capacity : 9999,
             'status'             => $request->status,
@@ -403,6 +420,25 @@ class ScheduledTripController extends Controller
             ], 422);
         }
 
+        $pricingAdditions = $trip->pricing_additions;
+        if ($request->has('pricing_additions')) {
+            $pricingAdditions = [];
+            if (is_array($request->pricing_additions)) {
+                foreach ($request->pricing_additions as $addition) {
+                    $name = trim($addition['name'] ?? '');
+                    $type = in_array(strtolower($addition['type'] ?? ''), ['percentage', 'fixed']) ? strtolower($addition['type']) : 'percentage';
+                    $val  = floatval($addition['value'] ?? 0);
+                    if ($name !== '' && $val > 0) {
+                        $pricingAdditions[] = [
+                            'name'  => $name,
+                            'type'  => $type,
+                            'value' => $val,
+                        ];
+                    }
+                }
+            }
+        }
+
         $trip->update([
             'route_id'           => $request->route_id,
             'truck_type_id'      => $request->truck_type_id,
@@ -415,6 +451,7 @@ class ScheduledTripController extends Controller
             'trip_date'          => $request->trip_date ?: null,
             'trip_time'          => $request->trip_time ?: null,
             'price'              => $request->price,
+            'pricing_additions'  => is_array($pricingAdditions) && count($pricingAdditions) ? $pricingAdditions : null,
             'total_capacity'     => $request->filled('total_capacity') ? $request->total_capacity : ($trip->total_capacity ?: 9999),
             'available_capacity' => $request->filled('available_capacity') ? $request->available_capacity : ($trip->available_capacity ?: 9999),
             'status'             => $request->status,

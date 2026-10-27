@@ -320,6 +320,28 @@ class ScheduledTripOrderController extends Controller
         $bookedUnits   = max(1, (int) ($request->booked_capacity ?: 1));
         $tripPrice     = (float) $trip->price;
         $computedTotal = $tripPrice * $bookedUnits;
+        if (!empty($trip->pricing_additions) && is_array($trip->pricing_additions)) {
+            foreach ($trip->pricing_additions as $addition) {
+                $val = floatval($addition['value'] ?? 0);
+                $type = $addition['type'] ?? 'percentage';
+                if ($type === 'percentage') {
+                    $computedTotal += ($tripPrice * $bookedUnits) * ($val / 100.0);
+                } else {
+                    $computedTotal += $val * $bookedUnits;
+                }
+            }
+        }
+        if (!empty($trip->pricing_additions) && is_array($trip->pricing_additions)) {
+            foreach ($trip->pricing_additions as $addition) {
+                $val = floatval($addition['value'] ?? 0);
+                $type = $addition['type'] ?? 'percentage';
+                if ($type === 'percentage') {
+                    $computedTotal += ($tripPrice * $bookedUnits) * ($val / 100.0);
+                } else {
+                    $computedTotal += $val * $bookedUnits;
+                }
+            }
+        }
 
         $order = new ScheduledTripOrder();
         $order->order_number      = 'STO-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));

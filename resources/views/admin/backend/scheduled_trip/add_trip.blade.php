@@ -500,22 +500,90 @@ html.light-theme .btn-customs-toggle.active-no {
 
             <div class="my-4" style="height:1px;background:rgba(255,255,255,0.06);"></div>
 
-            {{-- ════ 4. PRICING ════ --}}
-            <div class="tp-section-title"><i class="bx bx-purchase-tag-alt me-1"></i>Step 4: Pricing (التسعير)</div>
-            <div class="row g-4 mb-4">
+            {{-- ════ 4. PRICING & FLEXIBLE ADDITIONS ════ --}}
+            <div class="tp-section-title"><i class="bx bx-purchase-tag-alt me-1"></i>Step 4: Pricing & Flexible Additions (التسعير والإضافات المرنة)</div>
+            <div class="row g-4 mb-3">
                 <div class="col-12 col-md-6">
                     <label class="form-label">Price per Unit / Order (KWD) <span class="text-danger">*</span></label>
                     <div class="input-group">
-                        <input type="number" step="0.01" name="price" class="form-control @error('price') is-invalid @enderror" placeholder="0.00" value="{{ old('price') }}">
+                        <input type="number" step="0.01" min="0" id="base_price_input" name="price" class="form-control @error('price') is-invalid @enderror" placeholder="0.00" value="{{ old('price') }}">
                         <span class="input-group-text bg-dark border-secondary border-opacity-25 text-warning fw-bold">KWD</span>
                     </div>
                     @error('price')
                         <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
                     @enderror
+                    <div class="form-text text-muted" style="font-size:0.75rem;">السعر الأساسي لكل وحدة/شاحنة بالدينار الكويتي.</div>
                 </div>
                 {{-- Open Booking Capacity without limit --}}
                 <input type="hidden" name="total_capacity" value="9999">
                 <input type="hidden" name="available_capacity" value="9999">
+            </div>
+
+            {{-- Dynamic Pricing Additions Box --}}
+            <div class="card border border-secondary border-opacity-25 rounded-3 mb-4" style="background: rgba(255, 255, 255, 0.02);">
+                <div class="card-header bg-transparent border-bottom border-secondary border-opacity-25 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 py-3">
+                    <div>
+                        <h6 class="mb-0 text-white d-flex align-items-center">
+                            <i class="bx bx-slider-alt text-warning me-2 fs-5"></i>
+                            إضافات السعر المرنة (Flexible Price Additions)
+                        </h6>
+                        <small class="text-muted">أضف أي رسوم إضافية مثل نسبة ضرائب، نسبة ربح، رسوم جمركية، أو مبالغ مقطوعة تظهر للعميل في التطبيق بدقة.</small>
+                    </div>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 btn-add-preset" data-name="ضريبة القيمة المضافة (VAT)" data-type="percentage" data-val="15">
+                            <i class="bx bx-plus me-1"></i>+ ضريبة 15%
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 btn-add-preset" data-name="هامش ربح تشغيلي" data-type="percentage" data-val="10">
+                            <i class="bx bx-plus me-1"></i>+ ربح 10%
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 btn-add-preset" data-name="رسوم تخليص جمركي" data-type="fixed" data-val="25">
+                            <i class="bx bx-plus me-1"></i>+ تخليص 25 KWD
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" id="btnAddPricingRow">
+                            <i class="bx bx-plus-circle me-1"></i>إضافة بند مخصص
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-borderless align-middle mb-0" id="pricingAdditionsTable">
+                            <thead>
+                                <tr class="text-muted small border-bottom border-secondary border-opacity-25">
+                                    <th style="min-width: 220px;">اسم الإضافة / البند (Name / Description)</th>
+                                    <th style="min-width: 170px;">نوع الإضافة (Type)</th>
+                                    <th style="min-width: 140px;">القيمة (Value)</th>
+                                    <th style="min-width: 150px;">الأثر المحسوب (Impact)</th>
+                                    <th style="width: 50px;" class="text-center">حذف</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pricingAdditionsBody">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="noPricingAdditionsMsg" class="text-center py-3 text-muted small">
+                        <i class="bx bx-info-circle me-1"></i>لا توجد إضافات سعر حالياً. السعر النهائي للرحلة سيكون السعر الأساسي فقط بدون أي إضافات.
+                    </div>
+
+                    <!-- Live Calculation Summary -->
+                    <div class="mt-3 p-3 rounded-3" style="background: rgba(0, 0, 0, 0.25); border: 1px dashed rgba(255,255,255,0.1);">
+                        <div class="row align-items-center g-2 text-center text-md-start">
+                            <div class="col-12 col-md-4 text-muted small">
+                                <span>السعر الأساسي: </span>
+                                <strong class="text-white" id="summaryBasePrice">0.00 KWD</strong>
+                            </div>
+                            <div class="col-12 col-md-4 text-muted small">
+                                <span>مجموع الإضافات (لكل وحدة): </span>
+                                <strong class="text-warning" id="summaryAdditionsTotal">+0.00 KWD</strong>
+                            </div>
+                            <div class="col-12 col-md-4 text-md-end">
+                                <span class="text-muted small">إجمالي السعر للوحدة الواحدة: </span>
+                                <strong class="text-success fs-6" id="summaryFinalUnitPrice">0.00 KWD</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="my-4" style="height:1px;background:rgba(255,255,255,0.06);"></div>
@@ -748,6 +816,131 @@ $(document).ready(function() {
             $(this).addClass('active-no');
         }
     });
+
+
+    // ═══════════════════════════════════════════════════════════
+    // DYNAMIC PRICING ADDITIONS (الإضافات المرنة للسعر)
+    // ═══════════════════════════════════════════════════════════
+    var pricingRowCounter = 0;
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function addPricingRow(name, type, val) {
+        name = name || '';
+        type = type || 'percentage';
+        val = (val !== undefined && val !== null) ? val : '';
+        var idx = pricingRowCounter++;
+
+        var isPct = (type === 'percentage');
+        var suffixText = isPct ? '%' : 'KWD';
+
+        var trHtml = '<tr class="pricing-row" data-index="' + idx + '">' +
+            '<td>' +
+                '<input type="text" name="pricing_additions[' + idx + '][name]" class="form-control form-control-sm addition-name" placeholder="مثال: ضريبة 15% أو هامش ربح" value="' + escapeHtml(name) + '" required>' +
+            '</td>' +
+            '<td>' +
+                '<select name="pricing_additions[' + idx + '][type]" class="form-select form-select-sm addition-type">' +
+                    '<option value="percentage"' + (isPct ? ' selected' : '') + '>نسبة مئوية (%) من الأساسي</option>' +
+                    '<option value="fixed"' + (!isPct ? ' selected' : '') + '>مبلغ مقطوع (KWD)</option>' +
+                '</select>' +
+            '</td>' +
+            '<td>' +
+                '<div class="input-group input-group-sm">' +
+                    '<input type="number" step="0.01" min="0" name="pricing_additions[' + idx + '][value]" class="form-control addition-val" placeholder="0.00" value="' + val + '" required>' +
+                    '<span class="input-group-text addition-suffix bg-dark border-secondary border-opacity-25 text-white-50">' + suffixText + '</span>' +
+                '</div>' +
+            '</td>' +
+            '<td>' +
+                '<span class="badge bg-dark border border-secondary border-opacity-25 text-warning addition-calc-preview font-monospace">+0.00 KWD</span>' +
+            '</td>' +
+            '<td class="text-center">' +
+                '<button type="button" class="btn btn-sm btn-outline-danger btn-remove-pricing-row p-1 px-2" title="حذف">' +
+                    '<i class="bx bx-trash"></i>' +
+                '</button>' +
+            '</td>' +
+        '</tr>';
+
+        $('#pricingAdditionsBody').append(trHtml);
+        updatePricingCalculations();
+    }
+
+    function updatePricingCalculations() {
+        var basePrice = parseFloat($('#base_price_input').val()) || 0;
+        var totalAdditions = 0;
+        var rowCount = 0;
+
+        $('#pricingAdditionsBody tr.pricing-row').each(function() {
+            rowCount++;
+            var $row = $(this);
+            var type = $row.find('.addition-type').val();
+            var val = parseFloat($row.find('.addition-val').val()) || 0;
+            var impact = 0;
+
+            if (type === 'percentage') {
+                $row.find('.addition-suffix').text('%');
+                impact = basePrice * (val / 100);
+                $row.find('.addition-calc-preview').text('+' + impact.toFixed(2) + ' KWD (' + val + '%)');
+            } else {
+                $row.find('.addition-suffix').text('KWD');
+                impact = val;
+                $row.find('.addition-calc-preview').text('+' + impact.toFixed(2) + ' KWD (ثابت)');
+            }
+            totalAdditions += impact;
+        });
+
+        if (rowCount > 0) {
+            $('#noPricingAdditionsMsg').hide();
+        } else {
+            $('#noPricingAdditionsMsg').show();
+        }
+
+        var finalUnitPrice = basePrice + totalAdditions;
+        $('#summaryBasePrice').text(basePrice.toFixed(2) + ' KWD');
+        $('#summaryAdditionsTotal').text('+' + totalAdditions.toFixed(2) + ' KWD');
+        $('#summaryFinalUnitPrice').text(finalUnitPrice.toFixed(2) + ' KWD');
+    }
+
+    // Add manual row
+    $('#btnAddPricingRow').on('click', function() {
+        addPricingRow('', 'percentage', '');
+    });
+
+    // Add preset
+    $(document).on('click', '.btn-add-preset', function() {
+        var pName = $(this).data('name');
+        var pType = $(this).data('type');
+        var pVal  = $(this).data('val');
+        addPricingRow(pName, pType, pVal);
+    });
+
+    // Remove row
+    $(document).on('click', '.btn-remove-pricing-row', function() {
+        $(this).closest('tr').remove();
+        updatePricingCalculations();
+    });
+
+    // Recalculate on any input change
+    $(document).on('input change', '#base_price_input, .addition-val, .addition-type', function() {
+        updatePricingCalculations();
+    });
+
+    // Pre-populate initial pricing additions if old() exists
+    var initialPricingAdditions = @json(old('pricing_additions', []));
+    if (initialPricingAdditions && Array.isArray(initialPricingAdditions) && initialPricingAdditions.length > 0) {
+        initialPricingAdditions.forEach(function(item) {
+            addPricingRow(item.name, item.type, item.value);
+        });
+    } else {
+        updatePricingCalculations();
+    }
 
     // Form submit state
     $('#tripForm').on('submit', function() {
