@@ -500,60 +500,60 @@ html.light-theme .btn-customs-toggle.active-no {
 
             <div class="my-4" style="height:1px;background:rgba(255,255,255,0.06);"></div>
 
-            {{-- ════ 4. PRICING & FLEXIBLE ADDITIONS ════ --}}
-            <div class="tp-section-title"><i class="bx bx-purchase-tag-alt me-1"></i>Step 4: Pricing & Flexible Additions (التسعير والإضافات المرنة)</div>
+                        {{-- ════ 4. PRICING & FLEXIBLE ADDITIONS ════ --}}
+            <div class="tp-section-title"><i class="bx bx-purchase-tag-alt me-1"></i>Step 4: Pricing & Flexible Price Additions</div>
             <div class="row g-4 mb-3">
                 <div class="col-12 col-md-6">
-                    <label class="form-label">Price per Unit / Order (KWD) <span class="text-danger">*</span></label>
+                    <label class="form-label" style="color: #0F172A; font-weight: 700;">Price per Unit / Order (KWD) <span class="text-danger">*</span></label>
                     <div class="input-group">
-                        <input type="number" step="0.01" min="0" id="base_price_input" name="price" class="form-control @error('price') is-invalid @enderror" placeholder="0.00" value="{{ old('price') }}">
-                        <span class="input-group-text bg-dark border-secondary border-opacity-25 text-warning fw-bold">KWD</span>
+                        <input type="number" step="0.01" min="0" id="base_price_input" name="price" class="form-control @error('price') is-invalid @enderror" placeholder="0.00" value="{{ old('price') }}" style="background: #ffffff; color: #0F172A; border-color: #cbd5e1;">
+                        <span class="input-group-text bg-light text-dark fw-bold border" style="border-color: #cbd5e1;">KWD</span>
                     </div>
                     @error('price')
                         <div class="invalid-feedback text-danger d-block mt-1">{{ $message }}</div>
                     @enderror
-                    <div class="form-text text-muted" style="font-size:0.75rem;">السعر الأساسي لكل وحدة/شاحنة بالدينار الكويتي.</div>
+                    <div class="form-text text-muted" style="font-size:0.75rem;">Base rate per unit or truck in Kuwaiti Dinar (KWD). Additional surcharges can be configured below.</div>
                 </div>
                 {{-- Open Booking Capacity without limit --}}
                 <input type="hidden" name="total_capacity" value="9999">
                 <input type="hidden" name="available_capacity" value="9999">
             </div>
 
-            {{-- Dynamic Pricing Additions Box --}}
-            <div class="card border border-secondary border-opacity-25 rounded-3 mb-4" style="background: rgba(255, 255, 255, 0.02);">
-                <div class="card-header bg-transparent border-bottom border-secondary border-opacity-25 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 py-3">
+            {{-- Dynamic Pricing Additions Box (Light Mode Compatible) --}}
+            <div class="card border rounded-3 mb-4 shadow-sm" style="background: #ffffff; border-color: #e2e8f0 !important;">
+                <div class="card-header border-bottom d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 py-3" style="background: #f8fafc; border-color: #e2e8f0 !important;">
                     <div>
-                        <h6 class="mb-0 text-white d-flex align-items-center">
-                            <i class="bx bx-slider-alt text-warning me-2 fs-5"></i>
-                            إضافات السعر المرنة (Flexible Price Additions)
+                        <h6 class="mb-1 text-dark fw-bold d-flex align-items-center">
+                            <i class="bx bx-slider-alt text-primary me-2 fs-5"></i>
+                            Flexible Price Additions
                         </h6>
-                        <small class="text-muted">أضف أي رسوم إضافية مثل نسبة ضرائب، نسبة ربح، رسوم جمركية، أو مبالغ مقطوعة تظهر للعميل في التطبيق بدقة.</small>
+                        <small class="text-muted">Configure customizable surcharges (such as VAT %, profit margin %, customs clearance, or fixed fees) displayed transparently in the mobile app.</small>
                     </div>
                     <div class="d-flex align-items-center flex-wrap gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 btn-add-preset" data-name="ضريبة القيمة المضافة (VAT)" data-type="percentage" data-val="15">
-                            <i class="bx bx-plus me-1"></i>+ ضريبة 15%
+                        <button type="button" class="btn btn-sm rounded-pill px-3 btn-add-preset" data-name="VAT (15%)" data-type="percentage" data-val="15" style="background: #ECFEFF; color: #0891B2; border: 1px solid #A5F3FC; font-weight: 600;">
+                            <i class="bx bx-plus me-1"></i>+ 15% VAT
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 btn-add-preset" data-name="هامش ربح تشغيلي" data-type="percentage" data-val="10">
-                            <i class="bx bx-plus me-1"></i>+ ربح 10%
+                        <button type="button" class="btn btn-sm rounded-pill px-3 btn-add-preset" data-name="Profit Margin" data-type="percentage" data-val="10" style="background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; font-weight: 600;">
+                            <i class="bx bx-plus me-1"></i>+ 10% Profit
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 btn-add-preset" data-name="رسوم تخليص جمركي" data-type="fixed" data-val="25">
-                            <i class="bx bx-plus me-1"></i>+ تخليص 25 KWD
+                        <button type="button" class="btn btn-sm rounded-pill px-3 btn-add-preset" data-name="Customs Clearance Fee" data-type="fixed" data-val="25" style="background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; font-weight: 600;">
+                            <i class="bx bx-plus me-1"></i>+ 25 KWD Customs
                         </button>
-                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" id="btnAddPricingRow">
-                            <i class="bx bx-plus-circle me-1"></i>إضافة بند مخصص
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold" id="btnAddPricingRow">
+                            <i class="bx bx-plus-circle me-1"></i>Add Custom Item
                         </button>
                     </div>
                 </div>
                 <div class="card-body p-3">
                     <div class="table-responsive">
-                        <table class="table table-dark table-borderless align-middle mb-0" id="pricingAdditionsTable">
+                        <table class="table align-middle mb-0" id="pricingAdditionsTable" style="background: transparent;">
                             <thead>
-                                <tr class="text-muted small border-bottom border-secondary border-opacity-25">
-                                    <th style="min-width: 220px;">اسم الإضافة / البند (Name / Description)</th>
-                                    <th style="min-width: 170px;">نوع الإضافة (Type)</th>
-                                    <th style="min-width: 140px;">القيمة (Value)</th>
-                                    <th style="min-width: 150px;">الأثر المحسوب (Impact)</th>
-                                    <th style="width: 50px;" class="text-center">حذف</th>
+                                <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
+                                    <th style="min-width: 220px; color: #475569; font-weight: 700; font-size: 0.82rem; text-transform: uppercase;">Item Name / Description</th>
+                                    <th style="min-width: 200px; color: #475569; font-weight: 700; font-size: 0.82rem; text-transform: uppercase;">Addition Type</th>
+                                    <th style="min-width: 150px; color: #475569; font-weight: 700; font-size: 0.82rem; text-transform: uppercase;">Value</th>
+                                    <th style="min-width: 160px; color: #475569; font-weight: 700; font-size: 0.82rem; text-transform: uppercase;">Calculated Impact</th>
+                                    <th style="width: 60px; color: #475569; font-weight: 700; font-size: 0.82rem; text-transform: uppercase;" class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="pricingAdditionsBody">
@@ -562,24 +562,25 @@ html.light-theme .btn-customs-toggle.active-no {
                         </table>
                     </div>
 
-                    <div id="noPricingAdditionsMsg" class="text-center py-3 text-muted small">
-                        <i class="bx bx-info-circle me-1"></i>لا توجد إضافات سعر حالياً. السعر النهائي للرحلة سيكون السعر الأساسي فقط بدون أي إضافات.
+                    <div id="noPricingAdditionsMsg" class="text-center py-4 my-2 rounded-2" style="background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748B;">
+                        <i class="bx bx-info-circle me-1 fs-5 align-middle"></i>
+                        <span>No flexible price additions configured. The trip will use only the base price without extra fees.</span>
                     </div>
 
-                    <!-- Live Calculation Summary -->
-                    <div class="mt-3 p-3 rounded-3" style="background: rgba(0, 0, 0, 0.25); border: 1px dashed rgba(255,255,255,0.1);">
+                    <!-- Live Calculation Summary for Light Mode -->
+                    <div class="mt-3 p-3 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
                         <div class="row align-items-center g-2 text-center text-md-start">
-                            <div class="col-12 col-md-4 text-muted small">
-                                <span>السعر الأساسي: </span>
-                                <strong class="text-white" id="summaryBasePrice">0.00 KWD</strong>
+                            <div class="col-12 col-md-4">
+                                <span class="text-muted small">Base Price: </span>
+                                <strong class="text-dark fw-bold fs-6" id="summaryBasePrice">0.00 KWD</strong>
                             </div>
-                            <div class="col-12 col-md-4 text-muted small">
-                                <span>مجموع الإضافات (لكل وحدة): </span>
-                                <strong class="text-warning" id="summaryAdditionsTotal">+0.00 KWD</strong>
+                            <div class="col-12 col-md-4">
+                                <span class="text-muted small">Total Additions (per unit): </span>
+                                <strong class="fw-bold fs-6" style="color: #d97706;" id="summaryAdditionsTotal">+0.00 KWD</strong>
                             </div>
                             <div class="col-12 col-md-4 text-md-end">
-                                <span class="text-muted small">إجمالي السعر للوحدة الواحدة: </span>
-                                <strong class="text-success fs-6" id="summaryFinalUnitPrice">0.00 KWD</strong>
+                                <span class="text-muted small">Final Unit Price: </span>
+                                <strong class="fw-bolder fs-5" style="color: #16a34a;" id="summaryFinalUnitPrice">0.00 KWD</strong>
                             </div>
                         </div>
                     </div>
@@ -819,7 +820,7 @@ $(document).ready(function() {
 
 
     // ═══════════════════════════════════════════════════════════
-    // DYNAMIC PRICING ADDITIONS (الإضافات المرنة للسعر)
+    // DYNAMIC PRICING ADDITIONS (Flexible Price Additions)
     // ═══════════════════════════════════════════════════════════
     var pricingRowCounter = 0;
 
@@ -842,28 +843,28 @@ $(document).ready(function() {
         var isPct = (type === 'percentage');
         var suffixText = isPct ? '%' : 'KWD';
 
-        var trHtml = '<tr class="pricing-row" data-index="' + idx + '">' +
-            '<td>' +
-                '<input type="text" name="pricing_additions[' + idx + '][name]" class="form-control form-control-sm addition-name" placeholder="مثال: ضريبة 15% أو هامش ربح" value="' + escapeHtml(name) + '" required>' +
+        var trHtml = '<tr class="pricing-row" data-index="' + idx + '" style="border-bottom: 1px solid #f1f5f9; background: #ffffff;">' +
+            '<td class="py-2">' +
+                '<input type="text" name="pricing_additions[' + idx + '][name]" class="form-control form-control-sm addition-name" placeholder="e.g. VAT (15%) or Profit Margin" value="' + escapeHtml(name) + '" style="background:#ffffff; color:#0f172a; border-color:#cbd5e1;" required>' +
             '</td>' +
-            '<td>' +
-                '<select name="pricing_additions[' + idx + '][type]" class="form-select form-select-sm addition-type">' +
-                    '<option value="percentage"' + (isPct ? ' selected' : '') + '>نسبة مئوية (%) من الأساسي</option>' +
-                    '<option value="fixed"' + (!isPct ? ' selected' : '') + '>مبلغ مقطوع (KWD)</option>' +
+            '<td class="py-2">' +
+                '<select name="pricing_additions[' + idx + '][type]" class="form-select form-select-sm addition-type" style="background:#ffffff; color:#0f172a; border-color:#cbd5e1;">' +
+                    '<option value="percentage"' + (isPct ? ' selected' : '') + '>Percentage (%) of Base Price</option>' +
+                    '<option value="fixed"' + (!isPct ? ' selected' : '') + '>Fixed Amount (KWD) per Unit</option>' +
                 '</select>' +
             '</td>' +
-            '<td>' +
+            '<td class="py-2">' +
                 '<div class="input-group input-group-sm">' +
-                    '<input type="number" step="0.01" min="0" name="pricing_additions[' + idx + '][value]" class="form-control addition-val" placeholder="0.00" value="' + val + '" required>' +
-                    '<span class="input-group-text addition-suffix bg-dark border-secondary border-opacity-25 text-white-50">' + suffixText + '</span>' +
+                    '<input type="number" step="0.01" min="0" name="pricing_additions[' + idx + '][value]" class="form-control addition-val" placeholder="0.00" value="' + val + '" style="background:#ffffff; color:#0f172a; border-color:#cbd5e1;" required>' +
+                    '<span class="input-group-text addition-suffix bg-light text-secondary border-start-0" style="border-color:#cbd5e1; font-weight:600;">' + suffixText + '</span>' +
                 '</div>' +
             '</td>' +
-            '<td>' +
-                '<span class="badge bg-dark border border-secondary border-opacity-25 text-warning addition-calc-preview font-monospace">+0.00 KWD</span>' +
+            '<td class="py-2">' +
+                '<span class="badge rounded-pill addition-calc-preview font-monospace px-3 py-2" style="background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; font-size:0.85rem; font-weight:700;">+0.00 KWD</span>' +
             '</td>' +
-            '<td class="text-center">' +
-                '<button type="button" class="btn btn-sm btn-outline-danger btn-remove-pricing-row p-1 px-2" title="حذف">' +
-                    '<i class="bx bx-trash"></i>' +
+            '<td class="py-2 text-center">' +
+                '<button type="button" class="btn btn-sm btn-outline-danger btn-remove-pricing-row p-1 px-2 rounded-2" title="Remove" style="border-color:#fca5a5; color:#ef4444;">' +
+                    '<i class="bx bx-trash fs-6 align-middle"></i>' +
                 '</button>' +
             '</td>' +
         '</tr>';
@@ -891,7 +892,7 @@ $(document).ready(function() {
             } else {
                 $row.find('.addition-suffix').text('KWD');
                 impact = val;
-                $row.find('.addition-calc-preview').text('+' + impact.toFixed(2) + ' KWD (ثابت)');
+                $row.find('.addition-calc-preview').text('+' + impact.toFixed(2) + ' KWD (Fixed)');
             }
             totalAdditions += impact;
         });

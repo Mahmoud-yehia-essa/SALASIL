@@ -700,12 +700,12 @@ html.light-theme .detail-row .d-value {
 
         // Section 3.5: Dynamic Pricing Additions
         if (t.pricing_additions && t.pricing_additions.length > 0) {
-            html += '<div class="detail-sec-title"><i class="bx bx-receipt me-1"></i>Pricing Additions & Adjustments (' + t.pricing_additions.length + ')</div>';
+            html += '<div class="detail-sec-title"><i class="bx bx-receipt me-1"></i>Pricing Additions & Surcharges (' + t.pricing_additions.length + ')</div>';
             html += '<div class="detail-card-grid"><div class="d-flex flex-wrap gap-2">';
             t.pricing_additions.forEach(function(pa) {
-                var valStr = (pa.type === 'percentage') ? (pa.value + '% of base price') : ('+' + pa.value + ' KWD');
-                html += '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2 fw-semibold" style="font-size:0.82rem; border-radius:8px;">'
-                      + '<i class="bx bx-plus-circle me-1"></i>' + pa.name + ': <strong class="text-white">' + valStr + '</strong></span>';
+                var valStr = (pa.type === 'percentage') ? (pa.value + '% of base') : ('+' + pa.value + ' KWD (Fixed)');
+                html += '<span class="badge px-3 py-2 fw-semibold" style="background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; font-size:0.82rem; border-radius:8px;">'
+                      + '<i class="bx bx-plus-circle me-1"></i>' + pa.name + ': <strong>' + valStr + '</strong></span>';
             });
             html += '</div></div>';
         }
