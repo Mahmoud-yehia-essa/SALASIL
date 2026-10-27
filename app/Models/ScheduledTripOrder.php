@@ -45,7 +45,7 @@ class ScheduledTripOrder extends Model
                 if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
                     $doc['file_url'] = $path;
                 } else {
-                    $cleanPath = ltrim($path, '/');
+                    $cleanPath = preg_replace('#^public/#', '', ltrim($path, '/'));
                     $doc['file_url'] = asset($cleanPath);
                 }
             } else {

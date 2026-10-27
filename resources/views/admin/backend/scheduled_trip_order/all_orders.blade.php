@@ -759,16 +759,17 @@ html.light-theme .doc-card-title {
                 
                 var viewUrl = doc.view_url || ('/' + (doc.file_path || '').replace(/^\//, ''));
                 var downloadUrl = doc.download_url || viewUrl;
+                var directUrl = doc.file_url || viewUrl;
                 var docTitle = doc.title || doc.file_name || ('Document ' + (idx + 1));
                 var safeTitle = docTitle.replace(/'/g, "\\'");
 
                 html += '<div class="col-12 col-md-6">';
                 html += '  <div class="doc-card-item p-3 d-flex align-items-center justify-content-between" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;transition:all 0.2s;">';
-                html += '    <div class="d-flex align-items-center gap-2 overflow-hidden me-2" style="' + (isImg ? 'cursor:pointer;' : '') + '" ' + (isImg ? 'onclick="previewDocImage(\'' + viewUrl + '\', \'' + safeTitle + '\')"' : '') + '>';
+                html += '    <div class="d-flex align-items-center gap-2 overflow-hidden me-2" style="' + (isImg ? 'cursor:pointer;' : '') + '" ' + (isImg ? 'onclick="previewDocImage(\'' + directUrl + '\', \'' + safeTitle + '\', \'' + downloadUrl + '\')"' : '') + '>';
                 
                 if (isImg) {
                     html += '      <div style="width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);">';
-                    html += '        <img src="' + viewUrl + '" alt="' + safeTitle + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.innerHTML=\'<i class=\\\'bx bxs-file-image text-success\\\'></i>\';">';
+                    html += '        <img src="' + directUrl + '" alt="' + safeTitle + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src=\'' + viewUrl + '\';this.onerror=function(){this.parentElement.innerHTML=\'<i class=\\\'bx bxs-file-image text-success\\\'></i>\';};">';
                     html += '      </div>';
                 } else {
                     html += '      <div style="width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">';
@@ -787,7 +788,7 @@ html.light-theme .doc-card-title {
                     html += '      <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 me-1" style="font-size:0.65rem;">Required</span>';
                 }
                 if (isImg) {
-                    html += '      <button type="button" onclick="previewDocImage(\'' + viewUrl + '\', \'' + safeTitle + '\')" class="btn btn-sm btn-outline-success rounded-pill px-2 py-1" title="Quick Preview">';
+                    html += '      <button type="button" onclick="previewDocImage(\'' + directUrl + '\', \'' + safeTitle + '\', \'' + downloadUrl + '\')" class="btn btn-sm btn-outline-success rounded-pill px-2 py-1" title="Quick Preview">';
                     html += '        <i class="bx bx-show"></i>';
                     html += '      </button>';
                 }
@@ -826,10 +827,10 @@ html.light-theme .doc-card-title {
         $('#modalContent').html(html);
     }
 
-    function previewDocImage(url, title) {
+    function previewDocImage(url, title, downloadUrl) {
         $('#previewDocTitle').text(title || 'Document Preview');
         $('#previewDocImg').attr('src', url);
-        $('#previewDocDownloadBtn').attr('href', url);
+        $('#previewDocDownloadBtn').attr('href', downloadUrl || url);
         var previewModal = new bootstrap.Modal(document.getElementById('docImagePreviewModal'));
         previewModal.show();
     }

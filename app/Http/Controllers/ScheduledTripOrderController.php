@@ -16,6 +16,9 @@ use App\Models\Invoice;
 use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\File;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 
 class ScheduledTripOrderController extends Controller
 {
@@ -545,27 +548,61 @@ class ScheduledTripOrderController extends Controller
      */
     public function ViewOrderDocument($id, $index)
     {
-        $order = ScheduledTripOrder::findOrFail($id);
-        $docs = $order->documents;
-        if (!is_array($docs) || !isset($docs[$index])) {
-            abort(404, 'Document record not found');
+        try {
+            $order = ScheduledTripOrder::find($id);
+            if (!$order) {
+                return $this->renderDocumentNotFoundResponse('Order #' . $id . ' not found.', 404);
+            }
+
+            $docs = $order->documents;
+            if (!is_array($docs) || !isset($docs[$index])) {
+                return $this->renderDocumentNotFoundResponse('Document record index [' . $index . '] not found for Order #' . $id . '.', 404);
+            }
+
+            $doc = $docs[$index];
+            $filePath = $doc['file_path'] ?? '';
+
+            // If it is a remote URL, redirect or resolve
+            if (str_starts_with($filePath, 'http://') || str_starts_with($filePath, 'https://')) {
+                $resolvedPath = $this->resolveDocumentDiskPath($filePath);
+                if (!$resolvedPath || !@file_exists($resolvedPath)) {
+                    return redirect()->away($filePath);
+                }
+            } else {
+                $resolvedPath = $this->resolveDocumentDiskPath($filePath);
+            }
+
+            if (!$resolvedPath || !@file_exists($resolvedPath)) {
+                return $this->renderDocumentNotFoundResponse(
+                    'Document file not found on server storage.',
+                    404,
+                    $doc,
+                    $order
+                );
+            }
+
+            $rawFileName = $doc['original_name'] ?? $doc['file_name'] ?? basename($resolvedPath);
+            $mime = $this->safeMimeType($resolvedPath);
+
+            $headers = [
+                'Content-Type' => $mime,
+                'Content-Disposition' => $this->safeDispositionHeader('inline', $rawFileName, $index),
+                'Cache-Control' => 'public, max-age=86400',
+            ];
+
+            return response()->file($resolvedPath, $headers);
+        } catch (\Throwable $e) {
+            Log::error('ViewOrderDocument error: ' . $e->getMessage(), [
+                'order_id' => $id,
+                'index'    => $index,
+                'trace'    => $e->getTraceAsString(),
+            ]);
+
+            return $this->renderDocumentNotFoundResponse(
+                'An error occurred while loading this document: ' . $e->getMessage(),
+                500
+            );
         }
-
-        $doc = $docs[$index];
-        $filePath = $doc['file_path'] ?? '';
-
-        $resolvedPath = $this->resolveDocumentDiskPath($filePath);
-        if (!$resolvedPath || !file_exists($resolvedPath)) {
-            abort(404, 'Document file not found on server disk');
-        }
-
-        $mime = mime_content_type($resolvedPath) ?: 'application/octet-stream';
-        $fileName = $doc['original_name'] ?? $doc['file_name'] ?? basename($resolvedPath);
-
-        return response()->file($resolvedPath, [
-            'Content-Type' => $mime,
-            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
-        ]);
     }
 
     /**
@@ -573,50 +610,349 @@ class ScheduledTripOrderController extends Controller
      */
     public function DownloadOrderDocument($id, $index)
     {
-        $order = ScheduledTripOrder::findOrFail($id);
-        $docs = $order->documents;
-        if (!is_array($docs) || !isset($docs[$index])) {
-            abort(404, 'Document record not found');
+        try {
+            $order = ScheduledTripOrder::find($id);
+            if (!$order) {
+                return abort(404, 'Order not found');
+            }
+
+            $docs = $order->documents;
+            if (!is_array($docs) || !isset($docs[$index])) {
+                return abort(404, 'Document record not found');
+            }
+
+            $doc = $docs[$index];
+            $filePath = $doc['file_path'] ?? '';
+
+            if (str_starts_with($filePath, 'http://') || str_starts_with($filePath, 'https://')) {
+                $resolvedPath = $this->resolveDocumentDiskPath($filePath);
+                if (!$resolvedPath || !@file_exists($resolvedPath)) {
+                    return redirect()->away($filePath);
+                }
+            } else {
+                $resolvedPath = $this->resolveDocumentDiskPath($filePath);
+            }
+
+            if (!$resolvedPath || !@file_exists($resolvedPath)) {
+                return abort(404, 'Document file not found on server disk');
+            }
+
+            $rawFileName = $doc['original_name'] ?? $doc['file_name'] ?? basename($resolvedPath);
+            $mime = $this->safeMimeType($resolvedPath);
+
+            $headers = [
+                'Content-Type' => $mime,
+                'Content-Disposition' => $this->safeDispositionHeader('attachment', $rawFileName, $index),
+            ];
+
+            return response()->file($resolvedPath, $headers);
+        } catch (\Throwable $e) {
+            Log::error('DownloadOrderDocument error: ' . $e->getMessage(), [
+                'order_id' => $id,
+                'index'    => $index,
+                'trace'    => $e->getTraceAsString(),
+            ]);
+
+            return abort(500, 'Unable to download document: ' . $e->getMessage());
         }
-
-        $doc = $docs[$index];
-        $filePath = $doc['file_path'] ?? '';
-
-        $resolvedPath = $this->resolveDocumentDiskPath($filePath);
-        if (!$resolvedPath || !file_exists($resolvedPath)) {
-            abort(404, 'Document file not found on server disk');
-        }
-
-        $fileName = $doc['original_name'] ?? $doc['file_name'] ?? basename($resolvedPath);
-        return response()->download($resolvedPath, $fileName);
     }
 
     /**
      * Helper to resolve document disk path from public_path, upload/order_documents, or absolute path
      */
-    private function resolveDocumentDiskPath($filePath)
+    private function resolveDocumentDiskPath(?string $filePath): ?string
     {
         if (empty($filePath)) return null;
 
-        // 1. Check relative to public_path
-        $p = public_path(ltrim($filePath, '/'));
-        if (file_exists($p) && !is_dir($p)) {
-            return $p;
+        // If it is a URL, extract path component
+        if (str_starts_with($filePath, 'http://') || str_starts_with($filePath, 'https://')) {
+            $parsed = parse_url($filePath, PHP_URL_PATH);
+            if ($parsed) {
+                $filePath = $parsed;
+            }
         }
 
-        // 2. Check if file is in public/upload/order_documents/ by filename
-        $base = basename($filePath);
-        $pUpload = public_path('upload/order_documents/' . $base);
-        if (file_exists($pUpload) && !is_dir($pUpload)) {
-            return $pUpload;
+        $clean = ltrim($filePath, '/');
+        // If path starts with public/, strip it for relative path checks
+        $cleanNoPublic = preg_replace('#^public/#', '', $clean);
+        $base = basename($clean);
+
+        $candidates = [
+            // Standard public_path
+            public_path($clean),
+            public_path($cleanNoPublic),
+            public_path('upload/order_documents/' . $base),
+            
+            // Base path public/
+            base_path('public/' . $clean),
+            base_path('public/' . $cleanNoPublic),
+            base_path('public/upload/order_documents/' . $base),
+
+            // cPanel public_html/
+            base_path('../public_html/' . $clean),
+            base_path('../public_html/' . $cleanNoPublic),
+            base_path('../public_html/upload/order_documents/' . $base),
+            base_path('../../public_html/' . $clean),
+            base_path('../../public_html/' . $cleanNoPublic),
+            base_path('../../public_html/upload/order_documents/' . $base),
+
+            // Storage public
+            storage_path('app/public/' . $clean),
+            storage_path('app/public/' . $cleanNoPublic),
+            storage_path('app/public/upload/order_documents/' . $base),
+            storage_path('app/' . $clean),
+        ];
+
+        if (isset($_SERVER['DOCUMENT_ROOT']) && !empty($_SERVER['DOCUMENT_ROOT'])) {
+            $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+            $candidates[] = $docRoot . '/' . $clean;
+            $candidates[] = $docRoot . '/' . $cleanNoPublic;
+            $candidates[] = $docRoot . '/upload/order_documents/' . $base;
         }
 
-        // 3. Check exact absolute path on server machine
-        if (file_exists($filePath) && !is_dir($filePath)) {
-            return $filePath;
+        // Direct absolute path
+        $candidates[] = $filePath;
+
+        foreach ($candidates as $cand) {
+            if (!empty($cand) && @file_exists($cand) && !@is_dir($cand)) {
+                return realpath($cand) ?: $cand;
+            }
         }
 
         return null;
+    }
+
+    /**
+     * Safely determine MIME type without triggering PHP warnings
+     */
+    private function safeMimeType(string $path, string $fallbackExt = ''): string
+    {
+        $mime = null;
+        if (function_exists('mime_content_type')) {
+            $mime = @mime_content_type($path);
+        }
+        if (!$mime && class_exists('\Illuminate\Support\Facades\File')) {
+            try {
+                $mime = File::mimeType($path);
+            } catch (\Throwable $e) {}
+        }
+        if (!$mime) {
+            $ext = strtolower($fallbackExt ?: pathinfo($path, PATHINFO_EXTENSION));
+            $map = [
+                'pdf'  => 'application/pdf',
+                'jpg'  => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png'  => 'image/png',
+                'webp' => 'image/webp',
+                'gif'  => 'image/gif',
+                'svg'  => 'image/svg+xml',
+                'doc'  => 'application/msword',
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'xls'  => 'application/vnd.ms-excel',
+                'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ];
+            $mime = $map[$ext] ?? 'application/octet-stream';
+        }
+        return $mime;
+    }
+
+    /**
+     * Build RFC-compliant Content-Disposition header with safe ASCII fallback and UTF-8 encoding
+     */
+    private function safeDispositionHeader(string $type, string $rawFileName, $index = 0): string
+    {
+        $ext = pathinfo($rawFileName, PATHINFO_EXTENSION);
+        $nameOnly = pathinfo($rawFileName, PATHINFO_FILENAME);
+
+        // Sanitize ASCII fallback name
+        $asciiName = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $nameOnly);
+        $asciiName = trim($asciiName, '_');
+        if (empty($asciiName)) {
+            $asciiName = 'document_' . ($index + 1);
+        }
+        $fallbackFilename = $ext ? ($asciiName . '.' . $ext) : $asciiName;
+
+        try {
+            return HeaderUtils::makeDisposition(
+                $type === 'attachment' ? HeaderUtils::DISPOSITION_ATTACHMENT : HeaderUtils::DISPOSITION_INLINE,
+                $rawFileName,
+                $fallbackFilename
+            );
+        } catch (\Throwable $e) {
+            return $type . '; filename="' . $fallbackFilename . '"';
+        }
+    }
+
+    /**
+     * Render a clean, user-friendly fallback response when a document is missing or error occurs.
+     */
+    private function renderDocumentNotFoundResponse(
+        string $message,
+        int $statusCode = 404,
+        ?array $doc = null,
+        ?ScheduledTripOrder $order = null
+    ) {
+        $request = request();
+
+        // 1. If AJAX or API call, return JSON
+        if ($request->wantsJson() || $request->isXmlHttpRequest() || $request->is('api/*')) {
+            return response()->json([
+                'status'   => 'error',
+                'message'  => $message,
+                'document' => $doc,
+            ], $statusCode);
+        }
+
+        $fileType = strtolower($doc['file_type'] ?? pathinfo($doc['file_name'] ?? $doc['file_path'] ?? '', PATHINFO_EXTENSION));
+        $isImage = in_array($fileType, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']);
+
+        // 2. If the request was for an image resource (e.g. <img> tag src), return a stylish SVG placeholder
+        $accept = $request->header('Accept', '');
+        if ($isImage && (str_contains($accept, 'image/') || !str_contains($accept, 'text/html'))) {
+            $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="220" viewBox="0 0 360 220">'
+                 . '<defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0F172A"/><stop offset="100%" stop-color="#1E293B"/></linearGradient></defs>'
+                 . '<rect width="100%" height="100%" rx="16" fill="url(#g)"/>'
+                 . '<rect x="2" y="2" width="356" height="216" rx="14" fill="none" stroke="#334155" stroke-width="1.5"/>'
+                 . '<circle cx="180" cy="72" r="28" fill="#1E293B" stroke="#475569" stroke-width="1.5"/>'
+                 . '<path d="M170 82 L190 82 M180 60 L180 76 M180 80 L180 82" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"/>'
+                 . '<text x="180" y="130" font-family="sans-serif" font-size="14" font-weight="700" fill="#F8FAFC" text-anchor="middle">Document File Missing</text>'
+                 . '<text x="180" y="152" font-family="sans-serif" font-size="11" fill="#94A3B8" text-anchor="middle">Physical file not located on storage disk</text>'
+                 . '<text x="180" y="174" font-family="sans-serif" font-size="10" fill="#64748B" text-anchor="middle">Salasil Logistics Management</text>'
+                 . '</svg>';
+            return response($svg, 200, ['Content-Type' => 'image/svg+xml']);
+        }
+
+        // 3. For direct tab views, render an elegant HTML status page
+        $docTitle    = htmlspecialchars($doc['title'] ?? 'Order Document', ENT_QUOTES, 'UTF-8');
+        $fileName    = htmlspecialchars($doc['file_name'] ?? '—', ENT_QUOTES, 'UTF-8');
+        $origName    = htmlspecialchars($doc['original_name'] ?? '—', ENT_QUOTES, 'UTF-8');
+        $filePath    = htmlspecialchars($doc['file_path'] ?? '—', ENT_QUOTES, 'UTF-8');
+        $uploadedAt  = htmlspecialchars($doc['uploaded_at'] ?? '—', ENT_QUOTES, 'UTF-8');
+        $orderIdStr  = $order ? ('#' . $order->id) : '—';
+        $safeMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+        $backUrl     = route('all.scheduled.trip.orders');
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Document Status - Salasil Logistics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #090D16;
+            color: #F8FAFC;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            background: #0F172A;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            max-width: 580px;
+            width: 100%;
+            padding: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        }
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: rgba(239, 68, 68, 0.12);
+            color: #F87171;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; color: #FFFFFF; }
+        p.subtitle { color: #94A3B8; font-size: 0.92rem; margin-bottom: 24px; line-height: 1.5; }
+        .info-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.86rem;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #64748B; font-weight: 500; }
+        .info-val { color: #E2E8F0; font-weight: 600; text-align: right; max-width: 60%; word-break: break-all; }
+        .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+        .btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        .btn-primary { background: #38BDF8; color: #0F172A; }
+        .btn-primary:hover { background: #0EA5E9; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.08); color: #F8FAFC; border: 1px solid rgba(255, 255, 255, 0.12); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.12); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge-pill">
+            <span>●</span> Document File Unavailable
+        </div>
+        <h1>Document Preview Unavailable</h1>
+        <p class="subtitle">{$safeMessage}</p>
+
+        <div class="info-box">
+            <div class="info-row">
+                <span class="info-label">Order Number</span>
+                <span class="info-val" style="color:#38BDF8;">{$orderIdStr}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Document Title</span>
+                <span class="info-val">{$docTitle}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Original Filename</span>
+                <span class="info-val">{$origName}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Server Storage Path</span>
+                <span class="info-val" style="font-family:monospace;font-size:0.78rem;">{$filePath}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Uploaded At</span>
+                <span class="info-val">{$uploadedAt}</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="{$backUrl}" class="btn btn-primary">Back to Orders</a>
+            <button onclick="window.close()" class="btn btn-secondary">Close Tab</button>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+        return response($html, $statusCode, ['Content-Type' => 'text/html; charset=UTF-8']);
     }
 
     /**
