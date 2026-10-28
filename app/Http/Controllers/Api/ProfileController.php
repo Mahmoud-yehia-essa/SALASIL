@@ -37,62 +37,143 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        // 1. Base Validation Rules
-        $rules = [
-            'fname'           => 'required|string|max:255',
-            'lname'           => 'nullable|string|max:255',
-            'email'           => 'required|email|max:255|unique:users,email,' . $user->id,
-            'phone'           => 'nullable|string|max:255',
-            'secondary_phone' => 'nullable|string|max:50',
-            'country_code'    => 'nullable|string|max:10',
-            'country_id'      => 'nullable|exists:countries,id',
-            'city_id'         => 'nullable|exists:cities,id',
-            'dateofbirth'     => 'nullable|date',
-            'address'         => 'nullable|string',
-            'locale'          => 'nullable|string|in:ar,en',
-            'photo'           => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:4096',
-            'firebase_token'  => 'nullable|string',
-        ];
-
-        // Conditional Rules based on User Role
-        if ($user->role === 'company_customer') {
-            $rules['company_name']            = 'required|string|max:255';
-            $rules['commercial_register']     = 'required|string|max:100';
-            $rules['commercial_register_doc'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
-            $rules['civil_id']                = 'required|string|max:50';
-            $rules['tax_number']              = 'nullable|string|max:100';
-            $rules['representative_name']     = 'nullable|string|max:255';
-            $rules['representative_position'] = 'nullable|string|max:255';
-            $rules['representative_phone']    = 'nullable|string|max:100';
-        } elseif ($user->role === 'driver') {
-            $rules['truck_type_id']             = 'nullable|exists:truck_types,id';
-            $rules['license_number']           = 'nullable|string|max:255';
-            $rules['availability_status']      = 'nullable|in:available,busy,offline';
-            $rules['license_photo']            = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
-            $rules['truck_registration_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
-            $rules['civil_id_photo']           = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
-        }
-
-        $messages = [
-            'fname.required'               => 'First name is required.',
-            'email.required'               => 'Email address is required.',
-            'email.unique'                 => 'This email address is registered by another account.',
-            'company_name.required'        => 'Company name is required.',
-            'commercial_register.required' => 'Commercial register (CR) number is required.',
-            'civil_id.required'            => 'Civil ID / National ID is required.',
-        ];
-
-        $validator = Validator::make($request->all(), $rules, $messages);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Validation error',
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
-
         try {
+            // 1. Base Validation Rules (Safe from php_fileinfo extension crashes)
+            $rules = [
+                'fname'           => 'required|string|max:255',
+                'lname'           => 'nullable|string|max:255',
+                'email'           => 'required|email|max:255|unique:users,email,' . $user->id,
+                'phone'           => 'nullable|string|max:255',
+                'secondary_phone' => 'nullable|string|max:50',
+                'country_code'    => 'nullable|string|max:10',
+                'country_id'      => 'nullable|exists:countries,id',
+                'city_id'         => 'nullable|exists:cities,id',
+                'dateofbirth'     => 'nullable|date',
+                'address'         => 'nullable|string',
+                'locale'          => 'nullable|string|in:ar,en',
+                'firebase_token'  => 'nullable|string',
+            ];
+
+            // Conditional Rules based on User Role
+            if ($user->role === 'company_customer') {
+                $rules['company_name']            = 'required|string|max:255';
+                $rules['commercial_register']     = 'required|string|max:100';
+                $rules['civil_id']                = 'required|string|max:50';
+                $rules['tax_number']              = 'nullable|string|max:100';
+                $rules['representative_name']     = 'nullable|string|max:255';
+                $rules['representative_position'] = 'nullable|string|max:255';
+                $rules['representative_phone']    = 'nullable|string|max:100';
+            } elseif ($user->role === 'driver') {
+                $rules['truck_type_id']             = 'nullable|exists:truck_types,id';
+                $rules['license_number']           = 'nullable|string|max:255';
+                $rules['availability_status']      = 'nullable|in:available,busy,offline';
+            }
+
+            $messages = [
+                'fname.required'               => 'First name is required.',
+                'email.required'               => 'Email address is required.',
+                'email.unique'                 => 'This email address is registered by another account.',
+                'company_name.required'        => 'Company name is required.',
+                'commercial_register.required' => 'Commercial register (CR) number is required.',
+                'civil_id.required'            => 'Civil ID / National ID is required.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $messages);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Validation error',
+                    'errors'  => $validator->errors(),
+                ], 422);
+            }
+
+            // Safe File Validation
+            $fileErrors = [];
+
+            if ($request->hasFile('photo')) {
+                $f = $request->file('photo');
+                if (!$f->isValid()) {
+                    $fileErrors['photo'][] = 'Invalid photo file upload.';
+                } elseif ($f->getSize() > 5 * 1024 * 1024) {
+                    $fileErrors['photo'][] = 'The photo must not exceed 5MB.';
+                } else {
+                    $ext = strtolower($f->getClientOriginalExtension());
+                    $allowed = ['jpg', 'jpeg', 'png', 'webp', 'svg', 'gif'];
+                    if (!in_array($ext, $allowed)) {
+                        $fileErrors['photo'][] = 'Invalid photo format. Allowed formats: ' . implode(', ', $allowed);
+                    }
+                }
+            }
+
+            if ($request->hasFile('commercial_register_doc')) {
+                $f = $request->file('commercial_register_doc');
+                if (!$f->isValid()) {
+                    $fileErrors['commercial_register_doc'][] = 'Invalid commercial register document upload.';
+                } elseif ($f->getSize() > 10 * 1024 * 1024) {
+                    $fileErrors['commercial_register_doc'][] = 'The document must not exceed 10MB.';
+                } else {
+                    $ext = strtolower($f->getClientOriginalExtension());
+                    $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+                    if (!in_array($ext, $allowed)) {
+                        $fileErrors['commercial_register_doc'][] = 'Invalid document format. Allowed formats: ' . implode(', ', $allowed);
+                    }
+                }
+            }
+
+            if ($request->hasFile('license_photo')) {
+                $f = $request->file('license_photo');
+                if (!$f->isValid()) {
+                    $fileErrors['license_photo'][] = 'Invalid license photo upload.';
+                } elseif ($f->getSize() > 10 * 1024 * 1024) {
+                    $fileErrors['license_photo'][] = 'The license document must not exceed 10MB.';
+                } else {
+                    $ext = strtolower($f->getClientOriginalExtension());
+                    $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+                    if (!in_array($ext, $allowed)) {
+                        $fileErrors['license_photo'][] = 'Invalid document format. Allowed formats: ' . implode(', ', $allowed);
+                    }
+                }
+            }
+
+            if ($request->hasFile('truck_registration_photo')) {
+                $f = $request->file('truck_registration_photo');
+                if (!$f->isValid()) {
+                    $fileErrors['truck_registration_photo'][] = 'Invalid truck registration upload.';
+                } elseif ($f->getSize() > 10 * 1024 * 1024) {
+                    $fileErrors['truck_registration_photo'][] = 'The truck registration document must not exceed 10MB.';
+                } else {
+                    $ext = strtolower($f->getClientOriginalExtension());
+                    $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+                    if (!in_array($ext, $allowed)) {
+                        $fileErrors['truck_registration_photo'][] = 'Invalid document format. Allowed formats: ' . implode(', ', $allowed);
+                    }
+                }
+            }
+
+            if ($request->hasFile('civil_id_photo')) {
+                $f = $request->file('civil_id_photo');
+                if (!$f->isValid()) {
+                    $fileErrors['civil_id_photo'][] = 'Invalid civil ID upload.';
+                } elseif ($f->getSize() > 10 * 1024 * 1024) {
+                    $fileErrors['civil_id_photo'][] = 'The civil ID document must not exceed 10MB.';
+                } else {
+                    $ext = strtolower($f->getClientOriginalExtension());
+                    $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+                    if (!in_array($ext, $allowed)) {
+                        $fileErrors['civil_id_photo'][] = 'Invalid document format. Allowed formats: ' . implode(', ', $allowed);
+                    }
+                }
+            }
+
+            if (!empty($fileErrors)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Validation error',
+                    'errors'  => $fileErrors,
+                ], 422);
+            }
+
             DB::beginTransaction();
 
             // 2. Update User Main Data
@@ -112,21 +193,13 @@ class ProfileController extends Controller
                 $user->firebase_token = $request->firebase_token;
             }
 
-            // Update Profile Photo
+            // Update Profile Photo safely
             if ($request->hasFile('photo')) {
-                $userDir = public_path('upload/user_images');
-                if (!file_exists($userDir)) {
-                    mkdir($userDir, 0755, true);
+                $uploadedPhoto = $this->saveUploadedFile($request->file('photo'), 'upload/user_images');
+                if ($uploadedPhoto) {
+                    $this->deleteOldFile('upload/user_images/' . $user->photo);
+                    $user->photo = $uploadedPhoto;
                 }
-
-                if (!empty($user->photo) && file_exists($userDir . '/' . $user->photo)) {
-                    @unlink($userDir . '/' . $user->photo);
-                }
-
-                $file = $request->file('photo');
-                $filename = date('YmdHi') . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $file->move($userDir, $filename);
-                $user->photo = $filename;
             }
 
             $user->save();
@@ -143,19 +216,11 @@ class ProfileController extends Controller
                 $company->representative_phone    = $request->filled('representative_phone') ? trim($request->representative_phone) : null;
 
                 if ($request->hasFile('commercial_register_doc')) {
-                    $companyDir = public_path('upload/company_docs');
-                    if (!file_exists($companyDir)) {
-                        mkdir($companyDir, 0755, true);
+                    $uploadedDoc = $this->saveUploadedFile($request->file('commercial_register_doc'), 'upload/company_docs', 'cr');
+                    if ($uploadedDoc) {
+                        $this->deleteOldFile('upload/company_docs/' . $company->commercial_register_doc);
+                        $company->commercial_register_doc = $uploadedDoc;
                     }
-
-                    if (!empty($company->commercial_register_doc) && file_exists($companyDir . '/' . $company->commercial_register_doc)) {
-                        @unlink($companyDir . '/' . $company->commercial_register_doc);
-                    }
-
-                    $doc = $request->file('commercial_register_doc');
-                    $docName = date('YmdHi') . '_cr_' . uniqid() . '.' . $doc->getClientOriginalExtension();
-                    $doc->move($companyDir, $docName);
-                    $company->commercial_register_doc = $docName;
                 }
 
                 $company->save();
@@ -169,39 +234,28 @@ class ProfileController extends Controller
                     $driver->availability_status = $request->availability_status;
                 }
 
-                $driverDocsDir = public_path('upload/driver_docs');
-                if (!file_exists($driverDocsDir)) {
-                    mkdir($driverDocsDir, 0755, true);
-                }
-
                 if ($request->hasFile('license_photo')) {
-                    if (!empty($driver->license_photo) && file_exists($driverDocsDir . '/' . $driver->license_photo)) {
-                        @unlink($driverDocsDir . '/' . $driver->license_photo);
+                    $uploaded = $this->saveUploadedFile($request->file('license_photo'), 'upload/driver_docs', 'license');
+                    if ($uploaded) {
+                        $this->deleteOldFile('upload/driver_docs/' . $driver->license_photo);
+                        $driver->license_photo = $uploaded;
                     }
-                    $f = $request->file('license_photo');
-                    $fn = date('YmdHi') . '_license_' . uniqid() . '.' . $f->getClientOriginalExtension();
-                    $f->move($driverDocsDir, $fn);
-                    $driver->license_photo = $fn;
                 }
 
                 if ($request->hasFile('truck_registration_photo')) {
-                    if (!empty($driver->truck_registration_photo) && file_exists($driverDocsDir . '/' . $driver->truck_registration_photo)) {
-                        @unlink($driverDocsDir . '/' . $driver->truck_registration_photo);
+                    $uploaded = $this->saveUploadedFile($request->file('truck_registration_photo'), 'upload/driver_docs', 'truckreg');
+                    if ($uploaded) {
+                        $this->deleteOldFile('upload/driver_docs/' . $driver->truck_registration_photo);
+                        $driver->truck_registration_photo = $uploaded;
                     }
-                    $f = $request->file('truck_registration_photo');
-                    $fn = date('YmdHi') . '_truckreg_' . uniqid() . '.' . $f->getClientOriginalExtension();
-                    $f->move($driverDocsDir, $fn);
-                    $driver->truck_registration_photo = $fn;
                 }
 
                 if ($request->hasFile('civil_id_photo')) {
-                    if (!empty($driver->civil_id_photo) && file_exists($driverDocsDir . '/' . $driver->civil_id_photo)) {
-                        @unlink($driverDocsDir . '/' . $driver->civil_id_photo);
+                    $uploaded = $this->saveUploadedFile($request->file('civil_id_photo'), 'upload/driver_docs', 'civilid');
+                    if ($uploaded) {
+                        $this->deleteOldFile('upload/driver_docs/' . $driver->civil_id_photo);
+                        $driver->civil_id_photo = $uploaded;
                     }
-                    $f = $request->file('civil_id_photo');
-                    $fn = date('YmdHi') . '_civilid_' . uniqid() . '.' . $f->getClientOriginalExtension();
-                    $f->move($driverDocsDir, $fn);
-                    $driver->civil_id_photo = $fn;
                 }
 
                 $driver->save();
@@ -221,7 +275,10 @@ class ProfileController extends Controller
             ], 200);
 
         } catch (\Throwable $e) {
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            \Illuminate\Support\Facades\Log::error('Profile API Update Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
 
             return response()->json([
                 'status'  => false,
@@ -231,7 +288,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Change Password for Authenticated User.
+     * Change Password     * Change Password for Authenticated User.
      */
     public function changePassword(Request $request)
     {
@@ -331,4 +388,58 @@ class ProfileController extends Controller
 
         return $userData;
     }
+
+    /**
+     * Safely save an uploaded file across public_path and cPanel public_html directories.
+     */
+    private function saveUploadedFile($file, string $subfolder, string $prefix = ''): ?string
+    {
+        if (!$file || !$file->isValid()) {
+            return null;
+        }
+
+        try {
+            $ext = strtolower($file->getClientOriginalExtension()) ?: 'jpg';
+            $uniqueName = date('YmdHi') . '_' . ($prefix ? $prefix . '_' : '') . uniqid() . '.' . $ext;
+
+            $targetDir = public_path($subfolder);
+            if (!file_exists($targetDir)) {
+                @mkdir($targetDir, 0777, true);
+            }
+
+            $file->move($targetDir, $uniqueName);
+
+            $cpanelUpload = base_path('../public_html/' . $subfolder);
+            if (is_dir(base_path('../public_html')) && realpath($targetDir) !== realpath($cpanelUpload)) {
+                if (!file_exists($cpanelUpload)) {
+                    @mkdir($cpanelUpload, 0777, true);
+                }
+                @copy($targetDir . '/' . $uniqueName, $cpanelUpload . '/' . $uniqueName);
+            }
+
+            return $uniqueName;
+        } catch (\Throwable $ex) {
+            \Illuminate\Support\Facades\Log::error('Error saving file in ' . $subfolder . ': ' . $ex->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Safely delete an old file from both public_path and public_html.
+     */
+    private function deleteOldFile(?string $relativePath): void
+    {
+        if (empty($relativePath)) return;
+
+        $p1 = public_path($relativePath);
+        if (file_exists($p1)) {
+            @unlink($p1);
+        }
+
+        $p2 = base_path('../public_html/' . $relativePath);
+        if (file_exists($p2)) {
+            @unlink($p2);
+        }
+    }
+
 }
