@@ -249,7 +249,7 @@ class ScheduledTripOrderController extends Controller
 
         $rules = [
             'scheduled_trip_id'     => 'required|exists:scheduled_trips,id',
-            'customer_id'           => ($user && in_array($user->role, ['individual_customer', 'company_customer'])) ? 'nullable|exists:users,id' : 'required|exists:users,id',
+            'customer_id'           => $user ? 'nullable|exists:users,id' : 'required|exists:users,id',
             'booked_capacity'       => 'nullable|integer|min:1',
             'shipment_name'         => 'nullable|string|max:255',
             'shipment_description'  => 'nullable|string',
@@ -313,9 +313,9 @@ class ScheduledTripOrderController extends Controller
 
         $trip = ScheduledTrip::with('route')->findOrFail($request->scheduled_trip_id);
 
-        $customerId = ($user && in_array($user->role, ['individual_customer', 'company_customer']) && !$request->filled('customer_id'))
-            ? $user->id
-            : $request->customer_id;
+        $customerId = $request->filled('customer_id')
+            ? $request->customer_id
+            : ($user ? $user->id : null);
 
         $bookedUnits   = max(1, (int) ($request->booked_capacity ?: 1));
         $tripPrice     = (float) $trip->price;
@@ -416,11 +416,25 @@ class ScheduledTripOrderController extends Controller
                 @mkdir(public_path('upload/order_documents'), 0777, true);
             }
 
+            $targetDir = public_path('upload/order_documents');
+            if (!file_exists($targetDir)) {
+                @mkdir($targetDir, 0777, true);
+            }
+            $cpanelUpload = base_path('../public_html/upload/order_documents');
+
             foreach ($files as $idx => $file) {
                 if ($file && $file->isValid()) {
-                    $ext = $file->getClientOriginalExtension();
+                    $ext = $file->getClientOriginalExtension() ?: 'jpg';
                     $uniqueName = time() . '_' . uniqid() . '.' . $ext;
-                    $file->move(public_path('upload/order_documents'), $uniqueName);
+                    $file->move($targetDir, $uniqueName);
+
+                    // Sync to cPanel public_html if distinct directory
+                    if (is_dir(base_path('../public_html')) && realpath($targetDir) !== realpath($cpanelUpload)) {
+                        if (!file_exists($cpanelUpload)) {
+                            @mkdir($cpanelUpload, 0777, true);
+                        }
+                        @copy($targetDir . '/' . $uniqueName, $cpanelUpload . '/' . $uniqueName);
+                    }
 
                     $sizeBytes = @filesize(public_path('upload/order_documents/' . $uniqueName));
                     $sizeFormatted = $sizeBytes > 1048576 ? round($sizeBytes / 1048576, 2) . ' MB' : round($sizeBytes / 1024, 1) . ' KB';
