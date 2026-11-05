@@ -125,12 +125,26 @@
                     <!-- Order & Status Section -->
                     <div class="mb-4">
                         <h6 class="text-info fw-bold text-uppercase fs-7 mb-3" style="letter-spacing: 0.5px;">
-                            <i class="bx bx-sort-alt-2 me-1"></i> Ordering & Status
+                            <i class="bx bx-sort-alt-2 me-1"></i> Target Application, Ordering & Status
                         </h6>
                         <div class="row g-3">
+                            <!-- Target Application -->
+                            <div class="col-12 col-md-4">
+                                <label for="app_type" class="form-label fw-semibold">Target App (التطبيق المستهدف) <span class="text-danger">*</span></label>
+                                <select name="app_type" id="app_type" class="form-select @error('app_type') is-invalid @enderror" required>
+                                    <option value="customer" {{ old('app_type', 'customer') == 'customer' ? 'selected' : '' }}>📱 Customer App (تطبيق العميل)</option>
+                                    <option value="driver" {{ old('app_type') == 'driver' ? 'selected' : '' }}>🚛 Driver App (تطبيق السائق)</option>
+                                    <option value="both" {{ old('app_type') == 'both' ? 'selected' : '' }}>🔄 Both Apps (كلا التطبيقين)</option>
+                                </select>
+                                <small class="text-slate-400 d-block mt-1">Choose which mobile app displays this slide.</small>
+                                @error('app_type')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <!-- Sort Order -->
-                            <div class="col-12 col-md-6">
-                                <label for="sort_order" class="form-label fw-semibold">Slide Sequence Order (ترتيب الظهور) <span class="text-danger">*</span></label>
+                            <div class="col-12 col-md-4">
+                                <label for="sort_order" class="form-label fw-semibold">Sequence Order (ترتيب الظهور) <span class="text-danger">*</span></label>
                                 <div class="position-relative">
                                     <input type="number" 
                                            name="sort_order" 
@@ -144,19 +158,20 @@
                                         <i class="bx bx-sort-numbered fs-5"></i>
                                     </span>
                                 </div>
-                                <small class="text-slate-400 d-block mt-1">Slides will be displayed sequentially based on this number (1, 2, 3...).</small>
+                                <small class="text-slate-400 d-block mt-1">Displayed sequentially (1, 2, 3...).</small>
                                 @error('sort_order')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
 
                             <!-- Status -->
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-4">
                                 <label for="status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
                                 <select name="status" id="status" class="form-select @error('status') is-invalid @enderror" required>
                                     <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Active (مفعل للظهور)</option>
                                     <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive (معطل)</option>
                                 </select>
+                                <small class="text-slate-400 d-block mt-1">Active slides will be shown to users.</small>
                             </div>
                         </div>
                     </div>

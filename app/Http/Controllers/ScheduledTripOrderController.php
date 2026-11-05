@@ -14,6 +14,7 @@ use App\Models\Country;
 use App\Models\City;
 use App\Models\Invoice;
 use App\Models\WalletTransaction;
+use App\Models\ProofOfDelivery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -33,13 +34,15 @@ class ScheduledTripOrderController extends Controller
             'scheduledTrip.route.destinationCountry',
             'scheduledTrip.route.destinationCity',
             'scheduledTrip.truckType',
+            'scheduledTrip.driver',
             'customer.companyProfile',
             'driver',
             'truckType',
             'truckSubType',
             'pickupCity',
             'dropoffCity',
-            'invoice'
+            'invoice',
+            'proofOfDelivery'
         ])->latest();
 
         // Filter by Status
@@ -90,8 +93,8 @@ class ScheduledTripOrderController extends Controller
         $stats = [
             'total'       => ScheduledTripOrder::count(),
             'new'         => ScheduledTripOrder::where('status', 'new')->count(),
-            'confirmed'   => ScheduledTripOrder::where('status', 'confirmed')->count(),
-            'in_transit'  => ScheduledTripOrder::where('status', 'in_transit')->count(),
+            'confirmed'   => ScheduledTripOrder::whereIn('status', ['confirmed', 'arrived_pickup', 'loaded'])->count(),
+            'in_transit'  => ScheduledTripOrder::whereIn('status', ['in_transit', 'arrived_dropoff'])->count(),
             'delivered'   => ScheduledTripOrder::where('status', 'delivered')->count(),
             'canceled'    => ScheduledTripOrder::where('status', 'canceled')->count(),
             'total_sales' => ScheduledTripOrder::where('status', '!=', 'canceled')->sum('total_price'),
@@ -523,7 +526,8 @@ class ScheduledTripOrderController extends Controller
             'pickupCity',
             'dropoffCountry',
             'dropoffCity',
-            'invoice'
+            'invoice',
+            'proofOfDelivery'
         ])->find($id);
 
         if (!$order) {
@@ -541,6 +545,41 @@ class ScheduledTripOrderController extends Controller
         }
 
         return response()->json(['status' => 'success', 'order' => $order]);
+    }
+
+    /**
+     * AJAX endpoint to fetch full Proof of Delivery (POD) details for dedicated modal/certificate.
+     */
+    public function GetOrderPodAjax($id)
+    {
+        $order = ScheduledTripOrder::with([
+            'scheduledTrip.route.originCity',
+            'scheduledTrip.route.destinationCity',
+            'scheduledTrip.driver',
+            'customer.companyProfile',
+            'driver',
+            'truckType',
+            'truckSubType',
+            'pickupCity',
+            'dropoffCity',
+            'proofOfDelivery'
+        ])->find($id);
+
+        if (!$order) {
+            return response()->json(['status' => 'error', 'message' => 'Order not found'], 404);
+        }
+
+        $pod = $order->proofOfDelivery;
+        if (!$pod && $order->scheduledTrip) {
+            // Check if POD exists on the linked trip
+            $pod = ProofOfDelivery::where('scheduled_trip_id', $order->scheduledTrip->id)->latest()->first();
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'order'  => $order,
+            'pod'    => $pod,
+        ]);
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\CompanyProfile;
 use App\Models\DriverProfile;
+use App\Models\TruckType;
 use App\Models\Country;
 use App\Models\City;
 use App\Models\UserCompanyDocument;
@@ -21,7 +22,8 @@ class UserController extends Controller
     public function AddUser()
     {
         $countries = Country::where('is_active', 1)->orderBy('name_en', 'asc')->get();
-        return view('admin.backend.user.add_user', compact('countries'));
+        $truckTypes = TruckType::orderBy('name_en', 'asc')->get();
+        return view('admin.backend.user.add_user', compact('countries', 'truckTypes'));
     }
 
     /**
@@ -61,9 +63,15 @@ class UserController extends Controller
             $rules['rejection_reason'] = 'nullable|string';
         } elseif ($request->role === 'driver') {
             $rules['license_number'] = 'nullable|string|max:255';
-            $rules['license_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
-            $rules['truck_registration_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
-            $rules['civil_id_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
+            $rules['license_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240';
+            $rules['truck_registration_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240';
+            $rules['civil_id_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240';
+            $rules['passport_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240';
+            $rules['truck_type_id'] = 'nullable|exists:truck_types,id';
+            $rules['plate_number'] = 'nullable|string|max:100';
+            $rules['model_year'] = 'nullable|string|max:50';
+            $rules['administrative_number'] = 'nullable|string|max:100';
+            $rules['is_main_truck'] = 'nullable';
             $rules['wallet_balance'] = 'nullable|numeric|min:0';
             $rules['rating'] = 'nullable|numeric|min:1|max:5';
             $rules['availability_status'] = 'nullable|in:available,busy,offline';
@@ -134,6 +142,19 @@ class UserController extends Controller
             $driver = new DriverProfile();
             $driver->user_id = $user->id;
             $driver->license_number = $request->license_number ? trim($request->license_number) : null;
+            if ($request->has('truck_type_id')) {
+                $driver->truck_type_id = $request->truck_type_id ?: null;
+            }
+            if ($request->has('plate_number')) {
+                $driver->plate_number = $request->plate_number ? trim($request->plate_number) : null;
+            }
+            if ($request->has('model_year')) {
+                $driver->model_year = $request->model_year ? trim($request->model_year) : null;
+            }
+            if ($request->has('administrative_number')) {
+                $driver->administrative_number = $request->administrative_number ? trim($request->administrative_number) : null;
+            }
+            $driver->is_main_truck = $request->has('is_main_truck') ? 1 : 0;
             $driver->wallet_balance = $request->wallet_balance ?? 0.00;
             $driver->rating = $request->rating ?? 5.00;
             $driver->availability_status = $request->availability_status ?? 'offline';
@@ -159,6 +180,13 @@ class UserController extends Controller
                 $fn = date('YmdHi') . '_civilid_' . uniqid() . '.' . $f->getClientOriginalExtension();
                 $f->move(public_path('upload/driver_docs'), $fn);
                 $driver->civil_id_photo = $fn;
+            }
+
+            if ($request->hasFile('passport_photo')) {
+                $f = $request->file('passport_photo');
+                $fn = date('YmdHi') . '_passport_' . uniqid() . '.' . $f->getClientOriginalExtension();
+                $f->move(public_path('upload/driver_docs'), $fn);
+                $driver->passport_photo = $fn;
             }
 
             $driver->save();
@@ -264,7 +292,7 @@ class UserController extends Controller
      */
     public function EditUser($id)
     {
-        $user = User::with(['companyProfile', 'driverProfile', 'country', 'city', 'companyDocuments.requiredDocument'])->findOrFail($id);
+        $user = User::with(['companyProfile', 'driverProfile.truckType', 'country', 'city', 'companyDocuments.requiredDocument'])->findOrFail($id);
         $countries = Country::where('is_active', 1)->orderBy('name_en', 'asc')->get();
         $cities = $user->country_id ? City::where('country_id', $user->country_id)->where('is_active', 1)->orderBy('name_en', 'asc')->get() : collect();
         $availableCompanyDocuments = \App\Models\CompanyRequiredDocument::where('is_active', 1)
@@ -274,7 +302,8 @@ class UserController extends Controller
             ->orderBy('sort_order', 'asc')
             ->orderBy('id', 'asc')
             ->get();
-        return view('admin.backend.user.edit_user', compact('user', 'countries', 'cities', 'availableCompanyDocuments'));
+        $truckTypes = TruckType::orderBy('name_en', 'asc')->get();
+        return view('admin.backend.user.edit_user', compact('user', 'countries', 'cities', 'availableCompanyDocuments', 'truckTypes'));
     }
 
     /**
@@ -317,9 +346,15 @@ class UserController extends Controller
             $rules['rejection_reason'] = 'nullable|string';
         } elseif ($request->role === 'driver') {
             $rules['license_number'] = 'nullable|string|max:255';
-            $rules['license_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
-            $rules['truck_registration_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
-            $rules['civil_id_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
+            $rules['license_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240';
+            $rules['truck_registration_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240';
+            $rules['civil_id_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240';
+            $rules['passport_photo'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240';
+            $rules['truck_type_id'] = 'nullable|exists:truck_types,id';
+            $rules['plate_number'] = 'nullable|string|max:100';
+            $rules['model_year'] = 'nullable|string|max:50';
+            $rules['administrative_number'] = 'nullable|string|max:100';
+            $rules['is_main_truck'] = 'nullable';
             $rules['wallet_balance'] = 'nullable|numeric|min:0';
             $rules['rating'] = 'nullable|numeric|min:1|max:5';
             $rules['availability_status'] = 'nullable|in:available,busy,offline';
@@ -457,6 +492,20 @@ $user->save();
         } elseif ($request->role === 'driver') {
             $driver = DriverProfile::firstOrNew(['user_id' => $user->id]);
             $driver->license_number = $request->license_number ? trim($request->license_number) : null;
+            if ($request->has('truck_type_id')) {
+                $driver->truck_type_id = $request->truck_type_id ?: null;
+            }
+            if ($request->has('plate_number')) {
+                $driver->plate_number = $request->plate_number ? trim($request->plate_number) : null;
+            }
+            if ($request->has('model_year')) {
+                $driver->model_year = $request->model_year ? trim($request->model_year) : null;
+            }
+            if ($request->has('administrative_number')) {
+                $driver->administrative_number = $request->administrative_number ? trim($request->administrative_number) : null;
+            }
+            $driver->is_main_truck = $request->has('is_main_truck') ? 1 : 0;
+
             if ($request->filled('wallet_balance')) {
                 $driver->wallet_balance = $request->wallet_balance;
             }
@@ -495,6 +544,16 @@ $user->save();
                 $fn = date('YmdHi') . '_civilid_' . uniqid() . '.' . $f->getClientOriginalExtension();
                 $f->move(public_path('upload/driver_docs'), $fn);
                 $driver->civil_id_photo = $fn;
+            }
+
+            if ($request->hasFile('passport_photo')) {
+                $f = $request->file('passport_photo');
+                if (!empty($driver->passport_photo) && file_exists(public_path('upload/driver_docs/' . $driver->passport_photo))) {
+                    @unlink(public_path('upload/driver_docs/' . $driver->passport_photo));
+                }
+                $fn = date('YmdHi') . '_passport_' . uniqid() . '.' . $f->getClientOriginalExtension();
+                $f->move(public_path('upload/driver_docs'), $fn);
+                $driver->passport_photo = $fn;
             }
 
             $driver->save();

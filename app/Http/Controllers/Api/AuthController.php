@@ -22,6 +22,41 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         try {
+            // Normalize incoming driver / customer fields
+            if (!$request->filled('fname')) {
+                if ($request->filled('full_name')) {
+                    $parts = explode(' ', trim($request->full_name), 2);
+                    $request->merge([
+                        'fname' => $parts[0],
+                        'lname' => $parts[1] ?? ($request->lname ?? ''),
+                    ]);
+                } elseif ($request->filled('name')) {
+                    $parts = explode(' ', trim($request->name), 2);
+                    $request->merge([
+                        'fname' => $parts[0],
+                        'lname' => $parts[1] ?? ($request->lname ?? ''),
+                    ]);
+                }
+            }
+
+            // For driver: email is optional in Figma. If missing, generate fallback driver email.
+            if ($request->role === 'driver' && !$request->filled('email')) {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone ?? uniqid());
+                $request->merge([
+                    'email' => 'driver_' . $cleanPhone . '@salasil.local',
+                ]);
+            }
+
+            // Map truck_type name to truck_type_id if only name is provided
+            if ($request->filled('truck_type') && !$request->filled('truck_type_id')) {
+                $matchedType = \App\Models\TruckType::where('name_en', 'LIKE', '%' . $request->truck_type . '%')
+                    ->orWhere('name_ar', 'LIKE', '%' . $request->truck_type . '%')
+                    ->first();
+                if ($matchedType) {
+                    $request->merge(['truck_type_id' => $matchedType->id]);
+                }
+            }
+
             // 1. Validation Rules (Safe from php_fileinfo extension crashes)
             $rules = [
                 'fname'           => 'required|string|max:255',
@@ -53,7 +88,12 @@ class AuthController extends Controller
                 $rules['verification_status']     = 'nullable|in:pending,verified,rejected';
                 $rules['rejection_reason']        = 'nullable|string';
             } elseif ($request->role === 'driver') {
+                $rules['phone']                    = 'required|string|max:255';
                 $rules['truck_type_id']             = 'nullable|exists:truck_types,id';
+                $rules['plate_number']             = 'nullable|string|max:50';
+                $rules['model_year']               = 'nullable|string|max:50';
+                $rules['administrative_number']    = 'nullable|string|max:100';
+                $rules['is_main_truck']            = 'nullable';
                 $rules['license_number']           = 'nullable|string|max:255';
                 $rules['wallet_balance']           = 'nullable|numeric|min:0';
                 $rules['rating']                   = 'nullable|numeric|min:1|max:5';
@@ -120,14 +160,15 @@ class AuthController extends Controller
                 }
             }
 
-            if ($request->hasFile('license_photo')) {
-                $f = $request->file('license_photo');
-                if (!$f->isValid()) {
-                    $fileErrors['license_photo'][] = 'Invalid license photo upload.';
-                } elseif ($f->getSize() > 10 * 1024 * 1024) {
+            // Safe file validation for Driver documents & aliases
+            $licenseFile = $request->file('license_photo') ?? ($request->file('driving_licence') ?? $request->file('license'));
+            if ($licenseFile) {
+                if (!$licenseFile->isValid()) {
+                    $fileErrors['license_photo'][] = 'Invalid license document upload.';
+                } elseif ($licenseFile->getSize() > 10 * 1024 * 1024) {
                     $fileErrors['license_photo'][] = 'The license document must not exceed 10MB.';
                 } else {
-                    $ext = strtolower($f->getClientOriginalExtension());
+                    $ext = strtolower($licenseFile->getClientOriginalExtension());
                     $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
                     if (!in_array($ext, $allowed)) {
                         $fileErrors['license_photo'][] = 'Invalid document format. Allowed formats: ' . implode(', ', $allowed);
@@ -135,14 +176,14 @@ class AuthController extends Controller
                 }
             }
 
-            if ($request->hasFile('truck_registration_photo')) {
-                $f = $request->file('truck_registration_photo');
-                if (!$f->isValid()) {
+            $truckRegFile = $request->file('truck_registration_photo') ?? ($request->file('vehicle_registration') ?? $request->file('truck_reg'));
+            if ($truckRegFile) {
+                if (!$truckRegFile->isValid()) {
                     $fileErrors['truck_registration_photo'][] = 'Invalid truck registration upload.';
-                } elseif ($f->getSize() > 10 * 1024 * 1024) {
+                } elseif ($truckRegFile->getSize() > 10 * 1024 * 1024) {
                     $fileErrors['truck_registration_photo'][] = 'The truck registration document must not exceed 10MB.';
                 } else {
-                    $ext = strtolower($f->getClientOriginalExtension());
+                    $ext = strtolower($truckRegFile->getClientOriginalExtension());
                     $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
                     if (!in_array($ext, $allowed)) {
                         $fileErrors['truck_registration_photo'][] = 'Invalid document format. Allowed formats: ' . implode(', ', $allowed);
@@ -150,17 +191,32 @@ class AuthController extends Controller
                 }
             }
 
-            if ($request->hasFile('civil_id_photo')) {
-                $f = $request->file('civil_id_photo');
-                if (!$f->isValid()) {
+            $civilIdFile = $request->file('civil_id_photo') ?? ($request->file('national_id') ?? $request->file('civil_id'));
+            if ($civilIdFile) {
+                if (!$civilIdFile->isValid()) {
                     $fileErrors['civil_id_photo'][] = 'Invalid civil ID upload.';
-                } elseif ($f->getSize() > 10 * 1024 * 1024) {
+                } elseif ($civilIdFile->getSize() > 10 * 1024 * 1024) {
                     $fileErrors['civil_id_photo'][] = 'The civil ID document must not exceed 10MB.';
                 } else {
-                    $ext = strtolower($f->getClientOriginalExtension());
+                    $ext = strtolower($civilIdFile->getClientOriginalExtension());
                     $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
                     if (!in_array($ext, $allowed)) {
                         $fileErrors['civil_id_photo'][] = 'Invalid document format. Allowed formats: ' . implode(', ', $allowed);
+                    }
+                }
+            }
+
+            $passportFile = $request->file('passport_photo') ?? ($request->file('passport') ?? $request->file('passport_doc'));
+            if ($passportFile) {
+                if (!$passportFile->isValid()) {
+                    $fileErrors['passport_photo'][] = 'Invalid passport copy upload.';
+                } elseif ($passportFile->getSize() > 10 * 1024 * 1024) {
+                    $fileErrors['passport_photo'][] = 'The passport document must not exceed 10MB.';
+                } else {
+                    $ext = strtolower($passportFile->getClientOriginalExtension());
+                    $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+                    if (!in_array($ext, $allowed)) {
+                        $fileErrors['passport_photo'][] = 'Invalid document format. Allowed formats: ' . implode(', ', $allowed);
                     }
                 }
             }
@@ -223,28 +279,52 @@ class AuthController extends Controller
             // 4. Handle Driver Profile
             elseif ($request->role === 'driver') {
                 $driver = new DriverProfile();
-                $driver->user_id             = $user->id;
-                $driver->truck_type_id       = $request->filled('truck_type_id') ? $request->truck_type_id : null;
-                $driver->license_number      = $request->filled('license_number') ? trim($request->license_number) : null;
-                $driver->wallet_balance      = $request->filled('wallet_balance') ? $request->wallet_balance : 0.00;
-                $driver->rating              = $request->filled('rating') ? $request->rating : 5.00;
-                $driver->availability_status = $request->availability_status ?? 'offline';
-                $driver->verification_status = $request->driver_verification_status ?? 'pending';
-                $driver->rejection_reason    = $request->filled('driver_rejection_reason') ? trim($request->driver_rejection_reason) : null;
+                $driver->user_id               = $user->id;
+                $driver->truck_type_id         = $request->filled('truck_type_id') ? $request->truck_type_id : null;
+                $driver->license_number        = $request->filled('license_number') ? trim($request->license_number) : null;
+                $driver->plate_number          = $request->filled('plate_number') ? trim($request->plate_number) : null;
+                $driver->model_year            = $request->filled('model_year') ? trim($request->model_year) : ($request->filled('manufacturing_year') ? trim($request->manufacturing_year) : null);
+                $driver->administrative_number = $request->filled('administrative_number') ? trim($request->administrative_number) : ($request->filled('max_load') ? trim($request->max_load) : null);
+                $driver->is_main_truck         = $request->has('is_main_truck') ? (bool)$request->is_main_truck : 1;
+                $driver->wallet_balance        = $request->filled('wallet_balance') ? $request->wallet_balance : 0.00;
+                $driver->rating                = $request->filled('rating') ? $request->rating : 5.00;
+                $driver->availability_status   = $request->availability_status ?? 'offline';
+                $driver->verification_status   = $request->driver_verification_status ?? 'pending';
+                $driver->rejection_reason      = $request->filled('driver_rejection_reason') ? trim($request->driver_rejection_reason) : null;
 
-                if ($request->hasFile('license_photo')) {
-                    $driver->license_photo = $this->saveUploadedFile($request->file('license_photo'), 'upload/driver_docs', 'license');
+                if ($licenseFile) {
+                    $driver->license_photo = $this->saveUploadedFile($licenseFile, 'upload/driver_docs', 'license');
                 }
 
-                if ($request->hasFile('truck_registration_photo')) {
-                    $driver->truck_registration_photo = $this->saveUploadedFile($request->file('truck_registration_photo'), 'upload/driver_docs', 'truckreg');
+                if ($truckRegFile) {
+                    $driver->truck_registration_photo = $this->saveUploadedFile($truckRegFile, 'upload/driver_docs', 'truckreg');
                 }
 
-                if ($request->hasFile('civil_id_photo')) {
-                    $driver->civil_id_photo = $this->saveUploadedFile($request->file('civil_id_photo'), 'upload/driver_docs', 'civilid');
+                if ($civilIdFile) {
+                    $driver->civil_id_photo = $this->saveUploadedFile($civilIdFile, 'upload/driver_docs', 'civilid');
+                }
+
+                if ($passportFile) {
+                    $driver->passport_photo = $this->saveUploadedFile($passportFile, 'upload/driver_docs', 'passport');
                 }
 
                 $driver->save();
+
+                // Populate initial default truck in driver_trucks if plate or truck type provided
+                if ($driver->truck_type_id || $driver->plate_number) {
+                    try {
+                        \App\Models\DriverTruck::create([
+                            'driver_id'          => $user->id,
+                            'truck_type_id'      => $driver->truck_type_id ?? (\App\Models\TruckType::first()->id ?? 1),
+                            'plate_number'       => $driver->plate_number,
+                            'manufacturing_year' => $driver->model_year ? (int)$driver->model_year : null,
+                            'is_default'         => $driver->is_main_truck ? 1 : 0,
+                            'is_verified'        => 0,
+                        ]);
+                    } catch (\Throwable $ignoreTruck) {
+                        Log::warning('Driver truck initial creation warning: ' . $ignoreTruck->getMessage());
+                    }
+                }
             }
 
             DB::commit();
@@ -322,10 +402,23 @@ class AuthController extends Controller
         // 2. Identify login credential (Email, Phone, or Client Code)
         $credential = trim($request->email ?? $request->phone ?? $request->login);
 
-        $user = User::where('email', strtolower($credential))
+        $userQuery = User::where('email', strtolower($credential))
             ->orWhere('phone', $credential)
-            ->orWhere('client_code', $credential)
-            ->first();
+            ->orWhere('client_code', $credential);
+
+        if ($request->filled('country_code') && $request->filled('phone')) {
+            $code = trim($request->country_code);
+            $rawPhone = trim($request->phone);
+            $cleanPhone = preg_replace('/\D+/', '', $rawPhone);
+            $fullPhone = $code . $rawPhone;
+            $userQuery = $userQuery->orWhere('phone', $cleanPhone)
+                ->orWhere('phone', $fullPhone)
+                ->orWhere(function ($sq) use ($code, $rawPhone) {
+                    $sq->where('country_code', $code)->where('phone', $rawPhone);
+                });
+        }
+
+        $user = $userQuery->first();
 
         // 3. Verify Password
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -613,6 +706,9 @@ class AuthController extends Controller
             }
             if ($user->driverProfile->civil_id_photo) {
                 $userData['driver_profile']['civil_id_photo_url'] = asset('upload/driver_docs/' . $user->driverProfile->civil_id_photo);
+            }
+            if ($user->driverProfile->passport_photo) {
+                $userData['driver_profile']['passport_photo_url'] = asset('upload/driver_docs/' . $user->driverProfile->passport_photo);
             }
         }
 

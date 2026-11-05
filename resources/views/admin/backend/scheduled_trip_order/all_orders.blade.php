@@ -121,8 +121,10 @@
 }
 .status-new        { background: rgba(245,158,11,0.15) !important; color: #FBBF24 !important; border-color: rgba(245,158,11,0.3) !important; }
 .status-confirmed  { background: rgba(59,130,246,0.15) !important; color: #60A5FA !important; border-color: rgba(59,130,246,0.3) !important; }
+.status-arrived_pickup { background: rgba(14,165,233,0.15) !important; color: #38BDF8 !important; border-color: rgba(14,165,233,0.3) !important; }
 .status-loaded     { background: rgba(139,92,246,0.15) !important; color: #C084FC !important; border-color: rgba(139,92,246,0.3) !important; }
 .status-in_transit { background: rgba(6,182,212,0.15) !important; color: #38BDF8 !important; border-color: rgba(6,182,212,0.3) !important; }
+.status-arrived_dropoff { background: rgba(99,102,241,0.15) !important; color: #818CF8 !important; border-color: rgba(99,102,241,0.3) !important; }
 .status-delivered  { background: rgba(16,185,129,0.15) !important; color: #34D399 !important; border-color: rgba(16,185,129,0.3) !important; }
 .status-canceled   { background: rgba(244,63,94,0.15) !important; color: #FB7185 !important; border-color: rgba(244,63,94,0.3) !important; }
 
@@ -244,6 +246,27 @@ html.light-theme .doc-card-item {
 html.light-theme .doc-card-title {
     color: #0F172A !important;
 }
+
+/* POD Modal in light theme */
+html.light-theme #podDetailsModal .modal-content {
+    background: #FFFFFF !important;
+    border-color: #A7F3D0 !important;
+    color: #0F172A !important;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.12) !important;
+}
+html.light-theme #podDetailsModal .modal-header {
+    background: #ECFDF5 !important;
+    border-color: #A7F3D0 !important;
+}
+html.light-theme #podDetailsModal .modal-header h5 {
+    color: #065F46 !important;
+}
+html.light-theme #podDetailsModal .modal-body {
+    background: #FFFFFF !important;
+}
+html.light-theme #podDetailsModal .btn-close-white {
+    filter: invert(1) grayscale(100%) brightness(20%) !important;
+}
 </style>
 
 {{-- Page Header --}}
@@ -346,9 +369,11 @@ html.light-theme .doc-card-title {
                 <select name="status" class="form-select">
                     <option value="">All Statuses</option>
                     <option value="new" {{ request('status')==='new' ? 'selected' : '' }}>New</option>
-                    <option value="confirmed" {{ request('status')==='confirmed' ? 'selected' : '' }}>Confirmed</option>
+                    <option value="confirmed" {{ request('status')==='confirmed' ? 'selected' : '' }}>Confirmed (Trip Accepted)</option>
+                    <option value="arrived_pickup" {{ request('status')==='arrived_pickup' ? 'selected' : '' }}>Arrived at Pickup</option>
                     <option value="loaded" {{ request('status')==='loaded' ? 'selected' : '' }}>Loaded</option>
                     <option value="in_transit" {{ request('status')==='in_transit' ? 'selected' : '' }}>In Transit</option>
+                    <option value="arrived_dropoff" {{ request('status')==='arrived_dropoff' ? 'selected' : '' }}>Arrived at Drop-off</option>
                     <option value="delivered" {{ request('status')==='delivered' ? 'selected' : '' }}>Delivered</option>
                     <option value="canceled" {{ request('status')==='canceled' ? 'selected' : '' }}>Canceled</option>
                 </select>
@@ -508,21 +533,40 @@ html.light-theme .doc-card-title {
                         @endif
                     </td>
 
-                    {{-- Status Dropdown --}}
+                    {{-- Status Dropdown & POD quick badge --}}
                     <td>
                         <select class="form-select status-select-sm status-{{ $o->status }}" onchange="updateOrderStatus({{ $o->id }}, this.value)">
                             <option value="new" {{ $o->status==='new' ? 'selected' : '' }}>New</option>
-                            <option value="confirmed" {{ $o->status==='confirmed' ? 'selected' : '' }}>Confirmed</option>
+                            <option value="confirmed" {{ $o->status==='confirmed' ? 'selected' : '' }}>Confirmed (Accepted)</option>
+                            <option value="arrived_pickup" {{ $o->status==='arrived_pickup' ? 'selected' : '' }}>Arrived at Pickup</option>
                             <option value="loaded" {{ $o->status==='loaded' ? 'selected' : '' }}>Loaded</option>
                             <option value="in_transit" {{ $o->status==='in_transit' ? 'selected' : '' }}>In Transit</option>
+                            <option value="arrived_dropoff" {{ $o->status==='arrived_dropoff' ? 'selected' : '' }}>Arrived at Drop-off</option>
                             <option value="delivered" {{ $o->status==='delivered' ? 'selected' : '' }}>Delivered</option>
                             <option value="canceled" {{ $o->status==='canceled' ? 'selected' : '' }}>Canceled</option>
                         </select>
+                        @if($o->proofOfDelivery || $o->status === 'delivered')
+                            <div class="mt-1">
+                                <button type="button" class="btn btn-xs rounded-pill px-2 py-0 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm" 
+                                        style="font-size:0.72rem; background: rgba(16, 185, 129, 0.12); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.35); cursor: pointer;" 
+                                        onclick="openPodModal({{ $o->id }})" title="View Proof of Delivery (POD)">
+                                    <i class="bx bx-check-shield text-success"></i> POD
+                                </button>
+                            </div>
+                        @endif
                     </td>
 
                     {{-- Actions --}}
                     <td class="text-end">
                         <div class="d-inline-flex gap-2">
+                            @if($o->proofOfDelivery || $o->status === 'delivered')
+                            <button type="button" class="btn-action" style="color: #10B981;" onclick="openPodModal({{ $o->id }})" title="View Proof of Delivery (POD)">
+                                <i class="bx bx-check-shield fs-5"></i>
+                            </button>
+                            @endif
+                            <a href="{{ route('add.scheduled.trip.invitation', ['order_id' => $o->id]) }}" class="btn-action" title="Invite Driver for Order" style="color: var(--sto-cyan);">
+                                <i class="bx bx-paper-plane fs-5"></i>
+                            </a>
                             <button type="button" class="btn-action" onclick="openOrderDetails({{ $o->id }})" title="View Full Specs">
                                 <i class="bx bx-show fs-5"></i>
                             </button>
@@ -591,6 +635,43 @@ html.light-theme .doc-card-title {
                     <i class="bx bx-download me-1"></i>Download
                 </a>
                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ═════════════════════════════════════════════════════════════
+     DEDICATED PROOF OF DELIVERY (POD) MODAL
+═════════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="podDetailsModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background:#0F172A;border:1px solid rgba(16,185,129,0.3);border-radius:20px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.6);">
+            <div class="modal-header py-3 px-4" style="background:rgba(16,185,129,0.08);border-bottom:1px solid rgba(16,185,129,0.2);">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width:38px;height:38px;border-radius:10px;background:rgba(16,185,129,0.2);display:flex;align-items:center;justify-content:center;color:#10B981;font-size:22px;">
+                        <i class="bx bx-check-shield"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-0" id="podModalTitle">Proof of Delivery (POD)</h5>
+                        <small class="text-success" id="podModalSub">Official Delivery Confirmation & Receiver Signature</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3" onclick="printPodCertificate()">
+                        <i class="bx bx-printer me-1"></i>Print
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-4" id="podModalBody">
+                <div class="text-center py-5" id="podModalLoader">
+                    <div class="spinner-border text-success" role="status"></div>
+                    <div class="text-muted mt-2">Loading Proof of Delivery...</div>
+                </div>
+                <div id="podModalContent" style="display:none;"></div>
+            </div>
+            <div class="modal-footer py-2 px-4" style="background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.08);">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -824,7 +905,260 @@ html.light-theme .doc-card-title {
         }
         html += '</div>';
 
+        // Section 7: Proof of Delivery (POD)
+        var pod = o.proof_of_delivery;
+        if (pod || o.status === 'delivered') {
+            html += '<div class="detail-sec-title mt-4" style="color:#10B981 !important;"><i class="bx bx-check-shield me-1"></i>Proof of Delivery (POD) — إثبات استلام الشحنة</div>';
+            if (pod) {
+                html += '<div class="detail-grid-box" style="background:rgba(16,185,129,0.05);border-color:rgba(16,185,129,0.3);">';
+                var delivTime = pod.delivered_at ? pod.delivered_at.substring(0, 19).replace('T', ' ') : (o.updated_at ? o.updated_at.substring(0, 19).replace('T', ' ') : 'Delivered');
+                html += '<div class="detail-item"><div class="lbl">Delivered At</div><div class="val text-success fw-bold"><i class="bx bx-check-circle me-1"></i>' + delivTime + '</div></div>';
+                html += '<div class="detail-item"><div class="lbl">Receiver Name</div><div class="val text-white fw-bold">' + (pod.receiver_name || o.arrival_contact_name || 'Receiver') + '</div></div>';
+                var recvPh = pod.receiver_phone || o.arrival_contact_phone || '';
+                html += '<div class="detail-item"><div class="lbl">Receiver Phone</div><div class="val">' + (recvPh ? '<a href="tel:' + recvPh + '" class="text-info text-decoration-none"><i class="bx bx-phone me-1"></i>' + recvPh + '</a>' : '—') + '</div></div>';
+                html += '<div class="detail-item"><div class="lbl">Civil ID / Iqama</div><div class="val text-warning fw-semibold">' + (pod.receiver_civil_id || '—') + '</div></div>';
+                
+                if (pod.notes) {
+                    html += '<div class="detail-item" style="grid-column: span 2;"><div class="lbl">Delivery Notes</div><div class="val text-slate-300">' + pod.notes + '</div></div>';
+                }
+
+                // Signature
+                var sigUrl = pod.signature_url || (pod.signature_image ? ('/' + pod.signature_image.replace(/^\//, '')) : '');
+                if (sigUrl) {
+                    html += '<div class="detail-item" style="grid-column: span 2;">';
+                    html += '  <div class="lbl mb-2">Receiver Digital Signature <span class="badge bg-success bg-opacity-25 text-success ms-2"><i class="bx bx-check-double me-1"></i>Verified</span></div>';
+                    html += '  <div style="background:#FFFFFF;border:1px solid #CBD5E1;border-radius:12px;padding:12px;max-width:340px;text-align:center;">';
+                    html += '    <img src="' + sigUrl + '" alt="Receiver Signature" style="max-height:110px;max-width:100%;object-fit:contain;cursor:pointer;" onclick="previewDocImage(\'' + sigUrl + '\', \'Receiver Signature\', \'' + sigUrl + '\')">';
+                    html += '    <div style="border-top:1px dashed #CBD5E1;margin-top:6px;padding-top:4px;font-size:0.72rem;color:#64748B;">X ─── Verified Digital Signature ───</div>';
+                    html += '  </div>';
+                    html += '</div>';
+                }
+
+                // Photos
+                var photos = pod.photos_urls || [];
+                if (!photos.length && Array.isArray(pod.photos)) {
+                    photos = pod.photos.map(function(p) { return '/' + p.replace(/^\//, ''); });
+                }
+                if (photos.length > 0) {
+                    html += '<div class="detail-item" style="grid-column: span 2;">';
+                    html += '  <div class="lbl mb-2">Delivery Photos (' + photos.length + ')</div>';
+                    html += '  <div class="d-flex flex-wrap gap-2">';
+                    photos.forEach(function(pUrl, pIdx) {
+                        html += '    <div style="width:78px;height:78px;border-radius:10px;border:1px solid rgba(16,185,129,0.3);overflow:hidden;cursor:pointer;position:relative;" onclick="previewDocImage(\'' + pUrl + '\', \'Delivery Photo ' + (pIdx+1) + '\', \'' + pUrl + '\')">';
+                        html += '      <img src="' + pUrl + '" alt="Delivery Photo" style="width:100%;height:100%;object-fit:cover;">';
+                        html += '    </div>';
+                    });
+                    html += '  </div>';
+                    html += '</div>';
+                }
+
+                html += '</div>';
+            } else {
+                html += '<div class="p-3 text-center text-muted mb-3" style="background:rgba(16,185,129,0.03);border:1px dashed rgba(16,185,129,0.2);border-radius:12px;font-size:0.84rem;">';
+                html += '<i class="bx bx-check-circle fs-4 d-block mb-1 text-success"></i>Trip marked as Delivered. No digital proof uploaded yet.';
+                html += '</div>';
+            }
+        }
+
         $('#modalContent').html(html);
+    }
+
+    // ── Open Dedicated Proof of Delivery (POD) Modal ──
+    function openPodModal(orderId) {
+        var modal = new bootstrap.Modal(document.getElementById('podDetailsModal'));
+        $('#podModalLoader').show();
+        $('#podModalContent').hide().empty();
+        modal.show();
+
+        $.ajax({
+            url: '{{ route("get.scheduled.trip.order.pod.ajax", ":id") }}'.replace(':id', orderId),
+            type: 'GET',
+            success: function(res) {
+                $('#podModalLoader').hide();
+                if (res.status === 'success') {
+                    renderPodModal(res);
+                    $('#podModalContent').show();
+                } else {
+                    $('#podModalContent').html('<div class="alert alert-warning">Proof of Delivery details not found.</div>').show();
+                }
+            },
+            error: function() {
+                $('#podModalLoader').hide();
+                $('#podModalContent').html('<div class="alert alert-danger">Error loading Proof of Delivery.</div>').show();
+            }
+        });
+    }
+
+    function renderPodModal(data) {
+        var o = data.order || {};
+        var pod = data.pod || o.proof_of_delivery || {};
+        var trip = o.scheduled_trip || {};
+        var route = trip.route || {};
+        var driver = trip.driver || o.driver || {};
+        var cust = o.customer || {};
+
+        $('#podModalTitle').text('Proof of Delivery — #' + (o.order_number || o.id));
+        var delivTime = pod.delivered_at ? pod.delivered_at.substring(0, 19).replace('T', ' ') : (o.updated_at ? o.updated_at.substring(0, 19).replace('T', ' ') : 'Delivered');
+        $('#podModalSub').text('Delivered & Confirmed on ' + delivTime);
+
+        var html = '<div id="podPrintArea">';
+
+        // 1. Certificate Header Card
+        html += '<div class="p-3 rounded-4 mb-3 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3" style="background:linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,182,212,0.1)); border:1px solid rgba(16,185,129,0.3);">';
+        html += '  <div class="d-flex align-items-center gap-3">';
+        html += '    <div style="width:48px;height:48px;border-radius:14px;background:rgba(16,185,129,0.25);display:flex;align-items:center;justify-content:center;color:#10B981;font-size:26px;">';
+        html += '      <i class="bx bx-check-double"></i>';
+        html += '    </div>';
+        html += '    <div>';
+        html += '      <div class="fw-bold text-white fs-5">Delivery Confirmed & Signed</div>';
+        html += '      <div class="text-success small"><i class="bx bx-calendar-check me-1"></i>' + delivTime + '</div>';
+        html += '    </div>';
+        html += '  </div>';
+        html += '  <div class="text-sm-end">';
+        html += '    <span class="badge bg-success bg-opacity-25 text-success border border-success px-3 py-2 fs-6 rounded-pill">';
+        html += '      <i class="bx bx-shield-quarter me-1"></i>STATUS: DELIVERED';
+        html += '    </span>';
+        html += '  </div>';
+        html += '</div>';
+
+        // 2. Info Grid: Order, Route, Customer, Driver
+        html += '<div class="row g-3 mb-3">';
+        
+        // Order & Route
+        html += '<div class="col-12 col-md-6">';
+        html += '  <div class="p-3 rounded-3 h-100" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">';
+        html += '    <div class="text-muted small fw-bold mb-2 text-uppercase"><i class="bx bx-map-pin me-1 text-info"></i>Shipment & Route</div>';
+        html += '    <div class="fw-bold text-white mb-1">' + (o.shipment_name || 'General Cargo') + '</div>';
+        html += '    <div class="text-info fw-semibold mb-2">' + (route.origin_city ? route.origin_city.name_en : 'Origin') + ' ➔ ' + (route.destination_city ? route.destination_city.name_en : 'Destination') + '</div>';
+        var dropLoc = (o.dropoff_city ? o.dropoff_city.name_en : '');
+        if (o.dropoff_area) dropLoc += (dropLoc ? ', ' : '') + o.dropoff_area;
+        if (o.dropoff_address) dropLoc += (dropLoc ? ' — ' : '') + o.dropoff_address;
+        html += '    <div class="text-slate-300 small mb-1"><span class="text-muted">Destination:</span> ' + (dropLoc || '—') + '</div>';
+        if (o.delivery_instructions) {
+            html += '    <div class="text-slate-400 small mt-2 p-2 rounded" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);"><span class="text-warning">Instructions:</span> ' + o.delivery_instructions + '</div>';
+        }
+        html += '  </div>';
+        html += '</div>';
+
+        // Driver & Truck
+        html += '<div class="col-12 col-md-6">';
+        html += '  <div class="p-3 rounded-3 h-100" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">';
+        html += '    <div class="text-muted small fw-bold mb-2 text-uppercase"><i class="bx bx-user-check me-1 text-success"></i>Assigned Driver & Truck</div>';
+        var drvName = driver.fname ? (driver.fname + ' ' + (driver.lname || '')) : (trip.driver ? (trip.driver.fname + ' ' + (trip.driver.lname||'')) : 'Assigned Driver');
+        html += '    <div class="fw-bold text-white mb-1"><i class="bx bx-user me-1 text-slate-400"></i>' + drvName + '</div>';
+        var drvPh = driver.phone || (trip.driver ? trip.driver.phone : '');
+        if (drvPh) {
+            html += '    <div class="text-muted small mb-2"><i class="bx bx-phone me-1"></i>' + drvPh + '</div>';
+        }
+        html += '    <div class="text-slate-300 small"><span class="text-muted">Truck:</span> ' + (o.truck_type ? o.truck_type.name_en : 'Designated Truck') + ' (' + (o.booked_capacity || 1) + ' Unit)</div>';
+        html += '  </div>';
+        html += '</div>';
+
+        html += '</div>';
+
+        // 3. Receiver Information Card
+        html += '<div class="p-3 rounded-3 mb-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">';
+        html += '  <div class="text-muted small fw-bold mb-3 text-uppercase"><i class="bx bx-id-card me-1 text-warning"></i>Received By (Receiver / Supervisor Information)</div>';
+        html += '  <div class="row g-2">';
+        html += '    <div class="col-12 col-md-4">';
+        html += '      <div class="text-muted small">Full Name</div>';
+        html += '      <div class="text-white fw-bold fs-6">' + (pod.receiver_name || o.arrival_contact_name || 'Receiver') + '</div>';
+        html += '    </div>';
+        html += '    <div class="col-12 col-md-4">';
+        html += '      <div class="text-muted small">Contact Phone</div>';
+        var recPh = pod.receiver_phone || o.arrival_contact_phone || '—';
+        html += '      <div class="text-info fw-bold fs-6">' + (recPh !== '—' ? '<a href="tel:' + recPh + '" class="text-info text-decoration-none"><i class="bx bx-phone me-1"></i>' + recPh + '</a>' : '—') + '</div>';
+        html += '    </div>';
+        html += '    <div class="col-12 col-md-4">';
+        html += '      <div class="text-muted small">Civil ID / Iqama Number</div>';
+        html += '      <div class="text-warning fw-bold fs-6">' + (pod.receiver_civil_id || '—') + '</div>';
+        html += '    </div>';
+        html += '  </div>';
+        if (pod.notes) {
+            html += '  <div class="mt-3 pt-2 border-top border-secondary border-opacity-25">';
+            html += '    <div class="text-muted small">Delivery Notes / Remarks</div>';
+            html += '    <div class="text-slate-300 small mt-1">' + pod.notes + '</div>';
+            html += '  </div>';
+        }
+        html += '</div>';
+
+        // 4. Digital Signature & Delivery Photos
+        html += '<div class="row g-3 mb-3">';
+
+        // Digital Signature
+        var sigUrl = pod.signature_url || (pod.signature_image ? ('/' + pod.signature_image.replace(/^\//, '')) : '');
+        html += '<div class="col-12 col-md-6">';
+        html += '  <div class="p-3 rounded-3 h-100" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">';
+        html += '    <div class="d-flex justify-content-between align-items-center mb-2">';
+        html += '      <div class="text-muted small fw-bold text-uppercase"><i class="bx bx-pen me-1 text-info"></i>Receiver Digital Signature</div>';
+        if (sigUrl) {
+            html += '      <span class="badge bg-success bg-opacity-25 text-success border border-success" style="font-size:0.7rem;"><i class="bx bx-check-circle me-1"></i>Signed & Confirmed</span>';
+        }
+        html += '    </div>';
+        if (sigUrl) {
+            html += '    <div style="background:#FFFFFF;border:1px solid #CBD5E1;border-radius:12px;padding:16px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.05);">';
+            html += '      <img src="' + sigUrl + '" alt="Receiver Digital Signature" style="max-height:130px;max-width:100%;object-fit:contain;cursor:pointer;" onclick="previewDocImage(\'' + sigUrl + '\', \'Receiver Signature\', \'' + sigUrl + '\')">';
+            html += '      <div style="border-top:1px dashed #CBD5E1;margin-top:8px;padding-top:4px;font-size:0.75rem;color:#64748B;">X ────── Receiver Signature on Delivery ──────</div>';
+            html += '    </div>';
+        } else {
+            html += '    <div class="p-4 text-center text-muted rounded-3" style="background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.08);">';
+            html += '      <i class="bx bx-edit-alt fs-2 text-slate-500 d-block mb-1"></i>No digital signature attached.';
+            html += '    </div>';
+        }
+        html += '  </div>';
+        html += '</div>';
+
+        // Delivery Photos
+        var photos = pod.photos_urls || [];
+        if (!photos.length && Array.isArray(pod.photos)) {
+            photos = pod.photos.map(function(p) { return '/' + p.replace(/^\//, ''); });
+        }
+        html += '<div class="col-12 col-md-6">';
+        html += '  <div class="p-3 rounded-3 h-100" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">';
+        html += '    <div class="d-flex justify-content-between align-items-center mb-2">';
+        html += '      <div class="text-muted small fw-bold text-uppercase"><i class="bx bx-camera me-1 text-success"></i>Delivery Photos (' + photos.length + ')</div>';
+        html += '    </div>';
+        if (photos.length > 0) {
+            html += '    <div class="row g-2">';
+            photos.forEach(function(pUrl, pIdx) {
+                html += '      <div class="col-4 col-sm-4">';
+                html += '        <div style="aspect-ratio:1;border-radius:12px;border:1px solid rgba(16,185,129,0.35);overflow:hidden;cursor:pointer;position:relative;background:#000;" onclick="previewDocImage(\'' + pUrl + '\', \'Delivery Photo ' + (pIdx+1) + '\', \'' + pUrl + '\')">';
+                html += '          <img src="' + pUrl + '" alt="Delivery Photo" style="width:100%;height:100%;object-fit:cover;transition:transform 0.2s;" onmouseover="this.style.transform=\'scale(1.08)\'" onmouseout="this.style.transform=\'scale(1)\'">';
+                html += '        </div>';
+                html += '      </div>';
+            });
+            html += '    </div>';
+        } else {
+            html += '    <div class="p-4 text-center text-muted rounded-3" style="background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.08);">';
+            html += '      <i class="bx bx-camera-off fs-2 text-slate-500 d-block mb-1"></i>No delivery photos attached.';
+            html += '    </div>';
+        }
+        html += '  </div>';
+        html += '</div>';
+
+        html += '</div>'; // end row
+
+        html += '</div>'; // end #podPrintArea
+
+        $('#podModalContent').html(html);
+    }
+
+    function printPodCertificate() {
+        var printContents = document.getElementById('podPrintArea').innerHTML;
+        var printWin = window.open('', '', 'width=900,height=700');
+        printWin.document.write('<html><head><title>Proof of Delivery - SALASIL</title>');
+        printWin.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">');
+        printWin.document.write('<link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">');
+        printWin.document.write('<style>body{padding:24px;background:#FFF;color:#0F172A;font-family:system-ui,-apple-system,sans-serif;} @media print{.no-print{display:none;}}</style>');
+        printWin.document.write('</head><body>');
+        printWin.document.write(printContents);
+        printWin.document.write('</body></html>');
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(function() {
+            printWin.print();
+            printWin.close();
+        }, 500);
     }
 
     function previewDocImage(url, title, downloadUrl) {

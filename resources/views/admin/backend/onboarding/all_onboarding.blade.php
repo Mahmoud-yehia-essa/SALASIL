@@ -61,14 +61,33 @@
 
 <!-- Table Card -->
 <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-    <div class="card-header bg-transparent border-bottom border-secondary border-opacity-25 py-3 px-4 d-flex justify-content-between align-items-center">
+    <div class="card-header bg-transparent border-bottom border-secondary border-opacity-25 py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
         <h5 class="card-title mb-0 fw-bold d-flex align-items-center gap-2">
             <i class="bx bx-table text-info fs-4"></i>
             <span>Onboarding Slides List</span>
         </h5>
-        <span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-25 px-3 py-1 fw-semibold fs-6">
-            Total Slides: {{ count($onboardings) }}
-        </span>
+        
+        <div class="d-flex align-items-center gap-2">
+            <!-- Filter by App Type Pills -->
+            <div class="btn-group btn-group-sm rounded-pill p-1 border border-secondary border-opacity-25 bg-dark bg-opacity-25" role="group">
+                <a href="{{ route('all.onboarding') }}" 
+                   class="btn btn-sm rounded-pill px-3 {{ empty($selectedApp) ? 'btn-info text-dark fw-bold' : 'btn-outline-secondary border-0 text-slate-300' }}">
+                   All Apps
+                </a>
+                <a href="{{ route('all.onboarding', ['app_type' => 'customer']) }}" 
+                   class="btn btn-sm rounded-pill px-3 {{ ($selectedApp ?? '') === 'customer' ? 'btn-primary text-white fw-bold' : 'btn-outline-secondary border-0 text-slate-300' }}">
+                   📱 Customer
+                </a>
+                <a href="{{ route('all.onboarding', ['app_type' => 'driver']) }}" 
+                   class="btn btn-sm rounded-pill px-3 {{ ($selectedApp ?? '') === 'driver' ? 'btn-warning text-dark fw-bold' : 'btn-outline-secondary border-0 text-slate-300' }}">
+                   🚛 Driver
+                </a>
+            </div>
+
+            <span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-25 px-3 py-1.5 fw-semibold fs-6">
+                Total: {{ count($onboardings) }}
+            </span>
+        </div>
     </div>
 
     <div class="card-body p-4">
@@ -77,11 +96,12 @@
                 <thead>
                     <tr>
                         <th style="width: 50px;" class="text-center">Order</th>
-                        <th style="width: 80px;" class="text-center">Image</th>
+                        <th style="width: 75px;" class="text-center">Image</th>
+                        <th style="width: 110px;" class="text-center">App</th>
                         <th>Title (En / Ar)</th>
                         <th>Description (En / Ar)</th>
-                        <th style="width: 140px;" class="text-center">Status</th>
-                        <th style="width: 130px;">Created Date</th>
+                        <th style="width: 130px;" class="text-center">Status</th>
+                        <th style="width: 120px;">Created Date</th>
                         <th class="text-center" style="width: 100px;">Action</th>
                     </tr>
                 </thead>
@@ -102,6 +122,23 @@
                                  data-title="{{ $item->title_en }} - Preview"
                                  style="width: 56px; height: 56px; object-fit: cover;" 
                                  alt="{{ $item->title_en }}">
+                        </td>
+
+                        <!-- Target App Badge -->
+                        <td class="text-center">
+                            @if(($item->app_type ?? 'customer') === 'driver')
+                                <span class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-40 px-2.5 py-1.5 rounded-pill fw-semibold fs-8 d-inline-flex align-items-center gap-1">
+                                    <i class="bx bxs-truck fs-7"></i> Driver
+                                </span>
+                            @elseif(($item->app_type ?? 'customer') === 'both')
+                                <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-40 px-2.5 py-1.5 rounded-pill fw-semibold fs-8 d-inline-flex align-items-center gap-1">
+                                    <i class="bx bx-sync fs-7"></i> Both
+                                </span>
+                            @else
+                                <span class="badge bg-primary bg-opacity-20 text-primary border border-primary border-opacity-40 px-2.5 py-1.5 rounded-pill fw-semibold fs-8 d-inline-flex align-items-center gap-1">
+                                    <i class="bx bx-mobile-alt fs-7"></i> Customer
+                                </span>
+                            @endif
                         </td>
 
                         <!-- Title -->

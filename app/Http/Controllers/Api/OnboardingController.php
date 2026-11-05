@@ -24,6 +24,13 @@ class OnboardingController extends Controller
             $query->active();
         }
 
+        // Filter by target app (customer, driver, or both)
+        if ($request->filled("app_type")) {
+            $query->forApp($request->app_type);
+        } elseif ($request->filled("type")) {
+            $query->forApp($request->type);
+        }
+
         $screens = $query->ordered()->get();
 
         return response()->json([
@@ -65,6 +72,7 @@ class OnboardingController extends Controller
             "title_ar"       => "nullable|string|max:255",
             "description_en" => "nullable|string|max:1000",
             "description_ar" => "nullable|string|max:1000",
+            "app_type"       => "nullable|in:customer,driver,both",
             "sort_order"     => "nullable|integer|min:1",
             "status"         => "nullable|in:active,inactive",
             "image"          => "nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120",
@@ -84,6 +92,7 @@ class OnboardingController extends Controller
         $screen->description_en = $request->description_en ? trim($request->description_en) : null;
         $screen->description_ar = $request->description_ar ? trim($request->description_ar) : null;
         $screen->sort_order     = $request->sort_order ? (int)$request->sort_order : ((OnboardingScreen::max("sort_order") ?? 0) + 1);
+        $screen->app_type       = $request->app_type ?? "customer";
         $screen->status         = $request->status ?? "active";
         $screen->is_active      = ($screen->status === "active");
 
@@ -128,6 +137,7 @@ class OnboardingController extends Controller
             "title_ar"       => "nullable|string|max:255",
             "description_en" => "nullable|string|max:1000",
             "description_ar" => "nullable|string|max:1000",
+            "app_type"       => "nullable|in:customer,driver,both",
             "sort_order"     => "nullable|integer|min:1",
             "status"         => "nullable|in:active,inactive",
             "image"          => "nullable|image|mimes:jpeg,png,jpg,webp,svg|max:5120",
@@ -147,6 +157,9 @@ class OnboardingController extends Controller
         $screen->description_ar = $request->description_ar ? trim($request->description_ar) : null;
         if ($request->has("sort_order")) {
             $screen->sort_order = (int)$request->sort_order;
+        }
+        if ($request->has("app_type")) {
+            $screen->app_type = $request->app_type;
         }
         if ($request->has("status")) {
             $screen->status    = $request->status;

@@ -554,32 +554,42 @@
 
           <!-- Driver Documents Grid -->
           <div class="row g-3 mb-4">
-            @if($user->driverProfile->license_photo)
-            <div class="col-12 col-md-4">
+            @if($user->driverProfile->civil_id_photo)
+            <div class="col-12 col-sm-6 col-md-3">
               <div class="doc-preview-card">
-                <i class="bx bx-image text-info fs-2 mb-2 d-block"></i>
+                <i class="bx bx-id-card text-warning fs-2 mb-2 d-block"></i>
+                <span class="d-block fw-semibold fs-7 text-white mb-2">Civil ID / National ID</span>
+                <a href="{{ url('upload/driver_docs/' . $user->driverProfile->civil_id_photo) }}" target="_blank" class="btn btn-sm btn-outline-warning rounded-3 w-100">View File</a>
+              </div>
+            </div>
+            @endif
+
+            @if($user->driverProfile->license_photo)
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="doc-preview-card">
+                <i class="bx bx-credit-card-front text-warning fs-2 mb-2 d-block"></i>
                 <span class="d-block fw-semibold fs-7 text-white mb-2">Driver License Photo</span>
-                <a href="{{ url('upload/driver_docs/' . $user->driverProfile->license_photo) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-3 w-100">View File</a>
+                <a href="{{ url('upload/driver_docs/' . $user->driverProfile->license_photo) }}" target="_blank" class="btn btn-sm btn-outline-warning rounded-3 w-100">View File</a>
+              </div>
+            </div>
+            @endif
+
+            @if($user->driverProfile->passport_photo)
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="doc-preview-card">
+                <i class="bx bx-book-bookmark text-warning fs-2 mb-2 d-block"></i>
+                <span class="d-block fw-semibold fs-7 text-white mb-2">Passport Copy Photo</span>
+                <a href="{{ url('upload/driver_docs/' . $user->driverProfile->passport_photo) }}" target="_blank" class="btn btn-sm btn-outline-warning rounded-3 w-100">View File</a>
               </div>
             </div>
             @endif
 
             @if($user->driverProfile->truck_registration_photo)
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-sm-6 col-md-3">
               <div class="doc-preview-card">
-                <i class="bx bx-image text-info fs-2 mb-2 d-block"></i>
+                <i class="bx bx-car text-warning fs-2 mb-2 d-block"></i>
                 <span class="d-block fw-semibold fs-7 text-white mb-2">Truck Registration Photo</span>
-                <a href="{{ url('upload/driver_docs/' . $user->driverProfile->truck_registration_photo) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-3 w-100">View File</a>
-              </div>
-            </div>
-            @endif
-
-            @if($user->driverProfile->civil_id_photo)
-            <div class="col-12 col-md-4">
-              <div class="doc-preview-card">
-                <i class="bx bx-image text-info fs-2 mb-2 d-block"></i>
-                <span class="d-block fw-semibold fs-7 text-white mb-2">Civil ID Photo</span>
-                <a href="{{ url('upload/driver_docs/' . $user->driverProfile->civil_id_photo) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-3 w-100">View File</a>
+                <a href="{{ url('upload/driver_docs/' . $user->driverProfile->truck_registration_photo) }}" target="_blank" class="btn btn-sm btn-outline-warning rounded-3 w-100">View File</a>
               </div>
             </div>
             @endif

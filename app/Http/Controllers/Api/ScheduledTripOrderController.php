@@ -34,7 +34,8 @@ class ScheduledTripOrderController extends Controller
             'pickupCity:id,name_ar,name_en',
             'dropoffCountry:id,name_ar,name_en',
             'dropoffCity:id,name_ar,name_en',
-            'invoice'
+            'invoice',
+            'proofOfDelivery'
         ])->latest();
 
         // Filters
@@ -105,7 +106,8 @@ class ScheduledTripOrderController extends Controller
             'pickupCity:id,name_ar,name_en',
             'dropoffCountry:id,name_ar,name_en',
             'dropoffCity:id,name_ar,name_en',
-            'invoice'
+            'invoice',
+            'proofOfDelivery'
         ])->latest();
 
         if ($user) {
@@ -124,7 +126,7 @@ class ScheduledTripOrderController extends Controller
         if ($request->filled('status')) {
             $status = strtolower(trim($request->status));
             if ($status === 'active') {
-                $query->whereIn('status', ['confirmed', 'loaded', 'in_transit']);
+                $query->whereIn('status', ['confirmed', 'arrived_pickup', 'loaded', 'in_transit', 'arrived_dropoff']);
             } elseif ($status === 'pending') {
                 $query->whereIn('status', ['new']);
             } elseif ($status === 'delivered') {
@@ -223,7 +225,8 @@ class ScheduledTripOrderController extends Controller
             'pickupCity',
             'dropoffCountry',
             'dropoffCity',
-            'invoice'
+            'invoice',
+            'proofOfDelivery'
         ])->find($id);
 
         if (!$order) {
@@ -351,7 +354,7 @@ class ScheduledTripOrderController extends Controller
 
         // Step 2 — Cargo Details
         $order->shipment_name        = $request->shipment_name ?: ('Cargo for Scheduled Trip #' . $trip->id);
-        $order->shipment_description = $request->shipment_description;
+        $order->shipment_description = $request->shipment_description ?: $request->goods_description;
         $order->shipment_type_id     = $request->shipment_type_id ?: null;
         $order->shipment_nature_id   = $request->shipment_nature_id ?: null;
         $order->length               = $request->length ?: null;
@@ -359,7 +362,7 @@ class ScheduledTripOrderController extends Controller
         $order->height               = $request->height ?: null;
         $order->weight               = $request->weight ?: null;
         $order->packages_count       = $request->packages_count ?? 1;
-        $order->goods_description    = $request->goods_description;
+        $order->goods_description    = $request->goods_description ?: $request->shipment_description;
         $order->hs_code              = $request->hs_code ?: null;
         $order->hs_code_description  = $request->hs_code_description ?: null;
         $order->is_fragile           = $request->has('is_fragile') ? (int) $request->is_fragile : 0;
@@ -725,7 +728,7 @@ class ScheduledTripOrderController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'status' => 'required|in:new,confirmed,loaded,in_transit,delivered,canceled'
+            'status' => 'required|in:new,confirmed,arrived_pickup,loaded,in_transit,arrived_dropoff,delivered,canceled'
         ]);
 
         if ($validator->fails()) {

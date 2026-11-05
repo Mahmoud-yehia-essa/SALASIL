@@ -507,6 +507,41 @@ class ScheduledTripController extends Controller
         $trip->status = $request->status;
         $trip->save();
 
+        if ($request->status === 'completed' && $trip->driver_id) {
+            $driver = \App\Models\User::find($trip->driver_id);
+            if ($driver) {
+                $inv = \App\Models\ScheduledTripDriverInvitation::where('scheduled_trip_id', $trip->id)
+                    ->where('driver_id', $driver->id)
+                    ->first();
+                if ($inv) {
+                    $inv->status = 'completed';
+                    $inv->save();
+                }
+                $amount = $inv && floatval($inv->offered_price) > 0 ? floatval($inv->offered_price) : floatval($trip->price);
+                if ($amount > 0) {
+                    $alreadyCredited = \App\Models\WalletTransaction::where('user_id', $driver->id)
+                        ->where('scheduled_trip_id', $trip->id)
+                        ->where('type', 'trip_earnings')
+                        ->exists();
+                    if (!$alreadyCredited) {
+                        $lastBal = (float) $driver->credit;
+                        $newBal = $lastBal + $amount;
+                        $driver->credit = $newBal;
+                        $driver->save();
+
+                        \App\Models\WalletTransaction::create([
+                            'user_id'           => $driver->id,
+                            'scheduled_trip_id' => $trip->id,
+                            'amount'            => $amount,
+                            'type'              => 'trip_earnings',
+                            'balance_after'     => $newBal,
+                            'description'       => 'Earnings for completing scheduled trip #' . $trip->id . ' (أرباح إكمال الرحلة واستلام الشحنة)',
+                        ]);
+                    }
+                }
+            }
+        }
+
         return response()->json([
             'status'  => true,
             'message' => 'Scheduled trip status updated to ' . ucfirst(str_replace('_', ' ', $request->status)) . ' successfully',

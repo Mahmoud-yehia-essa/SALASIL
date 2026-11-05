@@ -3,6 +3,110 @@
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
+<style>
+/* ════════════════════════════════════════════════════════════════════
+   FLEET DRIVER PROFILE SECTION (LIGHT & DARK THEME)
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Light Theme Variables */
+html.light-theme, html:not(.dark-theme) {
+    --driver-box-bg: #FFFFFF;
+    --driver-box-border: #E2E8F0;
+    --driver-box-header-title: #0F172A;
+    --driver-box-header-desc: #64748B;
+    --driver-subcard-bg: #F8FAFC;
+    --driver-subcard-border: #E2E8F0;
+    --driver-subcard-title: #0F172A;
+    --driver-label-color: #334155;
+    --driver-doc-item-bg: #FFFFFF;
+    --driver-doc-item-border: #CBD5E1;
+    --driver-doc-name: #0F172A;
+    --driver-doc-meta: #64748B;
+    --driver-accent-badge-bg: #FEF3C7;
+    --driver-accent-badge-text: #92400E;
+    --driver-accent-badge-border: #FDE68A;
+}
+
+/* Dark Theme Variables */
+html.dark-theme {
+    --driver-box-bg: rgba(15, 23, 42, 0.65);
+    --driver-box-border: rgba(245, 158, 11, 0.3);
+    --driver-box-header-title: #FBBF24;
+    --driver-box-header-desc: #94A3B8;
+    --driver-subcard-bg: rgba(30, 41, 59, 0.55);
+    --driver-subcard-border: rgba(255, 255, 255, 0.1);
+    --driver-subcard-title: #F8FAFC;
+    --driver-label-color: #E2E8F0;
+    --driver-doc-item-bg: rgba(15, 23, 42, 0.85);
+    --driver-doc-item-border: rgba(255, 255, 255, 0.12);
+    --driver-doc-name: #F8FAFC;
+    --driver-doc-meta: #94A3B8;
+    --driver-accent-badge-bg: rgba(245, 158, 11, 0.2);
+    --driver-accent-badge-text: #FDE047;
+    --driver-accent-badge-border: rgba(245, 158, 11, 0.35);
+}
+
+/* Fleet Driver Profile Panel Styling */
+.driver-profile-panel {
+    background-color: var(--driver-box-bg) !important;
+    border: 1px solid var(--driver-box-border) !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.driver-profile-panel .driver-header-title {
+    color: var(--driver-box-header-title) !important;
+    font-weight: 700 !important;
+}
+
+.driver-profile-panel .driver-header-desc {
+    color: var(--driver-box-header-desc) !important;
+}
+
+.driver-subcard {
+    background-color: var(--driver-subcard-bg) !important;
+    border: 1px solid var(--driver-subcard-border) !important;
+    border-radius: 0.75rem !important;
+}
+
+.driver-subcard .driver-subcard-title {
+    color: var(--driver-subcard-title) !important;
+    font-weight: 700 !important;
+}
+
+.driver-subcard .form-label,
+.driver-profile-panel .form-label,
+.driver-subcard .form-check-label {
+    color: var(--driver-label-color) !important;
+}
+
+.driver-doc-preview-item {
+    background-color: var(--driver-doc-item-bg) !important;
+    border: 1px solid var(--driver-doc-item-border) !important;
+    border-radius: 0.5rem !important;
+}
+
+.driver-doc-preview-item .driver-doc-filename {
+    color: var(--driver-doc-name) !important;
+    font-weight: 600 !important;
+}
+
+.driver-doc-preview-item .driver-doc-meta {
+    color: var(--driver-doc-meta) !important;
+}
+
+.driver-status-badge {
+    background-color: var(--driver-accent-badge-bg) !important;
+    color: var(--driver-accent-badge-text) !important;
+    border: 1px solid var(--driver-accent-badge-border) !important;
+}
+
+html.light-theme .driver-profile-panel .text-warning,
+html:not(.dark-theme) .driver-profile-panel .text-warning {
+    color: #D97706 !important;
+}
+</style>
+
 <!-- Page Header -->
 <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-4 pb-2 border-bottom border-secondary border-opacity-25 gap-3">
     <div>
@@ -498,14 +602,23 @@
                     </div>
 
                     <!-- Dynamic Fleet Driver Profile Section -->
-                    <div id="driverProfileSection" style="display: none;" class="p-3 mb-4 rounded-4 border border-warning border-opacity-25 bg-warning bg-opacity-10">
-                        <h6 class="text-warning fw-bold text-uppercase fs-7 mb-3 d-flex align-items-center gap-2" style="letter-spacing: 0.5px;">
-                            <i class="bx bx-id-card fs-5"></i> Fleet Driver Details & Documentation
-                        </h6>
-                        <div class="row g-3">
+                    <div id="driverProfileSection" style="display: none;" class="p-3 mb-4 driver-profile-panel shadow-sm">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom" style="border-color: var(--driver-subcard-border) !important;">
+                            <div>
+                                <h6 class="driver-header-title text-uppercase fs-7 mb-1 d-flex align-items-center gap-2" style="letter-spacing: 0.5px;">
+                                    <i class="bx bx-id-card fs-5 text-warning"></i> Fleet Driver Details & Documentation (بيانات السائق والمستندات)
+                                </h6>
+                                <p class="driver-header-desc fs-8 mb-0">
+                                    Driver operational credentials, vehicle information, and official documents.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 1. Driver Credentials -->
+                        <div class="row g-3 mb-3">
                             <!-- Driving License Number -->
-                            <div class="col-12 col-md-6">
-                                <label for="license_number" class="form-label fw-semibold">Driving License Number</label>
+                            <div class="col-12 col-md-4">
+                                <label for="license_number" class="form-label fw-semibold">Driving License Number (رقم الرخصة)</label>
                                 <div class="position-relative">
                                     <input type="text" 
                                            name="license_number" 
@@ -523,9 +636,39 @@
                                 @enderror
                             </div>
 
+                            <!-- Availability Status -->
+                            <div class="col-12 col-md-4">
+                                <label for="availability_status" class="form-label fw-semibold">Availability Status (حالة التوفر)</label>
+                                <select name="availability_status" id="availability_status" class="form-select">
+                                    <option value="offline" {{ old('availability_status', 'offline') == 'offline' ? 'selected' : '' }}>Offline (غير متصل)</option>
+                                    <option value="available" {{ old('availability_status') == 'available' ? 'selected' : '' }}>Available for Orders (متاح للطلبات)</option>
+                                    <option value="busy" {{ old('availability_status') == 'busy' ? 'selected' : '' }}>Busy on Trip (مشغول برحلة)</option>
+                                </select>
+                            </div>
+
+                            <!-- Driver Verification Status -->
+                            <div class="col-12 col-md-4">
+                                <label for="driver_verification_status" class="form-label fw-semibold">Verification Status (توثيق الحساب)</label>
+                                <select name="driver_verification_status" id="driver_verification_status" class="form-select">
+                                    <option value="pending" {{ old('driver_verification_status', 'pending') == 'pending' ? 'selected' : '' }}>Pending Verification (قيد المراجعة)</option>
+                                    <option value="verified" {{ old('driver_verification_status') == 'verified' ? 'selected' : '' }}>Verified Driver (موثق ومعتمد)</option>
+                                    <option value="rejected" {{ old('driver_verification_status') == 'rejected' ? 'selected' : '' }}>Rejected (مرفوض)</option>
+                                </select>
+                            </div>
+
+                            <!-- Driver Rejection Reason -->
+                            <div class="col-12" id="driverRejectionReasonDiv" style="display: none;">
+                                <label for="driver_rejection_reason" class="form-label fw-semibold text-danger">Driver Rejection Reason (سبب الرفض)</label>
+                                <textarea name="driver_rejection_reason" 
+                                          id="driver_rejection_reason" 
+                                          rows="2" 
+                                          class="form-control border-danger border-opacity-50" 
+                                          placeholder="Specify reason for rejecting this driver application...">{{ old('driver_rejection_reason') }}</textarea>
+                            </div>
+
                             <!-- Initial Wallet Balance -->
-                            <div class="col-12 col-md-3">
-                                <label for="wallet_balance" class="form-label fw-semibold">Initial Wallet Balance</label>
+                            <div class="col-12 col-md-6">
+                                <label for="wallet_balance" class="form-label fw-semibold">Initial Wallet Balance (رصيد المحفظة)</label>
                                 <div class="position-relative">
                                     <input type="number" 
                                            step="0.01"
@@ -542,8 +685,8 @@
                             </div>
 
                             <!-- Initial Driver Rating -->
-                            <div class="col-12 col-md-3">
-                                <label for="rating" class="form-label fw-semibold">Initial Driver Rating</label>
+                            <div class="col-12 col-md-6">
+                                <label for="rating" class="form-label fw-semibold">Initial Driver Rating (تقييم السائق)</label>
                                 <div class="position-relative">
                                     <input type="number" 
                                            step="0.1"
@@ -560,77 +703,170 @@
                                     </span>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Driving License Photo -->
-                            <div class="col-12 col-md-4">
-                                <label for="license_photo" class="form-label fw-semibold">Upload Driving License</label>
-                                <input type="file" 
-                                       name="license_photo" 
-                                       id="license_photo" 
-                                       class="form-control live-doc-picker"
-                                       data-preview-box="#license_photo_preview"
-                                       data-title="Driving License Document"
-                                       accept=".pdf,.jpg,.jpeg,.png,.webp">
-                                <small class="text-slate-400 d-block mt-1">Allowed: PDF, JPG, PNG, WEBP</small>
-                                <div id="license_photo_preview" class="mt-2"></div>
+                        <!-- 2. Vehicle Specifications -->
+                        <div class="p-3 mb-3 driver-subcard">
+                            <h6 class="driver-subcard-title fs-7 mb-2 d-flex align-items-center gap-1.5">
+                                <i class="bx bx-truck fs-5 text-warning"></i> Vehicle & Truck Specifications (بيانات ومواصفات الشاحنة)
+                            </h6>
+                            <div class="row g-3">
+                                <!-- Truck Type -->
+                                <div class="col-12 col-md-6">
+                                    <label for="truck_type_id" class="form-label fw-semibold">Truck Type (نوع الشاحنة)</label>
+                                    <div class="position-relative">
+                                        <select name="truck_type_id" id="truck_type_id" class="form-select @error('truck_type_id') is-invalid @enderror" style="padding-left: 48px !important;">
+                                            <option value="">-- Select Truck Type --</option>
+                                            @if(isset($truckTypes))
+                                                @foreach($truckTypes as $tt)
+                                                    <option value="{{ $tt->id }}" {{ old('truck_type_id') == $tt->id ? 'selected' : '' }}>
+                                                        {{ $tt->name_en }} ({{ $tt->name_ar }}) - Max: {{ $tt->max_weight }}
+                                                    </option>
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                        <span class="position-absolute text-warning" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                            <i class="bx bx-car fs-5"></i>
+                                        </span>
+                                    </div>
+                                    @error('truck_type_id')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- Plate Number -->
+                                <div class="col-12 col-md-3">
+                                    <label for="plate_number" class="form-label fw-semibold">Plate Number (رقم اللوحة)</label>
+                                    <div class="position-relative">
+                                        <input type="text" 
+                                               name="plate_number" 
+                                               id="plate_number" 
+                                               class="form-control @error('plate_number') is-invalid @enderror" 
+                                               style="padding-left: 48px !important;"
+                                               placeholder="e.g. 12345"
+                                               value="{{ old('plate_number') }}">
+                                        <span class="position-absolute text-warning" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                            <i class="bx bx-card fs-5"></i>
+                                        </span>
+                                    </div>
+                                    @error('plate_number')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- Model Year -->
+                                <div class="col-12 col-md-3">
+                                    <label for="model_year" class="form-label fw-semibold">Model Year (سنة الصنع)</label>
+                                    <div class="position-relative">
+                                        <input type="text" 
+                                               name="model_year" 
+                                               id="model_year" 
+                                               class="form-control @error('model_year') is-invalid @enderror" 
+                                               style="padding-left: 48px !important;"
+                                               placeholder="e.g. 2021"
+                                               value="{{ old('model_year') }}">
+                                        <span class="position-absolute text-warning" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                            <i class="bx bx-calendar fs-5"></i>
+                                        </span>
+                                    </div>
+                                    @error('model_year')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- Administrative Number / Capacity -->
+                                <div class="col-12 col-md-6">
+                                    <label for="administrative_number" class="form-label fw-semibold">Capacity / Weight / Admin No. (الحمولة / الرقم الإداري)</label>
+                                    <div class="position-relative">
+                                        <input type="text" 
+                                               name="administrative_number" 
+                                               id="administrative_number" 
+                                               class="form-control @error('administrative_number') is-invalid @enderror" 
+                                               style="padding-left: 48px !important;"
+                                               placeholder="e.g. 20,000 Kg"
+                                               value="{{ old('administrative_number') }}">
+                                        <span class="position-absolute text-warning" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                            <i class="bx bx-tachometer fs-5"></i>
+                                        </span>
+                                    </div>
+                                    @error('administrative_number')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- Set as Main Truck switch -->
+                                <div class="col-12 col-md-6 d-flex align-items-center">
+                                    <div class="form-check form-switch pt-3">
+                                        <input class="form-check-input" type="checkbox" name="is_main_truck" id="is_main_truck" value="1" {{ old('is_main_truck', 1) ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-semibold ms-2" for="is_main_truck">
+                                            Set as Main Truck for Driver (تعيين كشاحنة رئيسية)
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
 
-                            <!-- Truck Registration Photo -->
-                            <div class="col-12 col-md-4">
-                                <label for="truck_registration_photo" class="form-label fw-semibold">Upload Truck Registration</label>
-                                <input type="file" 
-                                       name="truck_registration_photo" 
-                                       id="truck_registration_photo" 
-                                       class="form-control live-doc-picker"
-                                       data-preview-box="#truck_reg_photo_preview"
-                                       data-title="Truck Registration Document"
-                                       accept=".pdf,.jpg,.jpeg,.png,.webp">
-                                <small class="text-slate-400 d-block mt-1">Allowed: PDF, JPG, PNG, WEBP</small>
-                                <div id="truck_reg_photo_preview" class="mt-2"></div>
-                            </div>
+                        <!-- 3. Driver Official Documents Upload -->
+                        <div class="p-3 driver-subcard">
+                            <h6 class="driver-subcard-title fs-7 mb-3 d-flex align-items-center gap-1.5">
+                                <i class="bx bx-file fs-5 text-warning"></i> Upload Official Driver Documents (رفع مستندات السائق)
+                            </h6>
+                            <div class="row g-3">
+                                <!-- Civil ID Photo -->
+                                <div class="col-12 col-md-6">
+                                    <label for="civil_id_photo" class="form-label fw-semibold">Civil / National ID Document (البطاقة المدنية / الهوية)</label>
+                                    <input type="file" 
+                                           name="civil_id_photo" 
+                                           id="civil_id_photo" 
+                                           class="form-control live-doc-picker"
+                                           data-preview-box="#civil_id_photo_preview"
+                                           data-title="Civil ID Document"
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                    <small class="driver-doc-meta d-block mt-1 fs-8">Allowed: PDF, JPG, PNG, WEBP (Max: 10MB)</small>
+                                    <div id="civil_id_photo_preview" class="mt-2"></div>
+                                </div>
 
-                            <!-- Civil ID Photo -->
-                            <div class="col-12 col-md-4">
-                                <label for="civil_id_photo" class="form-label fw-semibold">Upload Civil / National ID</label>
-                                <input type="file" 
-                                       name="civil_id_photo" 
-                                       id="civil_id_photo" 
-                                       class="form-control live-doc-picker"
-                                       data-preview-box="#civil_id_photo_preview"
-                                       data-title="Civil ID Document"
-                                       accept=".pdf,.jpg,.jpeg,.png,.webp">
-                                <small class="text-slate-400 d-block mt-1">Allowed: PDF, JPG, PNG, WEBP</small>
-                                <div id="civil_id_photo_preview" class="mt-2"></div>
-                            </div>
+                                <!-- Driving License Photo -->
+                                <div class="col-12 col-md-6">
+                                    <label for="license_photo" class="form-label fw-semibold">Driving License Document (رخصة القيادة)</label>
+                                    <input type="file" 
+                                           name="license_photo" 
+                                           id="license_photo" 
+                                           class="form-control live-doc-picker"
+                                           data-preview-box="#license_photo_preview"
+                                           data-title="Driving License Document"
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                    <small class="driver-doc-meta d-block mt-1 fs-8">Allowed: PDF, JPG, PNG, WEBP (Max: 10MB)</small>
+                                    <div id="license_photo_preview" class="mt-2"></div>
+                                </div>
 
-                            <!-- Availability Status -->
-                            <div class="col-12 col-md-6">
-                                <label for="availability_status" class="form-label fw-semibold">Availability Status</label>
-                                <select name="availability_status" id="availability_status" class="form-select">
-                                    <option value="offline" {{ old('availability_status', 'offline') == 'offline' ? 'selected' : '' }}>Offline</option>
-                                    <option value="available" {{ old('availability_status') == 'available' ? 'selected' : '' }}>Available for Orders</option>
-                                    <option value="busy" {{ old('availability_status') == 'busy' ? 'selected' : '' }}>Busy on Trip</option>
-                                </select>
-                            </div>
+                                <!-- Passport Copy Photo -->
+                                <div class="col-12 col-md-6">
+                                    <label for="passport_photo" class="form-label fw-semibold">Passport Copy Document (صورة جواز السفر)</label>
+                                    <input type="file" 
+                                           name="passport_photo" 
+                                           id="passport_photo" 
+                                           class="form-control live-doc-picker"
+                                           data-preview-box="#passport_photo_preview"
+                                           data-title="Passport Copy Document"
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                    <small class="driver-doc-meta d-block mt-1 fs-8">Allowed: PDF, JPG, PNG, WEBP (Max: 10MB)</small>
+                                    <div id="passport_photo_preview" class="mt-2"></div>
+                                </div>
 
-                            <!-- Driver Verification Status -->
-                            <div class="col-12 col-md-6">
-                                <label for="driver_verification_status" class="form-label fw-semibold">Verification Status</label>
-                                <select name="driver_verification_status" id="driver_verification_status" class="form-select">
-                                    <option value="pending" {{ old('driver_verification_status', 'pending') == 'pending' ? 'selected' : '' }}>Pending Verification</option>
-                                    <option value="verified" {{ old('driver_verification_status') == 'verified' ? 'selected' : '' }}>Verified Driver</option>
-                                    <option value="rejected" {{ old('driver_verification_status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                </select>
-                            </div>
-
-                            <!-- Driver Rejection Reason -->
-                            <div class="col-12" id="driverRejectionReasonDiv" style="display: none;">
-                                <label for="driver_rejection_reason" class="form-label fw-semibold text-danger">Driver Rejection Reason</label>
-                                <textarea name="driver_rejection_reason" 
-                                          id="driver_rejection_reason" 
-                                          rows="2" 
-                                          class="form-control border-danger border-opacity-50" 
-                                          placeholder="Specify reason for rejecting this driver application...">{{ old('driver_rejection_reason') }}</textarea>
+                                <!-- Truck Registration Photo -->
+                                <div class="col-12 col-md-6">
+                                    <label for="truck_registration_photo" class="form-label fw-semibold">Truck Registration Document (دفتر ملكية الشاحنة)</label>
+                                    <input type="file" 
+                                           name="truck_registration_photo" 
+                                           id="truck_registration_photo" 
+                                           class="form-control live-doc-picker"
+                                           data-preview-box="#truck_reg_photo_preview"
+                                           data-title="Truck Registration Document"
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                    <small class="driver-doc-meta d-block mt-1 fs-8">Allowed: PDF, JPG, PNG, WEBP (Max: 10MB)</small>
+                                    <div id="truck_reg_photo_preview" class="mt-2"></div>
+                                </div>
                             </div>
                         </div>
                     </div>

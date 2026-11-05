@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\HsCodeController;
 use App\Http\Controllers\Api\ShipmentController;
 use App\Http\Controllers\Api\ShipmentTrackingController;
 use App\Http\Controllers\Api\ShipmentInvitationController;
+use App\Http\Controllers\Api\ScheduledTripInvitationController;
 use App\Http\Controllers\Api\RouteController as ApiRouteController;
 use App\Http\Controllers\Api\ScheduledTripController;
 use App\Http\Controllers\Api\ScheduledTripOrderController as ApiScheduledTripOrderController;
@@ -31,6 +32,7 @@ use App\Http\Controllers\Api\AboutSalasilSettingController;
 use App\Http\Controllers\Api\FaqController as ApiFaqController;
 use App\Http\Controllers\Api\SupportSettingController;
 use App\Http\Controllers\Api\DriverLookupController;
+use App\Http\Controllers\Api\DriverHomeController;
 use App\Http\Controllers\Api\NotificationController;
 
 
@@ -56,6 +58,27 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::get('/drivers/lookup', [DriverLookupController::class, 'lookup']);
 Route::get('/drivers/search', [DriverLookupController::class, 'search']);
 Route::post('/drivers/pay', [DriverLookupController::class, 'payDriver']);
+Route::get('/driver/home-stats', [DriverHomeController::class, 'homeStats']);
+Route::get('/driver/stats', [DriverHomeController::class, 'homeStats']);
+Route::get('/driver/active-trips', [DriverHomeController::class, 'activeTrips']);
+Route::get('/driver/completed-trips', [DriverHomeController::class, 'completedTrips']);
+Route::get('/driver/earnings-history', [DriverHomeController::class, 'earningsHistory']);
+Route::post('/driver/trips/{id}/complete', [DriverHomeController::class, 'completeTrip']);
+Route::get('/driver/trip-requests', [DriverHomeController::class, 'tripRequests']);
+Route::get('/driver/trip-requests/{id}', [DriverHomeController::class, 'tripDetails']);
+Route::post('/driver/trip-requests/{id}/respond', [DriverHomeController::class, 'respondTripRequest']);
+Route::get('/driver/trips/{id}/status', [DriverHomeController::class, 'tripStatus']);
+Route::post('/driver/trips/{id}/stage', [DriverHomeController::class, 'updateTripStage']);
+Route::get('/driver/documents', [DriverHomeController::class, 'driverDocuments']);
+Route::post('/driver/documents/update', [DriverHomeController::class, 'updateDriverDocument']);
+Route::post('/driver/profile/update', [DriverHomeController::class, 'updateProfile']);
+Route::get('/driver/truck', [DriverHomeController::class, 'getDriverTruck']);
+Route::post('/driver/truck/update', [DriverHomeController::class, 'updateDriverTruck']);
+Route::get('/driver/notifications', [DriverHomeController::class, 'notifications']);
+Route::post('/driver/notifications/mark-all-read', [DriverHomeController::class, 'markAllNotificationsRead']);
+Route::delete('/driver/notifications/clear-all', [DriverHomeController::class, 'clearAllNotifications']);
+Route::post('/driver/notifications/{id}/read', [DriverHomeController::class, 'markNotificationRead']);
+Route::delete('/driver/notifications/{id}', [DriverHomeController::class, 'deleteNotification']);
 
 Route::get('/about-settings', [AboutSalasilSettingController::class, 'getSettings']);
 Route::get('/faqs', [ApiFaqController::class, 'index']);
@@ -224,6 +247,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/shipment-invitations/{id}/update', [ShipmentInvitationController::class, 'update']);
     Route::post('/shipment-invitations/{id}/respond', [ShipmentInvitationController::class, 'respond']);
     Route::delete('/shipment-invitations/{id}', [ShipmentInvitationController::class, 'destroy']);
+
+    // Driver Invitations for Scheduled Trips
+    Route::get('/scheduled-trip-invitations', [ScheduledTripInvitationController::class, 'index']);
+    Route::get('/scheduled-trip-invitations/my-invitations', [ScheduledTripInvitationController::class, 'myInvitations']);
+    Route::get('/scheduled-trip-invitations/{id}', [ScheduledTripInvitationController::class, 'show']);
+    Route::post('/scheduled-trip-invitations', [ScheduledTripInvitationController::class, 'store']);
+    Route::post('/scheduled-trip-invitations/{id}/update', [ScheduledTripInvitationController::class, 'update']);
+    Route::post('/scheduled-trip-invitations/{id}/respond', [ScheduledTripInvitationController::class, 'respond']);
+    Route::delete('/scheduled-trip-invitations/{id}', [ScheduledTripInvitationController::class, 'destroy']);
 
     // Routes Management
     Route::post('/routes', [ApiRouteController::class, 'store']);

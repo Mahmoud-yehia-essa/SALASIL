@@ -582,6 +582,9 @@ html.light-theme .detail-row .d-value {
                     {{-- Actions --}}
                     <td class="text-end">
                         <div class="d-inline-flex gap-2">
+                            <a href="{{ route('add.scheduled.trip.invitation', ['trip_id' => $t->id]) }}" class="btn-action" style="color:#F59E0B;" title="Invite Driver to this Trip">
+                                <i class="bx bx-send fs-5"></i>
+                            </a>
                             <a href="{{ route('add.scheduled.trip.order', ['trip_id' => $t->id]) }}" class="btn-action" style="color:var(--tp-cyan-light);" title="Book / Add Order on this Trip">
                                 <i class="bx bx-calendar-plus fs-5"></i>
                             </a>

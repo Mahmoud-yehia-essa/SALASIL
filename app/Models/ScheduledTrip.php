@@ -70,4 +70,20 @@ class ScheduledTrip extends Model
     {
         return $this->hasMany(ScheduledTripOrder::class, 'scheduled_trip_id');
     }
+
+    /**
+     * دعوات السائقين المربوطة بهذه الرحلة المجدولة
+     */
+    public function driverInvitations()
+    {
+        return $this->hasMany(ScheduledTripDriverInvitation::class, 'scheduled_trip_id');
+    }
+
+    /**
+     * إثباتات التسليم للرحلة (Proofs of Delivery)
+     */
+    public function proofOfDeliveries()
+    {
+        return $this->hasMany(ProofOfDelivery::class, 'scheduled_trip_id');
+    }
 }

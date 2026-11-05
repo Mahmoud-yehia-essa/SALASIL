@@ -13,6 +13,7 @@ use App\Models\ShipmentNature;
 use App\Models\Country;
 use App\Models\City;
 use App\Models\Invoice;
+use App\Models\ScheduledTripDriverInvitation;
 
 class ScheduledTripOrder extends Model
 {
@@ -149,5 +150,21 @@ class ScheduledTripOrder extends Model
     public function invoice()
     {
         return $this->hasOne(Invoice::class, 'scheduled_trip_order_id');
+    }
+
+    /**
+     * الدعوات المرسلة للسائقين لهذا الطلب
+     */
+    public function driverInvitations()
+    {
+        return $this->hasMany(ScheduledTripDriverInvitation::class, 'scheduled_trip_order_id');
+    }
+
+    /**
+     * إثبات التسليم للطلب (Proof of Delivery)
+     */
+    public function proofOfDelivery()
+    {
+        return $this->hasOne(ProofOfDelivery::class, 'scheduled_trip_order_id');
     }
 }

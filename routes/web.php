@@ -14,6 +14,7 @@ use App\Http\Controllers\ShipmentNatureController;
 use App\Http\Controllers\ShipmentController;
 use App\Http\Controllers\ShipmentTrackingController;
 use App\Http\Controllers\ShipmentInvitationController;
+use App\Http\Controllers\ScheduledTripInvitationController;
 use App\Http\Controllers\HsCodeController;
 use App\Http\Controllers\RouteController;
 use App\Http\Controllers\ScheduledTripController;
@@ -45,6 +46,10 @@ Route::get('/v/{code}', [UserController::class, 'PublicUserProfile']);
 // Public Driver Invitation Magic Link Routes (accessible without login)
 Route::get('/invite/{token}', [ShipmentInvitationController::class, 'ShowDriverInvitationMagicLink'])->name('driver.invitation.magic.link');
 Route::post('/invite/{token}/respond', [ShipmentInvitationController::class, 'RespondDriverInvitationMagicLink'])->name('driver.invitation.respond');
+
+// Public Scheduled Trip Driver Invitation Magic Link Routes (accessible without login)
+Route::get('/trip-invite/{token}', [ScheduledTripInvitationController::class, 'ShowTripInvitationMagicLink'])->name('driver.trip.invitation.magic.link');
+Route::post('/trip-invite/{token}/respond', [ScheduledTripInvitationController::class, 'RespondTripInvitationMagicLink'])->name('driver.trip.invitation.respond');
 
 Route::get('/dashboard', function () {
     $clientsCount        = \App\Models\User::whereIn('role', ['individual_customer', 'company_customer'])->count();
@@ -223,6 +228,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/shipment-invitation/get-shipment-data/{shipment_id}', [ShipmentInvitationController::class, 'GetShipmentDataAjax'])->name('get.shipment.data.ajax');
     Route::match(['get', 'post'], '/admin/shipment-invitation/change-status-ajax', [ShipmentInvitationController::class, 'ChangeStatusAjax'])->name('shipment.invitation.status.ajax');
 
+    // Scheduled Trip Driver Invitation Routes
+    Route::get('/admin/scheduled-trip-invitation/all', [ScheduledTripInvitationController::class, 'AllInvitations'])->name('all.scheduled.trip.invitations');
+    Route::get('/admin/scheduled-trip-invitation/add', [ScheduledTripInvitationController::class, 'AddInvitation'])->name('add.scheduled.trip.invitation');
+    Route::post('/admin/scheduled-trip-invitation/store', [ScheduledTripInvitationController::class, 'StoreInvitation'])->name('store.scheduled.trip.invitation');
+    Route::get('/admin/scheduled-trip-invitation/edit/{id}', [ScheduledTripInvitationController::class, 'EditInvitation'])->name('edit.scheduled.trip.invitation');
+    Route::post('/admin/scheduled-trip-invitation/update', [ScheduledTripInvitationController::class, 'UpdateInvitation'])->name('update.scheduled.trip.invitation');
+    Route::get('/admin/scheduled-trip-invitation/delete/{id}', [ScheduledTripInvitationController::class, 'DeleteInvitation'])->name('delete.scheduled.trip.invitation');
+    Route::get('/admin/scheduled-trip-invitation/get-driver-trucks/{driver_id}', [ScheduledTripInvitationController::class, 'GetDriverTrucksAjax'])->name('get.scheduled.trip.driver.trucks.ajax');
+    Route::get('/admin/scheduled-trip-invitation/get-scheduled-trip-data/{trip_id}', [ScheduledTripInvitationController::class, 'GetScheduledTripDataAjax'])->name('get.scheduled.trip.data.ajax');
+    Route::get('/admin/scheduled-trip-invitation/get-order-data/{order_id}', [ScheduledTripInvitationController::class, 'GetScheduledTripOrderDataAjax'])->name('get.scheduled.trip.order.data.ajax');
+    Route::match(['get', 'post'], '/admin/scheduled-trip-invitation/change-status-ajax', [ScheduledTripInvitationController::class, 'ChangeStatusAjax'])->name('scheduled.trip.invitation.status.ajax');
+
     // Fixed Routes Management Routes
     Route::get('/admin/routes/all', [RouteController::class, 'AllRoutes'])->name('all.routes');
     Route::get('/admin/routes/add', [RouteController::class, 'AddRoute'])->name('add.route');
@@ -249,6 +266,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/scheduled-trip-orders/trip-data-ajax/{id}', [ScheduledTripOrderController::class, 'GetTripDataAjax'])->name('get.trip.data.ajax');
     Route::get('/admin/scheduled-trip-orders/trip-data-ajax-alias/{id}', [ScheduledTripOrderController::class, 'GetTripDataAjax'])->name('get.scheduled.trip.order.trip.data.ajax');
     Route::get('/admin/scheduled-trip-orders/details/{id}', [ScheduledTripOrderController::class, 'GetOrderDetailsAjax'])->name('get.scheduled.trip.order.details.ajax');
+    Route::get('/admin/scheduled-trip-orders/pod/{id}', [ScheduledTripOrderController::class, 'GetOrderPodAjax'])->name('get.scheduled.trip.order.pod.ajax');
     Route::get('/admin/scheduled-trip-orders/document/view/{id}/{index}', [ScheduledTripOrderController::class, 'ViewOrderDocument'])->name('view.scheduled.trip.order.document');
     Route::get('/admin/scheduled-trip-orders/document/download/{id}/{index}', [ScheduledTripOrderController::class, 'DownloadOrderDocument'])->name('download.scheduled.trip.order.document');
     Route::match(['get', 'post'], '/admin/scheduled-trip-orders/change-status-ajax', [ScheduledTripOrderController::class, 'ChangeStatusAjax'])->name('scheduled.trip.order.status.ajax');

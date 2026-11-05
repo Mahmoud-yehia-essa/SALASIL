@@ -17,6 +17,7 @@ class OnboardingScreen extends Model
         "description_en",
         "description_ar",
         "image",
+        "app_type",
         "sort_order",
         "status",
         "is_active",
@@ -64,5 +65,19 @@ class OnboardingScreen extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy("sort_order", "asc")->orderBy("id", "asc");
+    }
+
+    /**
+     * Scope a query to filter screens by app type (customer, driver, or both).
+     */
+    public function scopeForApp($query, $appType)
+    {
+        if (!empty($appType)) {
+            return $query->where(function ($q) use ($appType) {
+                $q->where("app_type", $appType)
+                  ->orWhere("app_type", "both");
+            });
+        }
+        return $query;
     }
 }

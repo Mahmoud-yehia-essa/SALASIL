@@ -110,8 +110,10 @@
                 <div class="menu-title">Driver Invitations</div>
             </a>
             <ul>
-                <li><a href="{{ route('add.shipment.invitation') }}"><i class='bx bx-radio-circle'></i>Invite Driver</a></li>
-                <li><a href="{{ route('all.shipment.invitations') }}"><i class='bx bx-radio-circle'></i>All Invitations</a></li>
+                <li><a href="{{ route('add.shipment.invitation') }}"><i class='bx bx-radio-circle'></i>Invite to Shipment</a></li>
+                <li><a href="{{ route('all.shipment.invitations') }}"><i class='bx bx-radio-circle'></i>All Shipment Invitations</a></li>
+                <li><a href="{{ route('add.scheduled.trip.invitation') }}"><i class='bx bx-radio-circle'></i>Invite to Scheduled Trip</a></li>
+                <li><a href="{{ route('all.scheduled.trip.invitations') }}"><i class='bx bx-radio-circle'></i>All Scheduled Trip Invitations</a></li>
             </ul>
         </li>
 

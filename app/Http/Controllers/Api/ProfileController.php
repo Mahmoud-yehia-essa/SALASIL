@@ -166,6 +166,21 @@ class ProfileController extends Controller
                 }
             }
 
+            if ($request->hasFile('passport_photo')) {
+                $f = $request->file('passport_photo');
+                if (!$f->isValid()) {
+                    $fileErrors['passport_photo'][] = 'Invalid passport photo upload.';
+                } elseif ($f->getSize() > 10 * 1024 * 1024) {
+                    $fileErrors['passport_photo'][] = 'The passport document must not exceed 10MB.';
+                } else {
+                    $ext = strtolower($f->getClientOriginalExtension());
+                    $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+                    if (!in_array($ext, $allowed)) {
+                        $fileErrors['passport_photo'][] = 'Invalid document format. Allowed formats: ' . implode(', ', $allowed);
+                    }
+                }
+            }
+
             if (!empty($fileErrors)) {
                 return response()->json([
                     'status'  => false,
@@ -255,6 +270,14 @@ class ProfileController extends Controller
                     if ($uploaded) {
                         $this->deleteOldFile('upload/driver_docs/' . $driver->civil_id_photo);
                         $driver->civil_id_photo = $uploaded;
+                    }
+                }
+
+                if ($request->hasFile('passport_photo')) {
+                    $uploaded = $this->saveUploadedFile($request->file('passport_photo'), 'upload/driver_docs', 'passport');
+                    if ($uploaded) {
+                        $this->deleteOldFile('upload/driver_docs/' . $driver->passport_photo);
+                        $driver->passport_photo = $uploaded;
                     }
                 }
 
@@ -383,6 +406,9 @@ class ProfileController extends Controller
             }
             if ($user->driverProfile->civil_id_photo) {
                 $userData['driver_profile']['civil_id_photo_url'] = asset('upload/driver_docs/' . $user->driverProfile->civil_id_photo);
+            }
+            if ($user->driverProfile->passport_photo) {
+                $userData['driver_profile']['passport_photo_url'] = asset('upload/driver_docs/' . $user->driverProfile->passport_photo);
             }
         }
 

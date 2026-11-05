@@ -13,10 +13,20 @@ class OnboardingController extends Controller
     /**
      * Display a listing of all onboarding slides.
      */
-    public function AllOnboarding()
+    public function AllOnboarding(Request $request)
     {
-        $onboardings = OnboardingScreen::ordered()->get();
-        return view("admin.backend.onboarding.all_onboarding", compact("onboardings"));
+        $selectedApp = $request->query('app_type');
+        $query = OnboardingScreen::ordered();
+
+        if (!empty($selectedApp) && in_array($selectedApp, ['customer', 'driver'])) {
+            $query->where(function($q) use ($selectedApp) {
+                $q->where('app_type', $selectedApp)
+                  ->orWhere('app_type', 'both');
+            });
+        }
+
+        $onboardings = $query->get();
+        return view("admin.backend.onboarding.all_onboarding", compact("onboardings", "selectedApp"));
     }
 
     /**
@@ -39,10 +49,12 @@ class OnboardingController extends Controller
                 "title_ar" => "nullable|string|max:255",
                 "description_en" => "nullable|string|max:1000",
                 "description_ar" => "nullable|string|max:1000",
+                "app_type" => "required|in:customer,driver,both",
                 "sort_order" => "nullable|integer|min:1",
                 "status" => "required|in:active,inactive",
             ], [
                 "title_en.required" => "Please enter the slide title in English.",
+                "app_type.required" => "Please select the target application (Customer, Driver, or Both).",
             ]);
 
             $onboarding = new OnboardingScreen();
@@ -50,6 +62,7 @@ class OnboardingController extends Controller
             $onboarding->title_ar = $request->title_ar ? trim($request->title_ar) : trim($request->title_en);
             $onboarding->description_en = $request->description_en ? trim($request->description_en) : null;
             $onboarding->description_ar = $request->description_ar ? trim($request->description_ar) : null;
+            $onboarding->app_type = $request->app_type ?? "customer";
             $onboarding->sort_order = $request->sort_order ? (int)$request->sort_order : ((OnboardingScreen::max("sort_order") ?? 0) + 1);
             $onboarding->status = $request->status ?? "active";
             $onboarding->is_active = ($request->status === "active");
@@ -155,16 +168,19 @@ class OnboardingController extends Controller
                 "title_ar" => "nullable|string|max:255",
                 "description_en" => "nullable|string|max:1000",
                 "description_ar" => "nullable|string|max:1000",
+                "app_type" => "required|in:customer,driver,both",
                 "sort_order" => "nullable|integer|min:1",
                 "status" => "required|in:active,inactive",
             ], [
                 "title_en.required" => "Please enter the slide title in English.",
+                "app_type.required" => "Please select the target application (Customer, Driver, or Both).",
             ]);
 
             $onboarding->title_en = trim($request->title_en);
             $onboarding->title_ar = $request->title_ar ? trim($request->title_ar) : trim($request->title_en);
             $onboarding->description_en = $request->description_en ? trim($request->description_en) : null;
             $onboarding->description_ar = $request->description_ar ? trim($request->description_ar) : null;
+            $onboarding->app_type = $request->app_type ?? "customer";
             $onboarding->sort_order = $request->sort_order ? (int)$request->sort_order : $onboarding->sort_order;
             $onboarding->status = $request->status ?? "active";
             $onboarding->is_active = ($request->status === "active");

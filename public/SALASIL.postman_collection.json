@@ -5157,6 +5157,290 @@
                             "response": []
                         }
                     ]
+                },
+                {
+                    "name": "7.4 Scheduled Trip Driver Invitations (دعوات السائقين للرحلات المجدولة)",
+                    "item": [
+                        {
+                            "name": "1. List All Invitations (قائمة جميع الدعوات)",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/scheduled-trip-invitations",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "scheduled-trip-invitations"
+                                    ]
+                                },
+                                "description": "جلب قائمة بجميع الدعوات المرسلة للسائقين لتنفيذ الرحلات المجدولة."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "2. Get My Invitations (دعواتي كـ سائق للرحلات المجدولة)",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/scheduled-trip-invitations/my-invitations",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "scheduled-trip-invitations",
+                                        "my-invitations"
+                                    ]
+                                },
+                                "description": "جلب قائمة الدعوات الموجهة للسائق المسجل دخوله حالياً مع تفاصيل السعر والرحلة المجدولة."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "3. Get Single Invitation (تفاصيل دعوة رحلة مجدولة)",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/scheduled-trip-invitations/1",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "scheduled-trip-invitations",
+                                        "1"
+                                    ]
+                                },
+                                "description": "جلب تفاصيل دعوة سائق محددة لرحلة مجدولة."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "4. Send Invitation to Driver (إرسال دعوة رحلة مجدولة لسائق)",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"driver_id\": 4,\n    \"driver_truck_id\": 1,\n    \"scheduled_trip_order_id\": 1,\n    \"offered_price\": 450.00,\n    \"channel\": \"in_app\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/scheduled-trip-invitations",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "scheduled-trip-invitations"
+                                    ]
+                                },
+                                "description": "إرسال دعوة رحلة مجدولة لسائق محدد مع السعر المعروض والقناة (in_app, whatsapp, sms)."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "5. Update Invitation (تحديث دعوة رحلة مجدولة)",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"driver_id\": 4,\n    \"driver_truck_id\": 1,\n    \"scheduled_trip_order_id\": 1,\n    \"offered_price\": 500.00,\n    \"channel\": \"in_app\",\n    \"status\": \"pending\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/scheduled-trip-invitations/1/update",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "scheduled-trip-invitations",
+                                        "1",
+                                        "update"
+                                    ]
+                                },
+                                "description": "تحديث بيانات دعوة الرحلة المجدولة."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "6. Respond to Invitation (رد السائق - قبول أو رفض)",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"action\": \"accept\",\n    \"rejection_reason\": \"\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/scheduled-trip-invitations/1/respond",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "scheduled-trip-invitations",
+                                        "1",
+                                        "respond"
+                                    ]
+                                },
+                                "description": "رد السائق على دعوة الرحلة المجدولة (قبول accept أو رفض reject مع ذكر السبب). في حال القبول، يتم تعيين السائق للرحلة المجدولة تلقائياً."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "7. Delete Invitation (حذف دعوة رحلة مجدولة)",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json",
+                                        "type": "text"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/scheduled-trip-invitations/1",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "scheduled-trip-invitations",
+                                        "1"
+                                    ]
+                                },
+                                "description": "حذف دعوة السائق للرحلة المجدولة من النظام."
+                            },
+                            "response": []
+                        }
+                    ]
                 }
             ]
         },

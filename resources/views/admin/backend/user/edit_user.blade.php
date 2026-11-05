@@ -54,6 +54,23 @@ html.light-theme, html:not(.dark-theme) {
     --doc-modal-sub: #475569;
     --doc-modal-border: #E2E8F0;
     --doc-modal-box-bg: #F8FAFC;
+
+    /* Driver Profile Panel Light Mode */
+    --driver-box-bg: #FFFFFF;
+    --driver-box-border: #E2E8F0;
+    --driver-box-header-title: #0F172A;
+    --driver-box-header-desc: #64748B;
+    --driver-subcard-bg: #F8FAFC;
+    --driver-subcard-border: #E2E8F0;
+    --driver-subcard-title: #0F172A;
+    --driver-label-color: #334155;
+    --driver-doc-item-bg: #FFFFFF;
+    --driver-doc-item-border: #CBD5E1;
+    --driver-doc-name: #0F172A;
+    --driver-doc-meta: #64748B;
+    --driver-accent-badge-bg: #FEF3C7;
+    --driver-accent-badge-text: #92400E;
+    --driver-accent-badge-border: #FDE68A;
 }
 
 /* Dark Theme Variables */
@@ -102,6 +119,23 @@ html.dark-theme {
     --doc-modal-sub: #94a3b8;
     --doc-modal-border: rgba(255, 255, 255, 0.1);
     --doc-modal-box-bg: rgba(15, 23, 42, 0.7);
+
+    /* Driver Profile Panel Dark Mode */
+    --driver-box-bg: rgba(15, 23, 42, 0.65);
+    --driver-box-border: rgba(245, 158, 11, 0.3);
+    --driver-box-header-title: #FBBF24;
+    --driver-box-header-desc: #94A3B8;
+    --driver-subcard-bg: rgba(30, 41, 59, 0.55);
+    --driver-subcard-border: rgba(255, 255, 255, 0.1);
+    --driver-subcard-title: #F8FAFC;
+    --driver-label-color: #E2E8F0;
+    --driver-doc-item-bg: rgba(15, 23, 42, 0.85);
+    --driver-doc-item-border: rgba(255, 255, 255, 0.12);
+    --driver-doc-name: #F8FAFC;
+    --driver-doc-meta: #94A3B8;
+    --driver-accent-badge-bg: rgba(245, 158, 11, 0.2);
+    --driver-accent-badge-text: #FDE047;
+    --driver-accent-badge-border: rgba(245, 158, 11, 0.35);
 }
 
 /* Container Panels */
@@ -295,6 +329,79 @@ html:not(.dark-theme) .doc-themed-modal .form-control {
     background-color: #FFFFFF !important;
     border-color: #CBD5E1 !important;
     color: #0F172A !important;
+}
+
+/* Fleet Driver Profile Panel Styling */
+.driver-profile-panel {
+    background-color: var(--driver-box-bg) !important;
+    border: 1px solid var(--driver-box-border) !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.driver-profile-panel .driver-header-title {
+    color: var(--driver-box-header-title) !important;
+    font-weight: 700 !important;
+}
+
+.driver-profile-panel .driver-header-desc {
+    color: var(--driver-box-header-desc) !important;
+}
+
+.driver-subcard {
+    background-color: var(--driver-subcard-bg) !important;
+    border: 1px solid var(--driver-subcard-border) !important;
+    border-radius: 0.75rem !important;
+}
+
+.driver-subcard .driver-subcard-title {
+    color: var(--driver-subcard-title) !important;
+    font-weight: 700 !important;
+}
+
+.driver-subcard .form-label,
+.driver-profile-panel .form-label,
+.driver-subcard .form-check-label {
+    color: var(--driver-label-color) !important;
+}
+
+.driver-doc-preview-item {
+    background-color: var(--driver-doc-item-bg) !important;
+    border: 1px solid var(--driver-doc-item-border) !important;
+    border-radius: 0.5rem !important;
+}
+
+.driver-doc-preview-item .driver-doc-filename {
+    color: var(--driver-doc-name) !important;
+    font-weight: 600 !important;
+}
+
+.driver-doc-preview-item .driver-doc-meta {
+    color: var(--driver-doc-meta) !important;
+}
+
+.driver-status-badge {
+    background-color: var(--driver-accent-badge-bg) !important;
+    color: var(--driver-accent-badge-text) !important;
+    border: 1px solid var(--driver-accent-badge-border) !important;
+}
+
+html.light-theme .driver-doc-preview-item .btn-outline-warning,
+html:not(.dark-theme) .driver-doc-preview-item .btn-outline-warning {
+    color: #B45309 !important;
+    border-color: #F59E0B !important;
+    background-color: #FEF3C7 !important;
+}
+html.light-theme .driver-doc-preview-item .btn-outline-warning:hover,
+html:not(.dark-theme) .driver-doc-preview-item .btn-outline-warning:hover {
+    color: #FFFFFF !important;
+    background-color: #D97706 !important;
+    border-color: #D97706 !important;
+}
+
+html.light-theme .driver-profile-panel .text-warning,
+html:not(.dark-theme) .driver-profile-panel .text-warning {
+    color: #D97706 !important;
 }
 </style>
 
@@ -642,7 +749,7 @@ html:not(.dark-theme) .doc-themed-modal .form-control {
                     @php
                         $cp = $user->companyProfile;
                     @endphp
-                    <div id="companyProfileSection" style="display: none; background: var(--doc-box-bg, rgba(58, 119, 187, 0.05));" class="p-3 mb-4 rounded-4 border border-info border-opacity-25">
+                    <div id="companyProfileSection" style="{{ old('role', $user->role) === 'company_customer' ? '' : 'display: none;' }} background: var(--doc-box-bg, rgba(58, 119, 187, 0.05));" class="p-3 mb-4 rounded-4 border border-info border-opacity-25">
                         <h6 class="text-info fw-bold text-uppercase fs-7 mb-3 d-flex align-items-center gap-2" style="letter-spacing: 0.5px;">
                             <i class="bx bx-building-house fs-5"></i> Corporate Company Details & Documentation
                         </h6>
@@ -875,14 +982,28 @@ html:not(.dark-theme) .doc-themed-modal .form-control {
                     @php
                         $dp = $user->driverProfile;
                     @endphp
-                    <div id="driverProfileSection" style="display: none;" class="p-3 mb-4 rounded-4 border border-warning border-opacity-25 bg-warning bg-opacity-10">
-                        <h6 class="text-warning fw-bold text-uppercase fs-7 mb-3 d-flex align-items-center gap-2" style="letter-spacing: 0.5px;">
-                            <i class="bx bx-id-card fs-5"></i> Fleet Driver Details & Documentation
-                        </h6>
-                        <div class="row g-3">
+                    <div id="driverProfileSection" style="{{ old('role', $user->role) === 'driver' ? '' : 'display: none;' }}" class="p-3 mb-4 driver-profile-panel shadow-sm">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom" style="border-color: var(--driver-subcard-border) !important;">
+                            <div>
+                                <h6 class="driver-header-title text-uppercase fs-7 mb-1 d-flex align-items-center gap-2" style="letter-spacing: 0.5px;">
+                                    <i class="bx bx-id-card fs-5 text-warning"></i> Fleet Driver Details & Documentation (بيانات السائق والمستندات)
+                                </h6>
+                                <p class="driver-header-desc fs-8 mb-0">
+                                    Driver operational credentials, vehicle information, and uploaded official files.
+                                </p>
+                            </div>
+                            <div>
+                                <span class="badge {{ ($dp && $dp->verification_status === 'verified') ? 'badge-st-approved' : 'driver-status-badge' }} px-3 py-1.5 rounded-pill fs-8 fw-semibold">
+                                    <i class="bx bx-shield-check me-1"></i>Status: {{ ucfirst($dp->verification_status ?? 'pending') }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 1. Driver Credentials -->
+                        <div class="row g-3 mb-3">
                             <!-- Driving License Number -->
-                            <div class="col-12 col-md-6">
-                                <label for="license_number" class="form-label fw-semibold">Driving License Number</label>
+                            <div class="col-12 col-md-4">
+                                <label for="license_number" class="form-label fw-semibold">Driving License Number (رقم الرخصة)</label>
                                 <div class="position-relative">
                                     <input type="text" 
                                            name="license_number" 
@@ -900,9 +1021,39 @@ html:not(.dark-theme) .doc-themed-modal .form-control {
                                 @enderror
                             </div>
 
-                            <!-- Initial Wallet Balance -->
-                            <div class="col-12 col-md-3">
-                                <label for="wallet_balance" class="form-label fw-semibold">Wallet Balance</label>
+                            <!-- Availability Status -->
+                            <div class="col-12 col-md-4">
+                                <label for="availability_status" class="form-label fw-semibold">Availability Status (حالة التوفر)</label>
+                                <select name="availability_status" id="availability_status" class="form-select">
+                                    <option value="offline" {{ old('availability_status', $dp->availability_status ?? 'offline') == 'offline' ? 'selected' : '' }}>Offline (غير متصل)</option>
+                                    <option value="available" {{ old('availability_status', $dp->availability_status ?? '') == 'available' ? 'selected' : '' }}>Available for Orders (متاح للطلبات)</option>
+                                    <option value="busy" {{ old('availability_status', $dp->availability_status ?? '') == 'busy' ? 'selected' : '' }}>Busy on Trip (مشغول برحلة)</option>
+                                </select>
+                            </div>
+
+                            <!-- Driver Verification Status -->
+                            <div class="col-12 col-md-4">
+                                <label for="driver_verification_status" class="form-label fw-semibold">Driver Verification (توثيق الحساب)</label>
+                                <select name="driver_verification_status" id="driver_verification_status" class="form-select">
+                                    <option value="pending" {{ old('driver_verification_status', $dp->verification_status ?? 'pending') == 'pending' ? 'selected' : '' }}>Pending Verification (قيد المراجعة)</option>
+                                    <option value="verified" {{ old('driver_verification_status', $dp->verification_status ?? '') == 'verified' ? 'selected' : '' }}>Verified Driver (موثق ومعتمد)</option>
+                                    <option value="rejected" {{ old('driver_verification_status', $dp->verification_status ?? '') == 'rejected' ? 'selected' : '' }}>Rejected (مرفوض)</option>
+                                </select>
+                            </div>
+
+                            <!-- Driver Rejection Reason -->
+                            <div class="col-12" id="driverRejectionReasonDiv" style="{{ old('driver_verification_status', $dp->verification_status ?? '') == 'rejected' ? '' : 'display: none;' }}">
+                                <label for="driver_rejection_reason" class="form-label fw-semibold text-danger">Driver Rejection Reason (سبب الرفض)</label>
+                                <textarea name="driver_rejection_reason" 
+                                          id="driver_rejection_reason" 
+                                          rows="2" 
+                                          class="form-control border-danger border-opacity-50" 
+                                          placeholder="Specify reason for rejecting this driver application...">{{ old('driver_rejection_reason', $dp->rejection_reason ?? '') }}</textarea>
+                            </div>
+
+                            <!-- Wallet Balance -->
+                            <div class="col-12 col-md-6">
+                                <label for="wallet_balance" class="form-label fw-semibold">Driver Wallet Balance (رصيد المحفظة)</label>
                                 <div class="position-relative">
                                     <input type="number" 
                                            step="0.01"
@@ -919,8 +1070,8 @@ html:not(.dark-theme) .doc-themed-modal .form-control {
                             </div>
 
                             <!-- Driver Rating -->
-                            <div class="col-12 col-md-3">
-                                <label for="rating" class="form-label fw-semibold">Driver Rating</label>
+                            <div class="col-12 col-md-6">
+                                <label for="rating" class="form-label fw-semibold">Driver Rating (تقييم السائق)</label>
                                 <div class="position-relative">
                                     <input type="number" 
                                            step="0.1"
@@ -937,110 +1088,342 @@ html:not(.dark-theme) .doc-themed-modal .form-control {
                                     </span>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Driving License Photo -->
-                            <div class="col-12 col-md-4">
-                                <label for="license_photo" class="form-label fw-semibold">Driving License Document</label>
-                                <input type="file" 
-                                       name="license_photo" 
-                                       id="license_photo" 
-                                       class="form-control live-doc-picker"
-                                       data-preview-box="#license_photo_preview_edit"
-                                       data-title="Driving License Document"
-                                       accept=".pdf,.jpg,.jpeg,.png,.webp">
-                                <small class="text-slate-400 d-block mt-1">Allowed: PDF, JPG, PNG, WEBP</small>
-                                <div id="license_photo_preview_edit" class="mt-2"></div>
-                                @if(!empty($dp->license_photo) && file_exists(public_path('upload/driver_docs/' . $dp->license_photo)))
-                                    <div class="mt-2">
-                                        <a href="{{ url('upload/driver_docs/' . $dp->license_photo) }}" 
-                                           data-src="{{ url('upload/driver_docs/' . $dp->license_photo) }}"
-                                           data-title="Driving License Document"
-                                           class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1 media-zoomable">
-                                            <i class="bx bx-show fs-6"></i>
-                                            <span>View License</span>
-                                        </a>
+                        <!-- 2. Assigned / Main Vehicle Specifications -->
+                        <div class="p-3 mb-3 driver-subcard">
+                            <h6 class="driver-subcard-title fs-7 mb-2 d-flex align-items-center gap-1.5">
+                                <i class="bx bx-truck fs-5 text-warning"></i> Vehicle & Truck Specifications (بيانات ومواصفات الشاحنة)
+                            </h6>
+                            <div class="row g-3">
+                                <!-- Truck Type -->
+                                <div class="col-12 col-md-6">
+                                    <label for="truck_type_id" class="form-label fw-semibold">Truck Type (نوع الشاحنة)</label>
+                                    <div class="position-relative">
+                                        <select name="truck_type_id" id="truck_type_id" class="form-select @error('truck_type_id') is-invalid @enderror" style="padding-left: 48px !important;">
+                                            <option value="">-- Select Truck Type --</option>
+                                            @if(isset($truckTypes))
+                                                @foreach($truckTypes as $tt)
+                                                    <option value="{{ $tt->id }}" {{ old('truck_type_id', $dp->truck_type_id ?? '') == $tt->id ? 'selected' : '' }}>
+                                                        {{ $tt->name_en }} ({{ $tt->name_ar }}) - Max: {{ $tt->max_weight }}
+                                                    </option>
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                        <span class="position-absolute text-warning" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                            <i class="bx bx-car fs-5"></i>
+                                        </span>
                                     </div>
-                                @endif
-                            </div>
+                                    @error('truck_type_id')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
 
-                            <!-- Truck Registration Photo -->
-                            <div class="col-12 col-md-4">
-                                <label for="truck_registration_photo" class="form-label fw-semibold">Truck Registration Document</label>
-                                <input type="file" 
-                                       name="truck_registration_photo" 
-                                       id="truck_registration_photo" 
-                                       class="form-control live-doc-picker"
-                                       data-preview-box="#truck_reg_preview_edit"
-                                       data-title="Truck Registration Document"
-                                       accept=".pdf,.jpg,.jpeg,.png,.webp">
-                                <small class="text-slate-400 d-block mt-1">Allowed: PDF, JPG, PNG, WEBP</small>
-                                <div id="truck_reg_preview_edit" class="mt-2"></div>
-                                @if(!empty($dp->truck_registration_photo) && file_exists(public_path('upload/driver_docs/' . $dp->truck_registration_photo)))
-                                    <div class="mt-2">
-                                        <a href="{{ url('upload/driver_docs/' . $dp->truck_registration_photo) }}" 
-                                           data-src="{{ url('upload/driver_docs/' . $dp->truck_registration_photo) }}"
-                                           data-title="Truck Registration Document"
-                                           class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1 media-zoomable">
-                                            <i class="bx bx-show fs-6"></i>
-                                            <span>View Registration</span>
-                                        </a>
+                                <!-- Plate Number -->
+                                <div class="col-12 col-md-3">
+                                    <label for="plate_number" class="form-label fw-semibold">Plate Number (رقم اللوحة)</label>
+                                    <div class="position-relative">
+                                        <input type="text" 
+                                               name="plate_number" 
+                                               id="plate_number" 
+                                               class="form-control @error('plate_number') is-invalid @enderror" 
+                                               style="padding-left: 48px !important;"
+                                               placeholder="e.g. 12345"
+                                               value="{{ old('plate_number', $dp->plate_number ?? '') }}">
+                                        <span class="position-absolute text-warning" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                            <i class="bx bx-card fs-5"></i>
+                                        </span>
                                     </div>
-                                @endif
-                            </div>
+                                    @error('plate_number')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
 
-                            <!-- Civil ID Photo -->
-                            <div class="col-12 col-md-4">
-                                <label for="civil_id_photo" class="form-label fw-semibold">Civil / National ID Document</label>
-                                <input type="file" 
-                                       name="civil_id_photo" 
-                                       id="civil_id_photo" 
-                                       class="form-control live-doc-picker"
-                                       data-preview-box="#civil_id_preview_edit"
-                                       data-title="Civil ID Document"
-                                       accept=".pdf,.jpg,.jpeg,.png,.webp">
-                                <small class="text-slate-400 d-block mt-1">Allowed: PDF, JPG, PNG, WEBP</small>
-                                <div id="civil_id_preview_edit" class="mt-2"></div>
-                                @if(!empty($dp->civil_id_photo) && file_exists(public_path('upload/driver_docs/' . $dp->civil_id_photo)))
-                                    <div class="mt-2">
-                                        <a href="{{ url('upload/driver_docs/' . $dp->civil_id_photo) }}" 
-                                           data-src="{{ url('upload/driver_docs/' . $dp->civil_id_photo) }}"
+                                <!-- Model Year -->
+                                <div class="col-12 col-md-3">
+                                    <label for="model_year" class="form-label fw-semibold">Model Year (سنة الصنع)</label>
+                                    <div class="position-relative">
+                                        <input type="text" 
+                                               name="model_year" 
+                                               id="model_year" 
+                                               class="form-control @error('model_year') is-invalid @enderror" 
+                                               style="padding-left: 48px !important;"
+                                               placeholder="e.g. 2021"
+                                               value="{{ old('model_year', $dp->model_year ?? '') }}">
+                                        <span class="position-absolute text-warning" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                            <i class="bx bx-calendar fs-5"></i>
+                                        </span>
+                                    </div>
+                                    @error('model_year')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- Administrative Number / Capacity -->
+                                <div class="col-12 col-md-6">
+                                    <label for="administrative_number" class="form-label fw-semibold">Capacity / Weight / Admin No. (الحمولة / الرقم الإداري)</label>
+                                    <div class="position-relative">
+                                        <input type="text" 
+                                               name="administrative_number" 
+                                               id="administrative_number" 
+                                               class="form-control @error('administrative_number') is-invalid @enderror" 
+                                               style="padding-left: 48px !important;"
+                                               placeholder="e.g. 20,000 Kg"
+                                               value="{{ old('administrative_number', $dp->administrative_number ?? '') }}">
+                                        <span class="position-absolute text-warning" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 5;">
+                                            <i class="bx bx-tachometer fs-5"></i>
+                                        </span>
+                                    </div>
+                                    @error('administrative_number')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- Set as Main Truck switch -->
+                                <div class="col-12 col-md-6 d-flex align-items-center">
+                                    <div class="form-check form-switch pt-3">
+                                        <input class="form-check-input" type="checkbox" name="is_main_truck" id="is_main_truck" value="1" {{ old('is_main_truck', $dp->is_main_truck ?? 1) ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-semibold ms-2" for="is_main_truck">
+                                            Set as Main Truck for Driver (تعيين كشاحنة رئيسية)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Driver Official Documents Upload & Preview -->
+                        <div class="p-3 driver-subcard">
+                            <h6 class="driver-subcard-title fs-7 mb-3 d-flex align-items-center gap-1.5">
+                                <i class="bx bx-file fs-5 text-warning"></i> Upload / Replace Official Driver Documents (مستندات السائق الرسمية)
+                            </h6>
+                            <div class="row g-3">
+                                <!-- Civil ID Photo -->
+                                <div class="col-12 col-md-6">
+                                    <label for="civil_id_photo" class="form-label fw-semibold">Civil / National ID Document (البطاقة المدنية / الهوية)</label>
+                                    <input type="file" 
+                                           name="civil_id_photo" 
+                                           id="civil_id_photo" 
+                                           class="form-control live-doc-picker"
+                                           data-preview-box="#civil_id_preview_edit"
                                            data-title="Civil ID Document"
-                                           class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1 media-zoomable">
-                                            <i class="bx bx-show fs-6"></i>
-                                            <span>View Civil ID</span>
-                                        </a>
-                                    </div>
-                                @endif
-                            </div>
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                    <small class="driver-doc-meta d-block mt-1 fs-8">Allowed: PDF, JPG, PNG, WEBP (Max: 10MB)</small>
+                                    <div id="civil_id_preview_edit" class="mt-2"></div>
+                                    @if(!empty($dp->civil_id_photo) && file_exists(public_path('upload/driver_docs/' . $dp->civil_id_photo)))
+                                        @php
+                                            $civPath = public_path('upload/driver_docs/' . $dp->civil_id_photo);
+                                            $civSize = file_exists($civPath) ? number_format(filesize($civPath) / 1024, 1) . ' KB' : '';
+                                            $civExt = strtolower(pathinfo($dp->civil_id_photo, PATHINFO_EXTENSION));
+                                            $isCivImg = in_array($civExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+                                        @endphp
+                                        <div class="d-flex align-items-center gap-3 mt-2 p-2 driver-doc-preview-item">
+                                            @if($isCivImg)
+                                                <div class="position-relative media-zoomable cursor-pointer flex-shrink-0" data-src="{{ asset('upload/driver_docs/' . $dp->civil_id_photo) }}" data-title="Civil ID Document - {{ $user->name }}" style="cursor: pointer;">
+                                                    <img src="{{ asset('upload/driver_docs/' . $dp->civil_id_photo) }}" class="rounded-2 border border-warning" style="width: 55px; height: 55px; object-fit: cover;">
+                                                    <span class="position-absolute bottom-0 end-0 bg-warning text-dark rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm" style="width: 16px; height: 16px; font-size: 9px;"><i class="bx bx-search-alt-2"></i></span>
+                                                </div>
+                                            @else
+                                                <div class="rounded-2 bg-danger bg-opacity-20 p-2 text-danger flex-shrink-0 text-center" style="width: 55px; height: 55px;">
+                                                    <i class="bx bxs-file-pdf fs-2"></i>
+                                                </div>
+                                            @endif
+                                            <div class="overflow-hidden flex-grow-1">
+                                                <span class="d-block driver-doc-filename fs-7 text-truncate" title="{{ $dp->civil_id_photo }}">{{ $dp->civil_id_photo }}</span>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="badge driver-status-badge fs-8 text-uppercase">{{ $civExt }}</span>
+                                                    <span class="driver-doc-meta fs-8">{{ $civSize }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                                <a href="{{ asset('upload/driver_docs/' . $dp->civil_id_photo) }}" 
+                                                    data-src="{{ asset('upload/driver_docs/' . $dp->civil_id_photo) }}"
+                                                    data-title="Civil ID Document - {{ $user->name }}"
+                                                    class="btn btn-sm btn-outline-warning rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 media-zoomable"
+                                                    title="View Document">
+                                                    <i class="bx bx-show fs-6"></i>
+                                                    <span>View</span>
+                                                </a>
+                                                <a href="{{ asset('upload/driver_docs/' . $dp->civil_id_photo) }}" 
+                                                    target="_blank" download
+                                                    class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1"
+                                                    title="Download">
+                                                    <i class="bx bx-download fs-6"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
 
-                            <!-- Availability Status -->
-                            <div class="col-12 col-md-6">
-                                <label for="availability_status" class="form-label fw-semibold">Availability Status</label>
-                                <select name="availability_status" id="availability_status" class="form-select">
-                                    <option value="offline" {{ old('availability_status', $dp->availability_status ?? 'offline') == 'offline' ? 'selected' : '' }}>Offline</option>
-                                    <option value="available" {{ old('availability_status', $dp->availability_status ?? '') == 'available' ? 'selected' : '' }}>Available for Orders</option>
-                                    <option value="busy" {{ old('availability_status', $dp->availability_status ?? '') == 'busy' ? 'selected' : '' }}>Busy on Trip</option>
-                                </select>
-                            </div>
+                                <!-- Driving License Photo -->
+                                <div class="col-12 col-md-6">
+                                    <label for="license_photo" class="form-label fw-semibold">Driving License Document (رخصة القيادة)</label>
+                                    <input type="file" 
+                                           name="license_photo" 
+                                           id="license_photo" 
+                                           class="form-control live-doc-picker"
+                                           data-preview-box="#license_photo_preview_edit"
+                                           data-title="Driving License Document"
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                    <small class="driver-doc-meta d-block mt-1 fs-8">Allowed: PDF, JPG, PNG, WEBP (Max: 10MB)</small>
+                                    <div id="license_photo_preview_edit" class="mt-2"></div>
+                                    @if(!empty($dp->license_photo) && file_exists(public_path('upload/driver_docs/' . $dp->license_photo)))
+                                        @php
+                                            $licPath = public_path('upload/driver_docs/' . $dp->license_photo);
+                                            $licSize = file_exists($licPath) ? number_format(filesize($licPath) / 1024, 1) . ' KB' : '';
+                                            $licExt = strtolower(pathinfo($dp->license_photo, PATHINFO_EXTENSION));
+                                            $isLicImg = in_array($licExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+                                        @endphp
+                                        <div class="d-flex align-items-center gap-3 mt-2 p-2 driver-doc-preview-item">
+                                            @if($isLicImg)
+                                                <div class="position-relative media-zoomable cursor-pointer flex-shrink-0" data-src="{{ asset('upload/driver_docs/' . $dp->license_photo) }}" data-title="Driving License Document - {{ $user->name }}" style="cursor: pointer;">
+                                                    <img src="{{ asset('upload/driver_docs/' . $dp->license_photo) }}" class="rounded-2 border border-warning" style="width: 55px; height: 55px; object-fit: cover;">
+                                                    <span class="position-absolute bottom-0 end-0 bg-warning text-dark rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm" style="width: 16px; height: 16px; font-size: 9px;"><i class="bx bx-search-alt-2"></i></span>
+                                                </div>
+                                            @else
+                                                <div class="rounded-2 bg-danger bg-opacity-20 p-2 text-danger flex-shrink-0 text-center" style="width: 55px; height: 55px;">
+                                                    <i class="bx bxs-file-pdf fs-2"></i>
+                                                </div>
+                                            @endif
+                                            <div class="overflow-hidden flex-grow-1">
+                                                <span class="d-block driver-doc-filename fs-7 text-truncate" title="{{ $dp->license_photo }}">{{ $dp->license_photo }}</span>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="badge driver-status-badge fs-8 text-uppercase">{{ $licExt }}</span>
+                                                    <span class="driver-doc-meta fs-8">{{ $licSize }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                                <a href="{{ asset('upload/driver_docs/' . $dp->license_photo) }}" 
+                                                    data-src="{{ asset('upload/driver_docs/' . $dp->license_photo) }}"
+                                                    data-title="Driving License Document - {{ $user->name }}"
+                                                    class="btn btn-sm btn-outline-warning rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 media-zoomable"
+                                                    title="View Document">
+                                                    <i class="bx bx-show fs-6"></i>
+                                                    <span>View</span>
+                                                </a>
+                                                <a href="{{ asset('upload/driver_docs/' . $dp->license_photo) }}" 
+                                                    target="_blank" download
+                                                    class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1"
+                                                    title="Download">
+                                                    <i class="bx bx-download fs-6"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
 
-                            <!-- Driver Verification Status -->
-                            <div class="col-12 col-md-6">
-                                <label for="driver_verification_status" class="form-label fw-semibold">Verification Status</label>
-                                <select name="driver_verification_status" id="driver_verification_status" class="form-select">
-                                    <option value="pending" {{ old('driver_verification_status', $dp->verification_status ?? 'pending') == 'pending' ? 'selected' : '' }}>Pending Verification</option>
-                                    <option value="verified" {{ old('driver_verification_status', $dp->verification_status ?? '') == 'verified' ? 'selected' : '' }}>Verified Driver</option>
-                                    <option value="rejected" {{ old('driver_verification_status', $dp->verification_status ?? '') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                </select>
-                            </div>
+                                <!-- Passport Copy Photo -->
+                                <div class="col-12 col-md-6">
+                                    <label for="passport_photo" class="form-label fw-semibold">Passport Copy Document (صورة جواز السفر)</label>
+                                    <input type="file" 
+                                           name="passport_photo" 
+                                           id="passport_photo" 
+                                           class="form-control live-doc-picker"
+                                           data-preview-box="#passport_photo_preview_edit"
+                                           data-title="Passport Copy Document"
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                    <small class="driver-doc-meta d-block mt-1 fs-8">Allowed: PDF, JPG, PNG, WEBP (Max: 10MB)</small>
+                                    <div id="passport_photo_preview_edit" class="mt-2"></div>
+                                    @if(!empty($dp->passport_photo) && file_exists(public_path('upload/driver_docs/' . $dp->passport_photo)))
+                                        @php
+                                            $passPath = public_path('upload/driver_docs/' . $dp->passport_photo);
+                                            $passSize = file_exists($passPath) ? number_format(filesize($passPath) / 1024, 1) . ' KB' : '';
+                                            $passExt = strtolower(pathinfo($dp->passport_photo, PATHINFO_EXTENSION));
+                                            $isPassImg = in_array($passExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+                                        @endphp
+                                        <div class="d-flex align-items-center gap-3 mt-2 p-2 driver-doc-preview-item">
+                                            @if($isPassImg)
+                                                <div class="position-relative media-zoomable cursor-pointer flex-shrink-0" data-src="{{ asset('upload/driver_docs/' . $dp->passport_photo) }}" data-title="Passport Copy Document - {{ $user->name }}" style="cursor: pointer;">
+                                                    <img src="{{ asset('upload/driver_docs/' . $dp->passport_photo) }}" class="rounded-2 border border-warning" style="width: 55px; height: 55px; object-fit: cover;">
+                                                    <span class="position-absolute bottom-0 end-0 bg-warning text-dark rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm" style="width: 16px; height: 16px; font-size: 9px;"><i class="bx bx-search-alt-2"></i></span>
+                                                </div>
+                                            @else
+                                                <div class="rounded-2 bg-danger bg-opacity-20 p-2 text-danger flex-shrink-0 text-center" style="width: 55px; height: 55px;">
+                                                    <i class="bx bxs-file-pdf fs-2"></i>
+                                                </div>
+                                            @endif
+                                            <div class="overflow-hidden flex-grow-1">
+                                                <span class="d-block driver-doc-filename fs-7 text-truncate" title="{{ $dp->passport_photo }}">{{ $dp->passport_photo }}</span>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="badge driver-status-badge fs-8 text-uppercase">{{ $passExt }}</span>
+                                                    <span class="driver-doc-meta fs-8">{{ $passSize }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                                <a href="{{ asset('upload/driver_docs/' . $dp->passport_photo) }}" 
+                                                    data-src="{{ asset('upload/driver_docs/' . $dp->passport_photo) }}"
+                                                    data-title="Passport Copy Document - {{ $user->name }}"
+                                                    class="btn btn-sm btn-outline-warning rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 media-zoomable"
+                                                    title="View Document">
+                                                    <i class="bx bx-show fs-6"></i>
+                                                    <span>View</span>
+                                                </a>
+                                                <a href="{{ asset('upload/driver_docs/' . $dp->passport_photo) }}" 
+                                                    target="_blank" download
+                                                    class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1"
+                                                    title="Download">
+                                                    <i class="bx bx-download fs-6"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
 
-                            <!-- Driver Rejection Reason -->
-                            <div class="col-12" id="driverRejectionReasonDiv" style="display: none;">
-                                <label for="driver_rejection_reason" class="form-label fw-semibold text-danger">Driver Rejection Reason</label>
-                                <textarea name="driver_rejection_reason" 
-                                          id="driver_rejection_reason" 
-                                          rows="2" 
-                                          class="form-control border-danger border-opacity-50" 
-                                          placeholder="Specify reason for rejecting this driver application...">{{ old('driver_rejection_reason', $dp->rejection_reason ?? '') }}</textarea>
+                                <!-- Truck Registration Photo -->
+                                <div class="col-12 col-md-6">
+                                    <label for="truck_registration_photo" class="form-label fw-semibold">Truck Registration Document (دفتر ملكية الشاحنة)</label>
+                                    <input type="file" 
+                                           name="truck_registration_photo" 
+                                           id="truck_registration_photo" 
+                                           class="form-control live-doc-picker"
+                                           data-preview-box="#truck_reg_preview_edit"
+                                           data-title="Truck Registration Document"
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                    <small class="driver-doc-meta d-block mt-1 fs-8">Allowed: PDF, JPG, PNG, WEBP (Max: 10MB)</small>
+                                    <div id="truck_reg_preview_edit" class="mt-2"></div>
+                                    @if(!empty($dp->truck_registration_photo) && file_exists(public_path('upload/driver_docs/' . $dp->truck_registration_photo)))
+                                        @php
+                                            $trkPath = public_path('upload/driver_docs/' . $dp->truck_registration_photo);
+                                            $trkSize = file_exists($trkPath) ? number_format(filesize($trkPath) / 1024, 1) . ' KB' : '';
+                                            $trkExt = strtolower(pathinfo($dp->truck_registration_photo, PATHINFO_EXTENSION));
+                                            $isTrkImg = in_array($trkExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+                                        @endphp
+                                        <div class="d-flex align-items-center gap-3 mt-2 p-2 driver-doc-preview-item">
+                                            @if($isTrkImg)
+                                                <div class="position-relative media-zoomable cursor-pointer flex-shrink-0" data-src="{{ asset('upload/driver_docs/' . $dp->truck_registration_photo) }}" data-title="Truck Registration Document - {{ $user->name }}" style="cursor: pointer;">
+                                                    <img src="{{ asset('upload/driver_docs/' . $dp->truck_registration_photo) }}" class="rounded-2 border border-warning" style="width: 55px; height: 55px; object-fit: cover;">
+                                                    <span class="position-absolute bottom-0 end-0 bg-warning text-dark rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm" style="width: 16px; height: 16px; font-size: 9px;"><i class="bx bx-search-alt-2"></i></span>
+                                                </div>
+                                            @else
+                                                <div class="rounded-2 bg-danger bg-opacity-20 p-2 text-danger flex-shrink-0 text-center" style="width: 55px; height: 55px;">
+                                                    <i class="bx bxs-file-pdf fs-2"></i>
+                                                </div>
+                                            @endif
+                                            <div class="overflow-hidden flex-grow-1">
+                                                <span class="d-block driver-doc-filename fs-7 text-truncate" title="{{ $dp->truck_registration_photo }}">{{ $dp->truck_registration_photo }}</span>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="badge driver-status-badge fs-8 text-uppercase">{{ $trkExt }}</span>
+                                                    <span class="driver-doc-meta fs-8">{{ $trkSize }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                                <a href="{{ asset('upload/driver_docs/' . $dp->truck_registration_photo) }}" 
+                                                    data-src="{{ asset('upload/driver_docs/' . $dp->truck_registration_photo) }}"
+                                                    data-title="Truck Registration Document - {{ $user->name }}"
+                                                    class="btn btn-sm btn-outline-warning rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 media-zoomable"
+                                                    title="View Document">
+                                                    <i class="bx bx-show fs-6"></i>
+                                                    <span>View</span>
+                                                </a>
+                                                <a href="{{ asset('upload/driver_docs/' . $dp->truck_registration_photo) }}" 
+                                                    target="_blank" download
+                                                    class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1"
+                                                    title="Download">
+                                                    <i class="bx bx-download fs-6"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1190,26 +1573,81 @@ html:not(.dark-theme) .doc-themed-modal .form-control {
 
                     <!-- Uploaded Documents from Mobile App Section -->
                     <div class="p-3 mb-4 uploaded-docs-box shadow-sm" id="uploadedDocumentsSection">
+                        @php
+                            $driverDocs = [];
+                            if ($user->role === 'driver' && $user->driverProfile) {
+                                $dp = $user->driverProfile;
+                                $docDefs = [
+                                    [
+                                        'field' => 'civil_id_photo',
+                                        'title' => 'Civil ID / National ID',
+                                        'title_ar' => 'البطاقة المدنية / الهوية الوطنية',
+                                        'icon' => 'bx-id-card',
+                                    ],
+                                    [
+                                        'field' => 'license_photo',
+                                        'title' => 'Driving License',
+                                        'title_ar' => 'رخصة القيادة',
+                                        'icon' => 'bx-credit-card-front',
+                                    ],
+                                    [
+                                        'field' => 'passport_photo',
+                                        'title' => 'Passport Copy',
+                                        'title_ar' => 'صورة جواز السفر',
+                                        'icon' => 'bx-book-bookmark',
+                                    ],
+                                    [
+                                        'field' => 'truck_registration_photo',
+                                        'title' => 'Vehicle Registration (دفتر الشاحنة)',
+                                        'title_ar' => 'دفتر ملكية المركبة',
+                                        'icon' => 'bx-car',
+                                    ],
+                                ];
+
+                                foreach ($docDefs as $def) {
+                                    $fName = $dp->{$def['field']};
+                                    if (!empty($fName) && file_exists(public_path('upload/driver_docs/' . $fName))) {
+                                        $fPath = public_path('upload/driver_docs/' . $fName);
+                                        $driverDocs[] = [
+                                            'id' => 'driver_' . $def['field'],
+                                            'field' => $def['field'],
+                                            'title' => $def['title'],
+                                            'title_ar' => $def['title_ar'],
+                                            'icon' => $def['icon'],
+                                            'file_name' => $fName,
+                                            'file_url' => asset('upload/driver_docs/' . $fName),
+                                            'file_path' => $fPath,
+                                            'file_size' => file_exists($fPath) ? (number_format(filesize($fPath) / 1024, 1) . ' KB') : null,
+                                            'status' => $dp->verification_status ?? 'pending',
+                                            'created_at' => $dp->updated_at ?? $dp->created_at,
+                                        ];
+                                    }
+                                }
+                            }
+
+                            $companyDocCount = (!empty($user->companyDocuments)) ? $user->companyDocuments->count() : 0;
+                            $totalDocCount = $companyDocCount + count($driverDocs);
+                        @endphp
+
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom" style="border-color: var(--doc-box-border) !important;">
                             <div>
                                 <h6 class="section-header-title text-uppercase fs-7 mb-1 d-flex align-items-center gap-2" style="letter-spacing: 0.5px;">
                                     <i class="bx bx-file-blank fs-5 text-info"></i> Uploaded Documents from Mobile App (المستندات المرفوعة من التطبيق)
                                 </h6>
                                 <p class="section-header-desc fs-8 mb-0">
-                                    Official company and verification files uploaded by this client via the mobile application.
+                                    Official identification, vehicle registration, and verification files uploaded by this user via the mobile application.
                                 </p>
                             </div>
                             <div>
-                                @php
-                                    $docCount = $user->companyDocuments ? $user->companyDocuments->count() : 0;
-                                @endphp
-                                <span class="badge {{ $docCount > 0 ? 'bg-info bg-opacity-20 text-info border border-info border-opacity-25' : 'badge-def-opt' }} px-3 py-1.5 rounded-pill fs-7 fw-semibold">
-                                    <i class="bx bx-paperclip me-1"></i>{{ $docCount }} {{ $docCount === 1 ? 'Document' : 'Documents' }} Attached
+                                <span class="badge {{ $totalDocCount > 0 ? 'bg-info bg-opacity-20 text-info border border-info border-opacity-25' : 'badge-def-opt' }} px-3 py-1.5 rounded-pill fs-7 fw-semibold">
+                                    <i class="bx bx-paperclip me-1"></i>{{ $totalDocCount }} {{ $totalDocCount === 1 ? 'Document' : 'Documents' }} Attached
                                 </span>
                             </div>
                         </div>
 
-                        @if(!empty($user->companyDocuments) && $user->companyDocuments->count() > 0)
+                        @if($totalDocCount > 0)
+                            <div class="row g-3">
+                                @if(!empty($user->companyDocuments) && $user->companyDocuments->count() > 0)
                             <div class="row g-3">
                                 @foreach($user->companyDocuments as $doc)
                                     @php
@@ -1341,6 +1779,106 @@ html:not(.dark-theme) .doc-themed-modal .form-control {
                                         </div>
                                     </div>
                                 @endforeach
+                                @endif
+
+                                {{-- 2. Fleet Driver Documents (if any) --}}
+                                @if(count($driverDocs) > 0)
+                                    @foreach($driverDocs as $ddoc)
+                                        @php
+                                            $ext = strtolower(pathinfo($ddoc['file_name'], PATHINFO_EXTENSION));
+                                            $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']);
+                                            $docUrl = $ddoc['file_url'];
+                                        @endphp
+                                        <div class="col-12 col-md-6" id="doc_card_{{ $ddoc['id'] }}">
+                                            <div class="card h-100 rounded-3 p-3 shadow-sm position-relative uploaded-doc-item-card border border-warning border-opacity-25">
+                                                <!-- Card Header: Title & Badges -->
+                                                <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="fw-bold doc-title mb-1 fs-6 d-flex align-items-center gap-1.5">
+                                                            <i class="bx {{ $ddoc['icon'] }} text-warning"></i>
+                                                            <span>{{ $ddoc['title'] }}</span>
+                                                        </h6>
+                                                        <span class="doc-sub fs-8">{{ $ddoc['title_ar'] }}</span>
+                                                    </div>
+                                                    <div class="d-flex flex-column align-items-end gap-1">
+                                                        <span class="badge badge-def-req fs-8">Mandatory (إلزامي)</span>
+                                                        <span>
+                                                            @if($ddoc['status'] === 'verified')
+                                                                <span class="badge badge-st-approved fs-8"><i class="bx bx-check-circle me-1"></i>Verified</span>
+                                                            @elseif($ddoc['status'] === 'rejected')
+                                                                <span class="badge badge-st-rejected fs-8"><i class="bx bx-x-circle me-1"></i>Rejected</span>
+                                                            @else
+                                                                <span class="badge badge-st-pending fs-8"><i class="bx bx-time me-1"></i>Pending Verification</span>
+                                                            @endif
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Thumbnail & Details -->
+                                                <div class="d-flex align-items-center gap-3 my-2 p-2 rounded-2 thumb-details-box">
+                                                    @if($isImage)
+                                                        <div class="position-relative media-zoomable cursor-pointer flex-shrink-0" data-src="{{ $docUrl }}" data-title="{{ $ddoc['title'] }} - {{ $user->name }}" style="cursor: pointer;">
+                                                            <img src="{{ $docUrl }}" 
+                                                                 alt="{{ $ddoc['title'] }}" 
+                                                                 class="rounded-2 border border-warning border-opacity-50 shadow-sm"
+                                                                 style="width: 65px; height: 65px; object-fit: cover;">
+                                                            <span class="position-absolute bottom-0 end-0 bg-warning text-dark rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm" style="width: 18px; height: 18px; font-size: 10px;">
+                                                                <i class="bx bx-search-alt-2"></i>
+                                                            </span>
+                                                        </div>
+                                                    @else
+                                                        <div class="rounded-2 bg-danger bg-opacity-20 border border-danger border-opacity-25 p-2 text-danger d-flex align-items-center justify-content-center flex-shrink-0" style="width: 65px; height: 65px;">
+                                                            <i class="bx bxs-file-pdf fs-1"></i>
+                                                        </div>
+                                                    @endif
+
+                                                    <div class="overflow-hidden flex-grow-1">
+                                                        <span class="d-block fw-semibold doc-title fs-7 text-truncate mb-0.5" title="{{ $ddoc['file_name'] }}">
+                                                            {{ $ddoc['file_name'] }}
+                                                        </span>
+                                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                                            <span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-20 fs-8 text-uppercase">
+                                                                {{ $ext }} File
+                                                            </span>
+                                                            @if($ddoc['file_size'])
+                                                                <span class="doc-sub fs-8">{{ $ddoc['file_size'] }}</span>
+                                                            @endif
+                                                        </div>
+                                                        <span class="doc-sub fs-8 d-block text-truncate">
+                                                            <i class="bx bx-calendar me-1"></i>Uploaded: {{ $ddoc['created_at'] ? \Carbon\Carbon::parse($ddoc['created_at'])->format('d M Y, h:i A') : 'Recently' }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Action Buttons -->
+                                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2 pt-2 border-top" style="border-color: var(--doc-box-border) !important;">
+                                                    <div class="d-flex align-items-center gap-1.5">
+                                                        <a href="{{ $docUrl }}" 
+                                                           data-src="{{ $docUrl }}" 
+                                                           data-title="{{ $ddoc['title'] }} - {{ $user->name }}"
+                                                           class="btn btn-sm btn-warning text-dark rounded-3 px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 media-zoomable shadow-sm"
+                                                           title="View & Zoom">
+                                                            <i class="bx bx-zoom-in fs-6"></i>
+                                                            <span class="fs-8">View</span>
+                                                        </a>
+                                                        <a href="{{ $docUrl }}" 
+                                                           target="_blank" 
+                                                           download
+                                                           class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1"
+                                                           title="Download Document">
+                                                            <i class="bx bx-download fs-6"></i>
+                                                        </a>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge driver-status-badge fs-8">
+                                                            <i class="bx bx-id-card me-1"></i>Fleet Driver File
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @endif
                             </div>
                         @else
                             <div class="text-center py-4 px-3 rounded-3 doc-empty-box">
