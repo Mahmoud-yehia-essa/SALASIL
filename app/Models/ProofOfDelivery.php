@@ -38,6 +38,11 @@ class ProofOfDelivery extends Model
         return $this->belongsTo(User::class, 'driver_id');
     }
 
+    public function invitation()
+    {
+        return $this->belongsTo(ScheduledTripDriverInvitation::class, 'scheduled_trip_invitation_id');
+    }
+
     /**
      * Accessor for full URLs of uploaded photos
      */

@@ -167,4 +167,12 @@ class ScheduledTripOrder extends Model
     {
         return $this->hasOne(ProofOfDelivery::class, 'scheduled_trip_order_id');
     }
+
+    /**
+     * جميع إثباتات التسليم المرتبطة بالطلب (في حالة تعدد الشاحنات)
+     */
+    public function proofOfDeliveries()
+    {
+        return $this->hasMany(ProofOfDelivery::class, 'scheduled_trip_order_id');
+    }
 }

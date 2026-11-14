@@ -555,7 +555,15 @@ html.light-theme .detail-row .d-value {
 
                     {{-- Price --}}
                     <td>
-                        <strong class="text-warning">KWD {{ number_format($t->price, 2) }}</strong>
+                        <div><strong class="text-warning">KWD {{ number_format($t->price, 2) }}</strong></div>
+                        @if($t->driver_price !== null)
+                            <div class="text-info" style="font-size:0.75rem;">
+                                Driver: <strong>KWD {{ number_format($t->driver_price, 2) }}</strong>
+                            </div>
+                        @endif
+                        <div class="text-muted" style="font-size:0.72rem;">
+                            {{ ($t->driver_payment_type ?? 'full_after') === 'split_50_50' ? '50% Start + 50% End' : '100% After End' }}
+                        </div>
                     </td>
 
                     {{-- Status Dropdown --}}
@@ -684,7 +692,12 @@ html.light-theme .detail-row .d-value {
         html += dRow('Total Approx. Weight', t.total_weight_ton);
         var capStr = (t.available_capacity >= 999 || t.total_capacity >= 999) ? '<span class="text-success fw-bold"><i class="bx bx-infinite me-1"></i>Open (مفتوح بدون تحديد)</span>' : (t.available_capacity + ' / ' + t.total_capacity + ' Available');
         html += dRow('Booking Capacity', capStr);
-        html += dRow('Trip Price', '<strong class="text-warning">KWD ' + t.price + '</strong>');
+        html += dRow('Customer Price', '<strong class="text-warning">KWD ' + t.price + '</strong>');
+        var drvPriceStr = t.driver_price ? ('<strong class="text-info">KWD ' + t.driver_price + '</strong>') : '<span class="text-muted">Same as customer price (KWD ' + t.price + ')</span>';
+        html += dRow('Driver Cost (Per Truck)', drvPriceStr);
+        var payTypeStr = (t.driver_payment_type === 'split_50_50') ? '<span class="badge bg-info text-dark">50% Start + 50% Completion</span>' : '<span class="badge bg-success">100% Upon Completion</span>';
+        html += dRow('Driver Payment Schedule', payTypeStr);
+        html += dRow('Fleet Early Override', t.fleet_override ? '<span class="badge bg-warning text-dark">Enabled</span>' : '<span class="badge bg-secondary">Disabled (Wait All Trucks)</span>');
         html += dRow('Customs Clearance', t.customs_clearance ? '<span class="text-success fw-bold"><i class="bx bx-check-shield me-1"></i>Included (Yes)</span>' : '<span class="text-secondary"><i class="bx bx-x-circle me-1"></i>Not Included (No)</span>');
         if (t.notes) {
             html += dRow('Cargo / Trip Notes', t.notes);

@@ -21,7 +21,19 @@ class ScheduledTrip extends Model
         'required_documents' => 'array',
         'customs_clearance'  => 'boolean',
         'pricing_additions'  => 'array',
+        'fleet_override'     => 'boolean',
+        'driver_price'       => 'float',
     ];
+
+    /**
+     * Effective per-truck driver payout (falls back to base trip price if separate driver_price is unset).
+     */
+    public function getEffectiveDriverPriceAttribute(): float
+    {
+        return ($this->driver_price !== null && (float) $this->driver_price > 0)
+            ? (float) $this->driver_price
+            : (float) $this->price;
+    }
 
     public function route()
     {

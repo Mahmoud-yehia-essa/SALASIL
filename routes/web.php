@@ -257,6 +257,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/scheduled-trips/update', [ScheduledTripController::class, 'UpdateTrip'])->name('update.scheduled.trip');
     Route::get('/admin/scheduled-trips/delete/{id}', [ScheduledTripController::class, 'DeleteTrip'])->name('delete.scheduled.trip');
     Route::match(['get', 'post'], '/admin/scheduled-trips/change-status-ajax', [ScheduledTripController::class, 'ChangeStatusAjax'])->name('scheduled.trip.status.ajax');
+    Route::post('/admin/scheduled-trips/toggle-fleet-override-ajax', [ScheduledTripController::class, 'ToggleFleetOverrideAjax'])->name('scheduled.trip.fleet.override.ajax');
     Route::get('/admin/scheduled-trips/details/{id}', [ScheduledTripController::class, 'GetTripDetailsAjax'])->name('get.scheduled.trip.details.ajax');
 
     // Scheduled Trip Orders Management Routes

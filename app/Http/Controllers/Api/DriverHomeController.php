@@ -12,6 +12,7 @@ use App\Models\WalletTransaction;
 use App\Models\ScheduledTripOrder;
 use App\Models\ProofOfDelivery;
 use App\Models\DriverTruck;
+use App\Models\DriverProfile;
 use App\Models\TruckType;
 use App\Models\TruckSubType;
 use Illuminate\Http\Request;
@@ -51,10 +52,11 @@ class DriverHomeController extends Controller
 
         $driver = $user ?: User::find($driverId);
 
-        // 2. Count "Trip Requests" (Pending invitations sent to the driver)
-        $scheduledRequestsCount = ScheduledTripDriverInvitation::where('driver_id', $driverId)
-            ->where('status', 'pending')
-            ->count();
+        // 2. Count "Trip Requests" (Pending invitations + Matching new customer orders + Open scheduled trips + Direct shipment invitations)
+        $requestBuckets = $this->getDriverRequestBuckets((int) $driverId);
+        $scheduledRequestsCount = $requestBuckets['invitations']->count()
+            + $requestBuckets['matchingOrders']->count()
+            + $requestBuckets['matchingTrips']->count();
 
         $shipmentRequestsCount = ShipmentDriverInvitation::where('driver_id', $driverId)
             ->where('status', 'pending')
@@ -62,24 +64,29 @@ class DriverHomeController extends Controller
 
         $tripRequestsCount = $scheduledRequestsCount + $shipmentRequestsCount;
 
-        // 3. Count "Active Trips" (Accepted invitations or ongoing trips assigned to driver)
+        // 3. Count "Active Trips" (Accepted invitations where THIS driver hasn't completed delivery yet)
         $acceptedScheduledTripsCount = ScheduledTripDriverInvitation::where('driver_id', $driverId)
             ->where('status', 'accepted')
             ->where(function ($q) {
-                $q->whereHas('scheduledTripOrder', function ($oq) {
-                    $oq->whereNotIn('status', ['delivered', 'cancelled', 'canceled']);
-                })
-                ->orWhere(function ($tq) {
-                    $tq->whereNull('scheduled_trip_order_id')
-                       ->whereHas('scheduledTrip', function ($sq) {
-                           $sq->whereNotIn('status', ['completed', 'cancelled', 'canceled']);
-                       });
-                });
+                $q->whereNull('driver_stage')
+                  ->orWhere('driver_stage', '!=', 'delivered');
+            })
+            ->whereHas('scheduledTrip', function ($sq) {
+                $sq->whereNotIn('status', ['completed', 'cancelled', 'canceled']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('scheduled_trip_order_id')
+                  ->orWhereHas('scheduledTripOrder', function ($oq) {
+                      $oq->whereNotIn('status', ['canceled', 'cancelled']);
+                  });
             })
             ->count();
 
         $directScheduledTripsCount = ScheduledTrip::where('driver_id', $driverId)
             ->whereNotIn('status', ['completed', 'cancelled', 'canceled'])
+            ->whereDoesntHave('driverInvitations', function ($iq) use ($driverId) {
+                $iq->where('driver_id', $driverId)->where('status', 'completed');
+            })
             ->count();
 
         $acceptedShipmentTripsCount = ShipmentDriverInvitation::where('driver_id', $driverId)
@@ -147,15 +154,17 @@ class DriverHomeController extends Controller
             ->where('driver_id', $driverId)
             ->where('status', 'accepted')
             ->where(function ($q) {
-                $q->whereHas('scheduledTripOrder', function ($oq) {
-                    $oq->whereNotIn('status', ['delivered', 'cancelled', 'canceled']);
-                })
-                ->orWhere(function ($tq) {
-                    $tq->whereNull('scheduled_trip_order_id')
-                       ->whereHas('scheduledTrip', function ($sq) {
-                           $sq->whereNotIn('status', ['completed', 'cancelled', 'canceled']);
-                       });
-                });
+                $q->whereNull('driver_stage')
+                  ->orWhere('driver_stage', '!=', 'delivered');
+            })
+            ->whereHas('scheduledTrip', function ($sq) {
+                $sq->whereNotIn('status', ['completed', 'cancelled', 'canceled']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('scheduled_trip_order_id')
+                  ->orWhereHas('scheduledTripOrder', function ($oq) {
+                      $oq->whereNotIn('status', ['canceled', 'cancelled']);
+                  });
             })
             ->latest()
             ->first();
@@ -180,7 +189,10 @@ class DriverHomeController extends Controller
             $truckName = ($order && $order->truckType) ? $order->truckType->name_en : ($trip->truckType ? $trip->truckType->name_en : 'Flatbed');
             $weightStr = ($order && $order->weight) ? number_format($order->weight, 0) . ' Kg' : ($trip->total_weight_ton ? number_format($trip->total_weight_ton * 1000, 0) . ' Kg' : '20,000 Kg');
             $cargoType = $truckName . ' · ' . $weightStr;
-            $tripVal = 'KD ' . number_format($activeInvitation->offered_price ?: $trip->price, 0);
+            $pricing = $this->resolveDriverTripPricing($trip, $order, $activeInvitation);
+            $fleet = $this->getOrderFleetStats($order, $trip);
+            $tripVal = 'KD ' . number_format($pricing['driver_price'], 0);
+            $driverStage = $activeInvitation->driver_stage ?: ($order ? $order->status : $trip->status);
 
             $loadingDateStr = '16 Jul 2026, 14:00';
             if ($order && $order->loading_date) {
@@ -190,14 +202,21 @@ class DriverHomeController extends Controller
             }
 
             $activeTripData = [
-                'id'              => 'TRP-' . $trip->id,
-                'origin'          => $originName,
-                'destination'     => $destName,
-                'status'          => ucfirst(str_replace('_', ' ', ($order ? $order->status : $trip->status) ?: 'In progress')),
-                'loading_date'    => $loadingDateStr,
-                'cargo_type'      => $cargoType,
-                'trip_value'      => $tripVal,
-                'stops_remaining' => '6 left',
+                'id'                  => 'TRP-' . $trip->id,
+                'origin'              => $originName,
+                'destination'         => $destName,
+                'status'              => (!$fleet['fleet_ready'] && $fleet['required'] > 1)
+                    ? "Waiting fleet ({$fleet['accepted']}/{$fleet['required']})"
+                    : ucfirst(str_replace('_', ' ', $driverStage ?: 'In progress')),
+                'loading_date'        => $loadingDateStr,
+                'cargo_type'          => $cargoType,
+                'trip_value'          => $tripVal,
+                'stops_remaining'     => '6 left',
+                'fleet_required'      => $fleet['required'],
+                'fleet_accepted'      => $fleet['accepted'],
+                'fleet_remaining'     => $fleet['remaining'],
+                'fleet_ready'         => $fleet['fleet_ready'],
+                'driver_payment_type' => $pricing['payment_type'],
             ];
         }
 
@@ -253,77 +272,583 @@ class DriverHomeController extends Controller
     }
 
     /**
-     * Mark a trip as completed by driver (confirms delivery, saves POD, and credits earnings).
+     * Resolve the driver's truck type and sub-type IDs (default truck first, then profile fallback).
      */
-    public function completeTrip(Request $request, $id)
+    private function resolveDriverTruckFilters(int $driverId): array
     {
-        $user = $request->user();
-        $driverId = $user ? $user->id : ($request->input('driver_id') ?: 18);
+        $truck = DriverTruck::where('driver_id', $driverId)->where('is_default', 1)->first()
+            ?: DriverTruck::where('driver_id', $driverId)->latest()->first();
+        $driverProfile = DriverProfile::where('user_id', $driverId)->first();
 
-        $cleanId = trim((string)$id);
-        $cleanId = preg_replace('/^#?(TRP-|SL-)/i', '', $cleanId);
+        $driverTruckTypeId = $truck ? $truck->truck_type_id : ($driverProfile ? $driverProfile->truck_type_id : null);
+        $driverTruckSubTypeId = $truck ? $truck->truck_sub_type_id : null;
+
+        return [$driverTruckTypeId, $driverTruckSubTypeId];
+    }
+
+    /**
+     * Compute required/accepted/remaining truck slots and fleet movement readiness.
+     */
+    private function getOrderFleetStats(?ScheduledTripOrder $order, ?ScheduledTrip $trip = null): array
+    {
+        if ($order) {
+            $required = max(1, (int) ($order->number_of_trucks ?: $order->booked_capacity ?: 1));
+            $accepted = ScheduledTripDriverInvitation::where('scheduled_trip_order_id', $order->id)
+                ->whereIn('status', ['accepted', 'completed'])
+                ->count();
+            $completed = ScheduledTripDriverInvitation::where('scheduled_trip_order_id', $order->id)
+                ->where('status', 'completed')
+                ->count();
+            if ($accepted === 0 && $order->driver_id) {
+                $accepted = 1;
+                if (strtolower((string) $order->status) === 'delivered') {
+                    $completed = 1;
+                }
+            }
+        } elseif ($trip) {
+            $required = max(1, (int) ($trip->number_of_trucks ?: 1));
+            $accepted = ScheduledTripDriverInvitation::where('scheduled_trip_id', $trip->id)
+                ->whereNull('scheduled_trip_order_id')
+                ->whereIn('status', ['accepted', 'completed'])
+                ->count();
+            $completed = ScheduledTripDriverInvitation::where('scheduled_trip_id', $trip->id)
+                ->whereNull('scheduled_trip_order_id')
+                ->where('status', 'completed')
+                ->count();
+            if ($accepted === 0 && $trip->driver_id) {
+                $accepted = 1;
+            }
+        } else {
+            $required = 1;
+            $accepted = 0;
+            $completed = 0;
+        }
+
+        $remaining = max(0, $required - $accepted);
+        $override = $trip ? (bool) $trip->fleet_override : false;
+        $fleetReady = ($accepted >= $required) || $override;
+
+        return [
+            'required'       => $required,
+            'accepted'       => $accepted,
+            'completed'      => $completed,
+            'remaining'      => $remaining,
+            'fleet_ready'    => $fleetReady,
+            'fleet_override' => $override,
+        ];
+    }
+
+    /**
+     * Resolve separate driver payout & payment schedule (100% after vs 50%/50% split).
+     */
+    private function resolveDriverTripPricing(?ScheduledTrip $trip, ?ScheduledTripOrder $order = null, ?ScheduledTripDriverInvitation $inv = null): array
+    {
+        $driverPrice = 0.0;
+        if ($inv && floatval($inv->offered_price) > 0) {
+            $driverPrice = floatval($inv->offered_price);
+        } elseif ($trip && $trip->driver_price !== null && floatval($trip->driver_price) > 0) {
+            $driverPrice = floatval($trip->driver_price);
+        } elseif ($trip && floatval($trip->price) > 0) {
+            $driverPrice = floatval($trip->price);
+        } elseif ($order && floatval($order->trip_price) > 0) {
+            $driverPrice = floatval($order->trip_price);
+        }
+
+        $paymentType = ($trip && in_array($trip->driver_payment_type, ['full_after', 'split_50_50']))
+            ? $trip->driver_payment_type
+            : 'full_after';
+
+        $payoutLabel = $paymentType === 'split_50_50'
+            ? '50% at trip start + 50% upon delivery'
+            : '100% upon delivery completion';
+
+        return [
+            'driver_price' => $driverPrice,
+            'payment_type' => $paymentType,
+            'payout_label' => $payoutLabel,
+        ];
+    }
+
+    /**
+     * Atomically & idempotently credit a driver's wallet for an invitation phase ('upfront' or 'final').
+     */
+    private function creditDriverInvitationPayout(
+        int $driverId,
+        ?ScheduledTripDriverInvitation $inv,
+        ?ScheduledTrip $trip,
+        ?ScheduledTripOrder $order,
+        string $phase
+    ): float {
+        $pricing = $this->resolveDriverTripPricing($trip, $order, $inv);
+        $totalPayout = (float) $pricing['driver_price'];
+        $paymentType = $pricing['payment_type'];
+
+        if ($totalPayout <= 0 || $driverId <= 0) {
+            return 0.0;
+        }
+
+        if ($paymentType !== 'split_50_50' && $phase === 'upfront') {
+            return 0.0;
+        }
+
+        return (float) DB::transaction(function () use ($driverId, $inv, $trip, $order, $phase, $totalPayout, $paymentType) {
+            $lockedInv = $inv ? ScheduledTripDriverInvitation::where('id', $inv->id)->lockForUpdate()->first() : null;
+            $driver = User::where('id', $driverId)->lockForUpdate()->first();
+            if (!$driver) {
+                return 0.0;
+            }
+
+            $upfrontHalf = round($totalPayout * 0.5, 2);
+            $refText = $order ? ('order #' . $order->order_number) : ('scheduled trip #' . ($trip ? $trip->id : '0'));
+
+            if ($phase === 'upfront') {
+                if ($lockedInv && $lockedInv->upfront_paid_at) {
+                    return 0.0;
+                }
+
+                $alreadyUpfront = WalletTransaction::where('user_id', $driver->id)
+                    ->where('type', 'trip_earnings')
+                    ->where(function ($q) use ($lockedInv, $order, $trip) {
+                        if ($lockedInv) {
+                            $q->where('scheduled_trip_invitation_id', $lockedInv->id)
+                              ->where('description', 'like', '%50% start%');
+                        } elseif ($order) {
+                            $q->where('scheduled_trip_order_id', $order->id)
+                              ->where('description', 'like', '%50% start%');
+                        } elseif ($trip) {
+                            $q->where('scheduled_trip_id', $trip->id)
+                              ->where('description', 'like', '%50% start%');
+                        }
+                    })
+                    ->exists();
+
+                if ($alreadyUpfront) {
+                    if ($lockedInv && !$lockedInv->upfront_paid_at) {
+                        $lockedInv->upfront_paid_at = now();
+                        $lockedInv->save();
+                    }
+                    return 0.0;
+                }
+
+                $creditAmount = $upfrontHalf;
+                $desc = 'Upfront 50% start payout for ' . $refText . ' (الدفعة الأولى 50% عند بداية الرحلة)';
+            } else {
+                if ($lockedInv && $lockedInv->final_paid_at) {
+                    return 0.0;
+                }
+
+                $paidQuery = WalletTransaction::where('user_id', $driver->id)
+                    ->where('type', 'trip_earnings');
+
+                if ($lockedInv) {
+                    $paidQuery->where('scheduled_trip_invitation_id', $lockedInv->id);
+                } elseif ($order) {
+                    $paidQuery->where(function ($q) use ($order) {
+                        $q->where('scheduled_trip_order_id', $order->id)
+                          ->orWhere('description', 'like', '%order #' . $order->id . '%')
+                          ->orWhere('description', 'like', '%' . $order->order_number . '%');
+                    });
+                } elseif ($trip) {
+                    $paidQuery->where('scheduled_trip_id', $trip->id);
+                }
+
+                $alreadyPaidTotal = (float) $paidQuery->sum('amount');
+                $creditAmount = round(max(0.0, $totalPayout - $alreadyPaidTotal), 2);
+
+                if ($creditAmount <= 0.009) {
+                    if ($lockedInv && !$lockedInv->final_paid_at) {
+                        $lockedInv->final_paid_at = now();
+                        $lockedInv->save();
+                    }
+                    return 0.0;
+                }
+
+                $desc = ($paymentType === 'split_50_50' && $alreadyPaidTotal > 0)
+                    ? 'Final 50% completion payout for ' . $refText . ' (الدفعة النهائية 50% عند التسليم)'
+                    : 'Earnings for completing delivery for ' . $refText . ' (أرباح إكمال الرحلة وتسليم الشحنة)';
+            }
+
+            $newBal = round((float) ($driver->credit ?? 0.0) + $creditAmount, 2);
+            $driver->credit = $newBal;
+            $driver->save();
+
+            WalletTransaction::create([
+                'user_id'                      => $driver->id,
+                'scheduled_trip_id'            => $trip ? $trip->id : null,
+                'scheduled_trip_order_id'      => $order ? $order->id : null,
+                'scheduled_trip_invitation_id' => $lockedInv ? $lockedInv->id : null,
+                'amount'                       => $creditAmount,
+                'type'                         => 'trip_earnings',
+                'balance_after'                => $newBal,
+                'description'                  => $desc,
+            ]);
+
+            if ($lockedInv) {
+                if ($phase === 'upfront') {
+                    $lockedInv->upfront_paid_at = now();
+                } else {
+                    $lockedInv->final_paid_at = now();
+                }
+                $lockedInv->save();
+            }
+
+            return $creditAmount;
+        });
+    }
+
+    /**
+     * Compute aggregate ScheduledTripOrder status across all assigned fleet trucks.
+     */
+    private function syncMultiTruckOrderStatus(?ScheduledTripOrder $order, ?ScheduledTrip $trip = null): void
+    {
+        if (!$order) {
+            return;
+        }
+
+        $required = max(1, (int) ($order->number_of_trucks ?: $order->booked_capacity ?: 1));
+        $invs = ScheduledTripDriverInvitation::where('scheduled_trip_order_id', $order->id)
+            ->whereIn('status', ['accepted', 'completed'])
+            ->get();
+
+        if ($invs->isEmpty()) {
+            return;
+        }
+
+        $stages = $invs->map(function ($i) use ($order) {
+            return $i->driver_stage ?: ($i->status === 'completed' ? 'delivered' : ($order->status ?: 'confirmed'));
+        })->values();
+
+        $completedCount = $invs->filter(fn($i) => $i->status === 'completed' || $i->driver_stage === 'delivered')->count();
+
+        if ($completedCount >= $required) {
+            $order->status = 'delivered';
+            $order->save();
+
+            if ($trip) {
+                $pendingOrders = $trip->orders()
+                    ->whereNotIn('status', ['delivered', 'completed', 'canceled'])
+                    ->count();
+                if ($pendingOrders === 0 && (int) $trip->available_capacity <= 0) {
+                    $trip->status = 'completed';
+                    $trip->save();
+                }
+            }
+            return;
+        }
+
+        if ($stages->contains('in_transit') || $stages->contains('arrived_dropoff') || $completedCount > 0) {
+            $order->status = 'in_transit';
+        } elseif ($stages->contains('loaded')) {
+            $order->status = 'loaded';
+        } elseif ($stages->contains('arrived_pickup')) {
+            $order->status = 'arrived_pickup';
+        } else {
+            $order->status = 'confirmed';
+        }
+        $order->save();
+
+        if ($trip && $order->status === 'in_transit' && !in_array($trip->status, ['completed', 'canceled'])) {
+            $trip->status = 'in_transit';
+            $trip->save();
+        }
+    }
+
+    /**
+     * Fetch matching pending invitations, new uninvited orders, and open scheduled trips for a driver.
+     */
+    private function getDriverRequestBuckets(int $driverId): array
+    {
+        [$driverTruckTypeId, $driverTruckSubTypeId] = $this->resolveDriverTruckFilters($driverId);
+
+        $excludedTripIds = ScheduledTripDriverInvitation::where('driver_id', $driverId)
+            ->whereIn('status', ['rejected', 'accepted'])
+            ->whereNull('scheduled_trip_order_id')
+            ->pluck('scheduled_trip_id')
+            ->filter()
+            ->toArray();
+
+        $invitations = ScheduledTripDriverInvitation::with([
+            'scheduledTripOrder.customer.companyProfile',
+            'scheduledTripOrder.pickupCountry',
+            'scheduledTripOrder.pickupCity',
+            'scheduledTripOrder.dropoffCountry',
+            'scheduledTripOrder.dropoffCity',
+            'scheduledTripOrder.truckType',
+            'scheduledTripOrder.truckSubType',
+            'scheduledTripOrder.shipmentType',
+            'scheduledTripOrder.shipmentNature',
+            'scheduledTrip.route.originCountry',
+            'scheduledTrip.route.originCity',
+            'scheduledTrip.route.destinationCountry',
+            'scheduledTrip.route.destinationCity',
+            'scheduledTrip.truckType',
+            'scheduledTrip.truckSubType',
+            'scheduledTrip.shipmentType',
+            'scheduledTrip.shipmentNature',
+        ])
+            ->where('driver_id', $driverId)
+            ->where('status', 'pending')
+            ->latest()
+            ->get()
+            ->filter(fn($inv) => $inv->scheduledTrip || $inv->scheduledTripOrder)
+            ->values();
+
+        $seenOrderIds = $invitations->pluck('scheduled_trip_order_id')->filter()->values()->toArray();
+        $seenTripIds = $invitations->whereNull('scheduled_trip_order_id')
+            ->pluck('scheduled_trip_id')
+            ->filter()
+            ->values()
+            ->toArray();
+
+        // Orders already handled by THIS driver (accepted, completed, rejected, pending invitation)
+        $handledOrderIds = ScheduledTripDriverInvitation::whereNotNull('scheduled_trip_order_id')
+            ->where('driver_id', $driverId)
+            ->whereIn('status', ['pending', 'accepted', 'rejected', 'completed'])
+            ->pluck('scheduled_trip_order_id')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // Cutoff timestamps per trip if driver already completed a trip-level run
+        $completedTripCutoffs = ScheduledTripDriverInvitation::where('driver_id', $driverId)
+            ->whereNull('scheduled_trip_order_id')
+            ->where('status', 'completed')
+            ->whereNotNull('scheduled_trip_id')
+            ->get()
+            ->groupBy('scheduled_trip_id')
+            ->map(fn($rows) => $rows->max('updated_at'));
+
+        $matchingOrders = collect();
+        if ($driverTruckTypeId) {
+            $orderQuery = ScheduledTripOrder::with([
+                'scheduledTrip.route.originCountry',
+                'scheduledTrip.route.originCity',
+                'scheduledTrip.route.destinationCountry',
+                'scheduledTrip.route.destinationCity',
+                'scheduledTrip.truckType',
+                'scheduledTrip.shipmentType',
+                'pickupCountry',
+                'pickupCity',
+                'dropoffCountry',
+                'dropoffCity',
+                'truckType',
+                'truckSubType',
+                'shipmentType',
+                'shipmentNature',
+                'driverInvitations',
+            ])
+                ->whereIn('status', ['new', 'confirmed'])
+                ->whereHas('scheduledTrip', function ($sq) {
+                    $sq->whereNotIn('status', ['completed', 'cancelled', 'canceled']);
+                })
+                ->where(function ($q) use ($driverTruckTypeId) {
+                    $q->where('truck_type_id', $driverTruckTypeId)
+                      ->orWhere(function ($tq) use ($driverTruckTypeId) {
+                          $tq->whereNull('truck_type_id')
+                             ->whereHas('scheduledTrip', fn($sq) => $sq->where('truck_type_id', $driverTruckTypeId));
+                      });
+                });
+
+            if ($driverTruckSubTypeId) {
+                $orderQuery->where(function ($q) use ($driverTruckSubTypeId) {
+                    $q->whereNull('truck_sub_type_id')
+                      ->orWhere('truck_sub_type_id', $driverTruckSubTypeId);
+                });
+            }
+
+            if (!empty($handledOrderIds)) {
+                $orderQuery->whereNotIn('id', $handledOrderIds);
+            }
+            if (!empty($seenOrderIds)) {
+                $orderQuery->whereNotIn('id', $seenOrderIds);
+            }
+
+            $matchingOrders = $orderQuery->latest()->get()->filter(function ($ord) use ($completedTripCutoffs, $driverId) {
+                $cutoff = $completedTripCutoffs->get($ord->scheduled_trip_id);
+                if ($cutoff && $ord->created_at && $ord->created_at->lte($cutoff)) {
+                    return false;
+                }
+                $required = max(1, (int) ($ord->number_of_trucks ?: $ord->booked_capacity ?: 1));
+                $acceptedCount = $ord->driverInvitations
+                    ->whereIn('status', ['accepted', 'completed'])
+                    ->count();
+                if ($acceptedCount === 0 && $ord->driver_id && (int) $ord->driver_id !== $driverId) {
+                    return false;
+                }
+                // Show order to remaining drivers as long as fleet slots remain open
+                return ($required - $acceptedCount) > 0;
+            })->values();
+        }
+
+        $orderCoveredTripIds = $matchingOrders->pluck('scheduled_trip_id')->filter()->unique()->values()->toArray();
+        $excludedForTripMatch = array_values(array_unique(array_merge($excludedTripIds, $seenTripIds, $orderCoveredTripIds)));
+
+        $matchingTrips = collect();
+        if ($driverTruckTypeId) {
+            $matchingQuery = ScheduledTrip::with([
+                'route.originCountry',
+                'route.originCity',
+                'route.destinationCountry',
+                'route.destinationCity',
+                'truckType',
+                'truckSubType',
+                'shipmentType',
+                'shipmentNature',
+                'driverInvitations',
+            ])
+                ->whereIn('status', ['published', 'open', 'scheduled', 'active'])
+                ->whereNotIn('status', ['completed', 'cancelled', 'canceled'])
+                ->where(function ($q) use ($driverId) {
+                    $q->whereNull('driver_id')
+                      ->orWhere('driver_id', $driverId);
+                })
+                ->whereDoesntHave('orders', function ($oq) {
+                    $oq->whereNotIn('status', ['canceled', 'cancelled']);
+                })
+                ->where('truck_type_id', $driverTruckTypeId);
+
+            if (!empty($excludedForTripMatch)) {
+                $matchingQuery->whereNotIn('id', $excludedForTripMatch);
+            }
+
+            if ($driverTruckSubTypeId) {
+                $matchingQuery->where(function ($q) use ($driverTruckSubTypeId) {
+                    $q->whereNull('truck_sub_type_id')
+                      ->orWhere('truck_sub_type_id', $driverTruckSubTypeId);
+                });
+            }
+
+            $matchingTrips = $matchingQuery->latest()->get()->filter(function ($trip) {
+                $required = max(1, (int) ($trip->number_of_trucks ?: 1));
+                $accepted = $trip->driverInvitations
+                    ->whereNull('scheduled_trip_order_id')
+                    ->whereIn('status', ['accepted', 'completed'])
+                    ->count();
+                return ($required - $accepted) > 0;
+            })->values();
+        }
+
+        return [
+            'invitations'    => $invitations,
+            'matchingOrders' => $matchingOrders,
+            'matchingTrips'  => $matchingTrips,
+        ];
+    }
+
+    /**
+     * Resolve ScheduledTrip, ScheduledTripOrder, and ScheduledTripDriverInvitation from flexible ID formats.
+     */
+    private function resolveTripEntities($id, int $driverId): array
+    {
+        $rawId = trim((string) $id);
+        $isExplicitTripId = (bool) preg_match('/^#?(TRP-|trip_)/i', $rawId);
+        $cleanId = preg_replace('/^#?(TRP-|SL-|trip_)/i', '', $rawId);
 
         $order = null;
         $trip = null;
+        $inv = null;
 
-        if (str_starts_with($cleanId, 'STO-')) {
+        if (preg_match('/^#?order_(\d+)/i', $cleanId, $om)) {
+            $order = ScheduledTripOrder::find((int) $om[1]);
+            if ($order) {
+                $trip = $order->scheduledTrip;
+                $inv = ScheduledTripDriverInvitation::where('scheduled_trip_order_id', $order->id)
+                    ->where('driver_id', $driverId)
+                    ->latest()
+                    ->first();
+            }
+        } elseif (str_starts_with(strtoupper($cleanId), 'STO-')) {
             $order = ScheduledTripOrder::where('order_number', $cleanId)->first();
-            if ($order) $trip = $order->scheduledTrip;
+            if ($order) {
+                $trip = $order->scheduledTrip;
+            }
         } else {
             $numId = (int) $cleanId;
-            $trip = ScheduledTrip::find($numId);
-            if ($trip) {
-                $order = $trip->orders()->where(function($q) use ($driverId) {
+            if ($numId > 0) {
+                if ($isExplicitTripId) {
+                    $trip = ScheduledTrip::find($numId);
+                    if (!$trip) {
+                        $inv = ScheduledTripDriverInvitation::where('id', $numId)
+                            ->where('driver_id', $driverId)
+                            ->first() ?: ScheduledTripDriverInvitation::find($numId);
+                        if ($inv) {
+                            $trip = $inv->scheduledTrip;
+                            $order = $inv->scheduledTripOrder;
+                        }
+                    }
+                    if (!$trip && !$inv) {
+                        $order = ScheduledTripOrder::find($numId);
+                        if ($order) {
+                            $trip = $order->scheduledTrip;
+                        }
+                    }
+                } else {
+                    $inv = ScheduledTripDriverInvitation::where('id', $numId)
+                        ->where('driver_id', $driverId)
+                        ->first() ?: ScheduledTripDriverInvitation::find($numId);
+                    if ($inv) {
+                        $trip = $inv->scheduledTrip;
+                        $order = $inv->scheduledTripOrder;
+                    }
+                    if (!$trip) {
+                        $trip = ScheduledTrip::find($numId);
+                    }
+                    if (!$trip && !$order) {
+                        $order = ScheduledTripOrder::find($numId);
+                        if ($order) {
+                            $trip = $order->scheduledTrip;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($trip && !$inv) {
+            $inv = ScheduledTripDriverInvitation::where('scheduled_trip_id', $trip->id)
+                ->where('driver_id', $driverId)
+                ->when($order, fn($q) => $q->where('scheduled_trip_order_id', $order->id))
+                ->orderByRaw("CASE WHEN status = 'accepted' THEN 0 WHEN status = 'pending' THEN 1 ELSE 2 END")
+                ->latest('id')
+                ->first();
+            if (!$order && $inv && $inv->scheduledTripOrder) {
+                $order = $inv->scheduledTripOrder;
+            }
+        } elseif ($order && !$inv) {
+            $inv = ScheduledTripDriverInvitation::where('scheduled_trip_order_id', $order->id)
+                ->where('driver_id', $driverId)
+                ->orderByRaw("CASE WHEN status = 'accepted' THEN 0 WHEN status = 'pending' THEN 1 ELSE 2 END")
+                ->latest('id')
+                ->first();
+        }
+
+        if ($trip && !$order) {
+            $order = $trip->orders()
+                ->where(function ($q) use ($driverId) {
                     $q->where('driver_id', $driverId)->orWhereNull('driver_id');
-                })->latest()->first() ?: $trip->orders()->latest()->first();
-            } else {
-                $order = ScheduledTripOrder::find($numId);
-                if ($order) $trip = $order->scheduledTrip;
-            }
+                })
+                ->orderByRaw('CASE WHEN driver_id = ? THEN 0 ELSE 1 END', [$driverId])
+                ->latest('id')
+                ->first() ?: ($trip->orders()->latest('id')->first());
         }
 
-        if (!$order && $trip) {
-            $order = $trip->orders()->latest()->first();
-        }
+        return [
+            'trip'       => $trip,
+            'order'      => $order,
+            'invitation' => $inv,
+        ];
+    }
 
-        if (!$trip && !$order) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Trip or order not found'
-            ], 404);
-        }
-
-        if ($trip) {
-            $trip->status = 'completed';
-            $trip->driver_id = $driverId;
-            $trip->save();
-        }
-
-        // Update linked orders to 'delivered' so admin panel reflects delivery immediately
-        if ($order) {
-            $order->status = 'delivered';
-            if ($request->filled('receiver_name')) {
-                $order->arrival_contact_name = $request->input('receiver_name');
-            }
-            if ($request->filled('receiver_phone')) {
-                $order->arrival_contact_phone = $request->input('receiver_phone');
-            }
-            $order->save();
-        } elseif ($trip && $trip->orders) {
-            foreach ($trip->orders as $ord) {
-                $ord->status = 'delivered';
-                $ord->save();
-            }
-        }
-
-        // Process Proof of Delivery (POD) attachments and details
+    /**
+     * Save uploaded POD photos and signature image to public/upload/proof_of_delivery.
+     */
+    private function storePodMedia(Request $request, $refId): array
+    {
         $uploadDir = public_path('upload/proof_of_delivery');
         if (!File::exists($uploadDir)) {
             File::makeDirectory($uploadDir, 0755, true, true);
         }
 
         $savedPhotos = [];
-        // Handle multiple photos
         if ($request->hasFile('photos')) {
             $photos = $request->file('photos');
             if (!is_array($photos)) {
@@ -332,20 +857,19 @@ class DriverHomeController extends Controller
             foreach ($photos as $idx => $photoFile) {
                 if ($photoFile && $photoFile->isValid()) {
                     $ext = $photoFile->getClientOriginalExtension() ?: 'jpg';
-                    $targetName = 'pod_photo_' . ($order ? $order->id : ($trip ? $trip->id : '0')) . '_' . time() . '_' . $idx . '_' . uniqid() . '.' . $ext;
+                    $targetName = 'pod_photo_' . $refId . '_' . time() . '_' . $idx . '_' . uniqid() . '.' . $ext;
                     $photoFile->move($uploadDir, $targetName);
                     $savedPhotos[] = 'upload/proof_of_delivery/' . $targetName;
                 }
             }
         }
 
-        // Handle signature image (file or base64 data)
         $savedSignature = null;
         if ($request->hasFile('signature')) {
             $sigFile = $request->file('signature');
             if ($sigFile && $sigFile->isValid()) {
                 $ext = $sigFile->getClientOriginalExtension() ?: 'png';
-                $sigName = 'pod_sig_' . ($order ? $order->id : ($trip ? $trip->id : '0')) . '_' . time() . '.' . $ext;
+                $sigName = 'pod_sig_' . $refId . '_' . time() . '.' . $ext;
                 $sigFile->move($uploadDir, $sigName);
                 $savedSignature = 'upload/proof_of_delivery/' . $sigName;
             }
@@ -354,105 +878,233 @@ class DriverHomeController extends Controller
             $cleanB64 = preg_replace('#^data:image/\w+;base64,#i', '', $rawB64);
             $decoded = base64_decode($cleanB64);
             if ($decoded !== false && strlen($decoded) > 0) {
-                $sigName = 'pod_sig_' . ($order ? $order->id : ($trip ? $trip->id : '0')) . '_' . time() . '.png';
+                $sigName = 'pod_sig_' . $refId . '_' . time() . '.png';
                 file_put_contents($uploadDir . '/' . $sigName, $decoded);
                 $savedSignature = 'upload/proof_of_delivery/' . $sigName;
             }
         }
 
-        // Create or update ProofOfDelivery record
-        $pod = ProofOfDelivery::updateOrCreate(
-            [
-                'scheduled_trip_order_id' => $order ? $order->id : null,
-            ],
-            [
-                'scheduled_trip_id' => $trip ? $trip->id : ($order ? $order->scheduled_trip_id : null),
-                'driver_id'         => $driverId,
-                'receiver_name'     => $request->input('receiver_name') ?: ($order ? $order->arrival_contact_name : 'Receiver'),
-                'receiver_phone'    => $request->input('receiver_phone') ?: ($order ? $order->arrival_contact_phone : null),
-                'receiver_civil_id' => $request->input('receiver_civil_id'),
-                'photos'            => !empty($savedPhotos) ? $savedPhotos : null,
-                'signature_image'   => $savedSignature,
-                'notes'             => $request->input('notes'),
-                'delivered_at'      => now(),
-            ]
-        );
+        return [$savedPhotos, $savedSignature];
+    }
 
-        // Update invitation status to completed specifically for this order or trip
-        $inv = null;
-        if ($order) {
+    /**
+     * Mark a trip as completed by driver (confirms delivery, saves POD, and credits earnings).
+     */
+    public function completeTrip(Request $request, $id)
+    {
+        $driverId = (int) $this->resolveDriverId($request);
+        $rawId = trim((string) $id);
+
+        // Handle direct shipment invitations (shipment_inv_{id})
+        if (preg_match('/^#?shipment_inv_(\d+)/i', $rawId, $m)) {
+            $sInvId = (int) $m[1];
+            $sInv = ShipmentDriverInvitation::with('shipment')->find($sInvId);
+            if (!$sInv) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Shipment invitation not found',
+                ], 404);
+            }
+
+            $shipment = $sInv->shipment;
+            $sInv->status = 'completed';
+            $sInv->save();
+
+            if ($shipment) {
+                $shipment->status = 'delivered';
+                $shipment->driver_id = $driverId;
+                $shipment->save();
+
+                ShipmentDriverInvitation::where('shipment_id', $shipment->id)
+                    ->where('driver_id', $driverId)
+                    ->where('status', '!=', 'completed')
+                    ->update(['status' => 'completed']);
+            }
+
+            $refId = $shipment ? ('ship_' . $shipment->id) : ('ship_inv_' . $sInv->id);
+            [$savedPhotos, $savedSignature] = $this->storePodMedia($request, $refId);
+
+            $pod = ProofOfDelivery::create([
+                'scheduled_trip_order_id' => null,
+                'scheduled_trip_id'       => null,
+                'driver_id'               => $driverId,
+                'receiver_name'           => $request->input('receiver_name') ?: 'Receiver',
+                'receiver_phone'          => $request->input('receiver_phone'),
+                'receiver_civil_id'       => $request->input('receiver_civil_id'),
+                'photos'                  => !empty($savedPhotos) ? $savedPhotos : null,
+                'signature_image'         => $savedSignature,
+                'notes'                   => $request->input('notes'),
+                'delivered_at'            => now(),
+            ]);
+
+            $amount = floatval($sInv->offered_price > 0 ? $sInv->offered_price : ($shipment ? $shipment->total_cost : 0));
+            $driver = User::find($driverId);
+            if ($driver && $amount > 0 && $shipment) {
+                $alreadyCredited = WalletTransaction::where('user_id', $driver->id)
+                    ->where('type', 'trip_earnings')
+                    ->where('description', 'like', '%shipment #' . $shipment->id . '%')
+                    ->exists();
+                if (!$alreadyCredited) {
+                    $lastBal = (float) ($driver->credit ?? 0.0);
+                    $newBal = $lastBal + $amount;
+                    $driver->credit = $newBal;
+                    $driver->save();
+
+                    WalletTransaction::create([
+                        'user_id'           => $driver->id,
+                        'scheduled_trip_id' => null,
+                        'amount'            => $amount,
+                        'type'              => 'trip_earnings',
+                        'balance_after'     => $newBal,
+                        'description'       => 'Earnings for completing delivery for shipment #' . $shipment->id . ' (أرباح إكمال الرحلة وتسليم الشحنة)',
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Delivery completed successfully and Proof of Delivery saved.',
+                'data'    => [
+                    'shipment'          => $shipment,
+                    'proof_of_delivery' => $pod,
+                    'amount'            => $amount,
+                    'earnings'          => $driver ? (float) $driver->credit : 0,
+                ],
+            ], 200);
+        }
+
+        $resolved = $this->resolveTripEntities($rawId, $driverId);
+        $trip = $resolved['trip'];
+        $order = $resolved['order'];
+        $inv = $resolved['invitation'];
+
+        if (!$trip && !$order && !$inv) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Trip or order not found'
+            ], 404);
+        }
+
+        if (!$inv && $order) {
             $inv = ScheduledTripDriverInvitation::where('scheduled_trip_order_id', $order->id)
                 ->where('driver_id', $driverId)
+                ->orderByRaw("CASE WHEN status = 'accepted' THEN 0 WHEN status = 'completed' THEN 1 ELSE 2 END")
+                ->latest('id')
                 ->first();
         }
         if (!$inv && $trip) {
             $inv = ScheduledTripDriverInvitation::where('scheduled_trip_id', $trip->id)
                 ->where('driver_id', $driverId)
-                ->where('status', '!=', 'completed')
-                ->latest()
-                ->first()
-                ?: ScheduledTripDriverInvitation::where('scheduled_trip_id', $trip->id)
-                    ->where('driver_id', $driverId)
-                    ->first();
+                ->latest('id')
+                ->first();
         }
 
+        $fleet = $this->getOrderFleetStats($order, $trip);
+        if (!$fleet['fleet_ready']) {
+            return response()->json([
+                'status'  => false,
+                'message' => "Cannot complete delivery yet. Waiting for all required trucks to be accepted ({$fleet['accepted']}/{$fleet['required']}).",
+                'data'    => ['fleet' => $fleet],
+            ], 422);
+        }
+
+        $refId = ($order ? $order->id : ($trip ? $trip->id : '0')) . '_d' . $driverId;
+        [$savedPhotos, $savedSignature] = $this->storePodMedia($request, $refId);
+
+        // Key ProofOfDelivery per driver/invitation so multi-truck drivers don't overwrite each other
+        $podMatch = $order
+            ? [
+                'scheduled_trip_order_id' => $order->id,
+                'driver_id'               => $driverId,
+            ]
+            : [
+                'scheduled_trip_order_id' => null,
+                'scheduled_trip_id'       => $trip ? $trip->id : null,
+                'driver_id'               => $driverId,
+            ];
+
+        $pod = ProofOfDelivery::updateOrCreate(
+            $podMatch,
+            [
+                'scheduled_trip_invitation_id' => $inv ? $inv->id : null,
+                'scheduled_trip_id'            => $trip ? $trip->id : ($order ? $order->scheduled_trip_id : null),
+                'driver_id'                    => $driverId,
+                'receiver_name'                => $request->input('receiver_name') ?: ($order ? $order->arrival_contact_name : 'Receiver'),
+                'receiver_phone'               => $request->input('receiver_phone') ?: ($order ? $order->arrival_contact_phone : null),
+                'receiver_civil_id'            => $request->input('receiver_civil_id'),
+                'photos'                       => !empty($savedPhotos) ? $savedPhotos : null,
+                'signature_image'              => $savedSignature,
+                'notes'                        => $request->input('notes'),
+                'delivered_at'                 => now(),
+            ]
+        );
+
+        // Update THIS driver's matching invitation(s) to completed
         if ($inv) {
             $inv->status = 'completed';
+            $inv->driver_stage = 'delivered';
+            $inv->completed_at = now();
             $inv->save();
         }
 
-        $amount = (isset($inv) && $inv && floatval($inv->offered_price) > 0)
-            ? floatval($inv->offered_price)
-            : ($trip ? floatval($trip->price) : 0);
-
-        // Credit the driver's wallet ONLY when the trip / delivery is completed
-        $driver = User::find($driverId);
-        if ($driver && $amount > 0 && ($trip || $order)) {
-            $alreadyCredited = false;
-            if ($order) {
-                $alreadyCredited = WalletTransaction::where('user_id', $driver->id)
-                    ->where('type', 'trip_earnings')
-                    ->where(function ($q) use ($order) {
-                        $q->where('description', 'like', '%order #' . $order->id . '%')
-                          ->orWhere('description', 'like', '%' . $order->order_number . '%');
-                    })
-                    ->exists();
-            } elseif ($trip) {
-                $alreadyCredited = WalletTransaction::where('user_id', $driver->id)
-                    ->where('scheduled_trip_id', $trip->id)
-                    ->where('type', 'trip_earnings')
-                    ->exists();
+        $invQuery = ScheduledTripDriverInvitation::where('driver_id', $driverId)
+            ->where('status', '!=', 'completed');
+        $invQuery->where(function ($q) use ($order, $trip, $inv) {
+            if ($inv) {
+                $q->orWhere('id', $inv->id);
             }
+            if ($order) {
+                $q->orWhere('scheduled_trip_order_id', $order->id);
+            }
+            if ($trip && !$order) {
+                $q->orWhere(function ($sq) use ($trip) {
+                    $sq->where('scheduled_trip_id', $trip->id)
+                       ->whereNull('scheduled_trip_order_id');
+                });
+            }
+        });
+        $invQuery->update([
+            'status'       => 'completed',
+            'driver_stage' => 'delivered',
+            'completed_at' => now(),
+        ]);
 
-            if (!$alreadyCredited) {
-                $lastBal = (float) ($driver->credit ?? 0.0);
-                $newBal = $lastBal + $amount;
-                $driver->credit = $newBal;
-                $driver->save();
-
-                $desc = $order
-                    ? 'Earnings for completing delivery for order #' . $order->order_number . ' (أرباح إكمال الرحلة وتسليم الشحنة)'
-                    : 'Earnings for completing scheduled trip #' . ($trip ? $trip->id : '0') . ' (أرباح إكمال الرحلة وتسليم الشحنة)';
-
-                WalletTransaction::create([
-                    'user_id'           => $driver->id,
-                    'scheduled_trip_id' => $trip ? $trip->id : null,
-                    'amount'            => $amount,
-                    'type'              => 'trip_earnings',
-                    'balance_after'     => $newBal,
-                    'description'       => $desc,
-                ]);
+        // Update aggregate order & trip status only once all required trucks finish
+        if ($order) {
+            if (empty($order->driver_id)) {
+                $order->driver_id = $driverId;
+            }
+            if ($request->filled('receiver_name') && empty($order->arrival_contact_name)) {
+                $order->arrival_contact_name = $request->input('receiver_name');
+            }
+            if ($request->filled('receiver_phone') && empty($order->arrival_contact_phone)) {
+                $order->arrival_contact_phone = $request->input('receiver_phone');
+            }
+            $order->save();
+            $this->syncMultiTruckOrderStatus($order, $trip);
+        } elseif ($trip) {
+            $updatedFleet = $this->getOrderFleetStats(null, $trip);
+            if ($updatedFleet['completed'] >= $updatedFleet['required'] || ($updatedFleet['accepted'] <= 1 && (int) $trip->available_capacity <= 0)) {
+                $trip->status = 'completed';
+                $trip->driver_id = $trip->driver_id ?: $driverId;
+                $trip->save();
             }
         }
+
+        $pricing = $this->resolveDriverTripPricing($trip, $order, $inv);
+        $creditedNow = $this->creditDriverInvitationPayout($driverId, $inv, $trip, $order, 'final');
+        $amount = (float) $pricing['driver_price'];
+        $driver = User::find($driverId);
 
         return response()->json([
             'status'  => true,
             'message' => 'Delivery completed successfully and Proof of Delivery saved.',
             'data'    => [
-                'trip'              => $trip,
-                'order'             => $order,
+                'trip'              => $trip ? $trip->fresh() : null,
+                'order'             => $order ? $order->fresh() : null,
                 'proof_of_delivery' => $pod,
                 'amount'            => $amount,
+                'credited_now'      => $creditedNow,
                 'earnings'          => $driver ? (float) $driver->credit : 0,
             ]
         ], 200);
@@ -490,15 +1142,17 @@ class DriverHomeController extends Controller
             ->where('driver_id', $driverId)
             ->where('status', 'accepted')
             ->where(function ($q) {
-                $q->whereHas('scheduledTripOrder', function ($oq) {
-                    $oq->whereNotIn('status', ['delivered', 'cancelled', 'canceled']);
-                })
-                ->orWhere(function ($tq) {
-                    $tq->whereNull('scheduled_trip_order_id')
-                       ->whereHas('scheduledTrip', function ($sq) {
-                           $sq->whereNotIn('status', ['completed', 'cancelled', 'canceled']);
-                       });
-                });
+                $q->whereNull('driver_stage')
+                  ->orWhere('driver_stage', '!=', 'delivered');
+            })
+            ->whereHas('scheduledTrip', function ($sq) {
+                $sq->whereNotIn('status', ['completed', 'cancelled', 'canceled']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('scheduled_trip_order_id')
+                  ->orWhereHas('scheduledTripOrder', function ($oq) {
+                      $oq->whereNotIn('status', ['canceled', 'cancelled']);
+                  });
             })
             ->latest()
             ->get();
@@ -528,19 +1182,25 @@ class DriverHomeController extends Controller
                 $toCity = $trip->route->destinationCity ? $trip->route->destinationCity->name_en : 'Dammam';
             }
 
-            $orderStatus = $order && $order->status ? strtolower($order->status) : 'confirmed';
+            $fleet = $this->getOrderFleetStats($order, $trip);
+            $pricing = $this->resolveDriverTripPricing($trip, $order, $inv);
+            $orderStatus = $inv->driver_stage ?: ($order && $order->status ? strtolower($order->status) : 'confirmed');
             $statusTag = 'In progress';
-            if ($orderStatus === 'in_transit') {
+            if (!$fleet['fleet_ready'] && $fleet['required'] > 1) {
+                $statusTag = "Waiting fleet ({$fleet['accepted']}/{$fleet['required']})";
+            } elseif ($orderStatus === 'in_transit') {
                 $statusTag = 'In transit';
             } elseif ($orderStatus === 'arrived_dropoff') {
                 $statusTag = 'Arrived at drop-off';
+            } elseif ($orderStatus === 'arrived_pickup') {
+                $statusTag = 'Arrived at pickup';
             } elseif ($orderStatus === 'loaded') {
                 $statusTag = 'Loaded';
             } elseif ($orderStatus === 'confirmed') {
                 $statusTag = 'Confirmed';
             }
 
-            $price = floatval($inv->offered_price ?: $trip->price);
+            $price = (float) $pricing['driver_price'];
             $weight = $trip->total_weight_ton ? number_format($trip->total_weight_ton * 1000, 0) . ' Kg' : '20,000 Kg';
             if ($order && $order->weight) {
                 $weight = number_format(floatval($order->weight), 0) . ' Kg';
@@ -558,25 +1218,32 @@ class DriverHomeController extends Controller
             $note = $order && $order->notes ? $order->notes : ($trip->notes ?: 'Driver assists');
 
             $list[] = [
-                'id'              => 'TRP-' . $trip->id,
-                'trip_id'         => $trip->id,
-                'order_id'        => $order ? $order->id : null,
-                'order_number'    => $order ? $order->order_number : null,
-                'status_tag'      => $statusTag,
-                'order_status'    => $orderStatus,
-                'posted_ago'      => $inv->updated_at ? $inv->updated_at->diffForHumans() : 'Active now',
-                'has_unread_dot'  => false,
-                'from_city'       => $fromCity,
-                'to_city'         => $toCity,
-                'price_kwd'       => $price,
-                'formatted_price' => 'KWD ' . number_format($price, 0),
-                'loading_date'    => $loadingDate,
-                'total_weight'    => 'Up to ' . $weight,
-                'truck_type'      => $truckType,
-                'note'            => $note,
-                'cargo_type'      => $cargoType,
-                'distance'        => $dist,
-                'category'        => 'all',
+                'id'                   => 'TRP-' . $trip->id,
+                'trip_id'              => $trip->id,
+                'order_id'             => $order ? $order->id : null,
+                'order_number'         => $order ? $order->order_number : null,
+                'status_tag'           => $statusTag,
+                'order_status'         => $orderStatus,
+                'posted_ago'           => $inv->updated_at ? $inv->updated_at->diffForHumans() : 'Active now',
+                'has_unread_dot'       => false,
+                'from_city'            => $fromCity,
+                'to_city'              => $toCity,
+                'price_kwd'            => $price,
+                'formatted_price'      => 'KWD ' . number_format($price, 0),
+                'loading_date'         => $loadingDate,
+                'total_weight'         => 'Up to ' . $weight,
+                'truck_type'           => $truckType,
+                'note'                 => $note,
+                'cargo_type'           => $cargoType,
+                'distance'             => $dist,
+                'category'             => 'all',
+                'requested_trucks'     => 1,
+                'fleet_required'       => $fleet['required'],
+                'fleet_accepted'       => $fleet['accepted'],
+                'fleet_remaining'      => $fleet['remaining'],
+                'fleet_ready'          => $fleet['fleet_ready'],
+                'driver_payment_type'  => $pricing['payment_type'],
+                'driver_payout_label'  => $pricing['payout_label'],
             ];
         }
 
@@ -987,8 +1654,95 @@ class DriverHomeController extends Controller
         $list = [];
         $seenOrderIds = [];
         $seenTripIds = [];
+        $tripIdsWithoutOrderInv = [];
 
-        // 1. Delivered orders assigned to this driver
+        // 1. Completed invitations for THIS driver (supports multi-truck independent completions)
+        $invitations = ScheduledTripDriverInvitation::with([
+            'scheduledTrip.route.originCity',
+            'scheduledTrip.route.destinationCity',
+            'scheduledTrip.truckType',
+            'scheduledTripOrder.pickupCity',
+            'scheduledTripOrder.dropoffCity',
+            'scheduledTripOrder.truckType',
+            'scheduledTripOrder.shipmentType',
+            'scheduledTripOrder.proofOfDelivery',
+            'proofOfDelivery',
+        ])
+            ->where('driver_id', $driverId)
+            ->where('status', 'completed')
+            ->latest('updated_at')
+            ->get();
+
+        foreach ($invitations as $inv) {
+            $order = $inv->scheduledTripOrder;
+            $trip = $inv->scheduledTrip ?: ($order ? $order->scheduledTrip : null);
+            if (!$trip && !$order) {
+                continue;
+            }
+            if ($order) {
+                if (in_array($order->id, $seenOrderIds)) continue;
+                $seenOrderIds[] = $order->id;
+            }
+            if ($trip) {
+                $seenTripIds[] = $trip->id;
+            }
+
+            $fromCity = 'Farwaniya';
+            $toCity = 'Dubai';
+            if ($order && $order->pickupCity) {
+                $fromCity = $order->pickupCity->name_en ?: $order->pickupCity->name_ar;
+            } elseif ($trip && $trip->route && $trip->route->originCity) {
+                $fromCity = $trip->route->originCity->name_en;
+            }
+            if ($order && $order->dropoffCity) {
+                $toCity = $order->dropoffCity->name_en ?: $order->dropoffCity->name_ar;
+            } elseif ($trip && $trip->route && $trip->route->destinationCity) {
+                $toCity = $trip->route->destinationCity->name_en;
+            }
+
+            $pricing = $this->resolveDriverTripPricing($trip, $order, $inv);
+            $price = (float) $pricing['driver_price'];
+            $pod = $inv->proofOfDelivery ?: ($order
+                ? (ProofOfDelivery::where('scheduled_trip_order_id', $order->id)->where('driver_id', $driverId)->latest('id')->first() ?: $order->proofOfDelivery)
+                : ProofOfDelivery::where('scheduled_trip_id', $trip->id)->where('driver_id', $driverId)->latest('id')->first());
+
+            $deliveredAt = ($pod && $pod->delivered_at) ? $pod->delivered_at : ($inv->completed_at ?: $inv->updated_at);
+            $receiverName = ($pod && $pod->receiver_name) ? $pod->receiver_name : ($order && $order->arrival_contact_name ? $order->arrival_contact_name : 'Received on-site');
+
+            $weight = ($order && $order->weight)
+                ? number_format(floatval($order->weight), 0) . ' Kg'
+                : ($trip && $trip->total_weight_ton ? number_format($trip->total_weight_ton * 1000, 0) . ' Kg' : '20,000 Kg');
+            $truckType = ($order && $order->truckType) ? $order->truckType->name_en : ($trip && $trip->truckType ? $trip->truckType->name_en : 'Tanker');
+            $cargoType = ($order && $order->shipmentType) ? $order->shipmentType->name_en : ($order && $order->shipment_name ? $order->shipment_name : 'General Cargo');
+            $dist = ($trip && $trip->route && $trip->route->estimated_distance) ? number_format($trip->route->estimated_distance, 0) . ' km' : '100 km';
+
+            $list[] = [
+                'id'              => $order ? ('ORD-' . $order->id) : ('TRP-' . $trip->id),
+                'trip_id'         => $trip ? $trip->id : null,
+                'order_id'        => $order ? $order->id : null,
+                'order_number'    => $order ? $order->order_number : null,
+                'status_tag'      => 'Completed',
+                'order_status'    => 'delivered',
+                'posted_ago'      => $deliveredAt ? 'Delivered ' . $deliveredAt->diffForHumans() : 'Delivered recently',
+                'has_unread_dot'  => false,
+                'from_city'       => $fromCity,
+                'to_city'         => $toCity,
+                'price_kwd'       => $price,
+                'formatted_price' => 'KWD ' . number_format($price, 0),
+                'loading_date'    => $deliveredAt ? date('d M, H:i', strtotime($deliveredAt)) : 'Delivered',
+                'total_weight'    => 'Up to ' . $weight,
+                'truck_type'      => $truckType,
+                'note'            => $pod ? ('Received by: ' . $receiverName) : 'Completed delivery',
+                'cargo_type'      => $cargoType,
+                'distance'        => $dist,
+                'category'        => 'completed',
+                'state'           => 'completed',
+                'receiver_name'   => $pod ? $receiverName : null,
+                'has_pod'         => (bool) $pod,
+            ];
+        }
+
+        // 2. Legacy delivered orders directly assigned to driver without invitation row
         $orders = ScheduledTripOrder::with([
             'scheduledTrip.route.originCity',
             'scheduledTrip.route.destinationCity',
@@ -1000,6 +1754,7 @@ class DriverHomeController extends Controller
             'proofOfDelivery',
         ])
             ->where('driver_id', $driverId)
+            ->when(!empty($seenOrderIds), fn($q) => $q->whereNotIn('id', $seenOrderIds))
             ->where(function ($q) {
                 $q->where('status', 'delivered')
                   ->orWhereHas('proofOfDelivery');
@@ -1026,15 +1781,8 @@ class DriverHomeController extends Controller
                 $toCity = $trip->route->destinationCity->name_en;
             }
 
-            $price = floatval($order->total_price ?: ($trip ? $trip->price : 60));
-            // Check invitation offered price
-            $inv = ScheduledTripDriverInvitation::where('scheduled_trip_order_id', $order->id)
-                ->where('driver_id', $driverId)
-                ->first();
-            if ($inv && floatval($inv->offered_price) > 0) {
-                $price = floatval($inv->offered_price);
-            }
-
+            $pricing = $this->resolveDriverTripPricing($trip, $order);
+            $price = (float) $pricing['driver_price'];
             $pod = $order->proofOfDelivery;
             $deliveredAt = ($pod && $pod->delivered_at) ? $pod->delivered_at : $order->updated_at;
             $receiverName = ($pod && $pod->receiver_name) ? $pod->receiver_name : ($order->arrival_contact_name ?: 'Received on-site');
@@ -1086,7 +1834,7 @@ class DriverHomeController extends Controller
             if ($inv->scheduled_trip_order_id && in_array($inv->scheduled_trip_order_id, $seenOrderIds)) {
                 continue;
             }
-            if (!$inv->scheduled_trip_order_id && in_array($inv->scheduled_trip_id, $seenTripIds)) {
+            if (!$inv->scheduled_trip_order_id && in_array($inv->scheduled_trip_id, $tripIdsWithoutOrderInv)) {
                 continue;
             }
 
@@ -1125,6 +1873,52 @@ class DriverHomeController extends Controller
             ];
         }
 
+        // 3. Direct completed scheduled trips assigned to driver without duplicate orders/invitations
+        $directTrips = ScheduledTrip::with([
+            'route.originCity',
+            'route.destinationCity',
+            'truckType',
+        ])
+            ->where('driver_id', $driverId)
+            ->where('status', 'completed')
+            ->when(!empty($seenTripIds), function ($q) use ($seenTripIds) {
+                $q->whereNotIn('id', $seenTripIds);
+            })
+            ->latest('updated_at')
+            ->get();
+
+        foreach ($directTrips as $trip) {
+            $fromCity = ($trip->route && $trip->route->originCity) ? $trip->route->originCity->name_en : 'Kuwait City';
+            $toCity = ($trip->route && $trip->route->destinationCity) ? $trip->route->destinationCity->name_en : 'Dammam';
+            $price = floatval($trip->price);
+            $dist = ($trip->route && $trip->route->estimated_distance) ? number_format($trip->route->estimated_distance, 0) . ' km' : '472 km';
+
+            $list[] = [
+                'id'              => 'TRP-' . $trip->id,
+                'trip_id'         => $trip->id,
+                'order_id'        => null,
+                'order_number'    => null,
+                'status_tag'      => 'Completed',
+                'order_status'    => 'delivered',
+                'posted_ago'      => $trip->updated_at ? 'Delivered ' . $trip->updated_at->diffForHumans() : 'Delivered',
+                'has_unread_dot'  => false,
+                'from_city'       => $fromCity,
+                'to_city'         => $toCity,
+                'price_kwd'       => $price,
+                'formatted_price' => 'KWD ' . number_format($price, 0),
+                'loading_date'    => $trip->updated_at ? date('d M, H:i', strtotime($trip->updated_at)) : 'Delivered',
+                'total_weight'    => $trip->total_weight_ton ? 'Up to ' . number_format($trip->total_weight_ton * 1000, 0) . ' Kg' : 'Up to 20,000 Kg',
+                'truck_type'      => $trip->truckType ? $trip->truckType->name_en : 'Flatbed',
+                'note'            => 'Completed delivery',
+                'cargo_type'      => 'General cargo',
+                'distance'        => $dist,
+                'category'        => 'completed',
+                'state'           => 'completed',
+                'receiver_name'   => null,
+                'has_pod'         => ProofOfDelivery::where('scheduled_trip_id', $trip->id)->where('driver_id', $driverId)->exists(),
+            ];
+        }
+
         return $list;
     }
 
@@ -1133,53 +1927,23 @@ class DriverHomeController extends Controller
      */
     public function tripRequests(Request $request)
     {
-        $user = $request->user();
-        $driverId = null;
-        if ($user && $user->role === 'driver') {
-            $driverId = $user->id;
-        } elseif ($request->filled('driver_id')) {
-            $driverId = $request->driver_id;
-        } elseif ($request->filled('client_code')) {
-            $found = User::where('client_code', $request->client_code)->first();
-            if ($found) {
-                $driverId = $found->id;
-            }
-        }
-        if (!$driverId) {
-            $driverId = 18;
-        }
-
-        // 1. Fetch scheduled trip invitations directly sent to this driver with status 'pending'
-        $invitations = ScheduledTripDriverInvitation::with([
-            'scheduledTripOrder.customer.companyProfile',
-            'scheduledTripOrder.pickupCountry',
-            'scheduledTripOrder.pickupCity',
-            'scheduledTripOrder.dropoffCountry',
-            'scheduledTripOrder.dropoffCity',
-            'scheduledTripOrder.truckType',
-            'scheduledTripOrder.truckSubType',
-            'scheduledTripOrder.shipmentType',
-            'scheduledTripOrder.shipmentNature',
-            'scheduledTrip.route.originCountry',
-            'scheduledTrip.route.originCity',
-            'scheduledTrip.route.destinationCountry',
-            'scheduledTrip.route.destinationCity',
-            'scheduledTrip.truckType',
-            'scheduledTrip.truckSubType',
-            'scheduledTrip.shipmentType',
-            'scheduledTrip.shipmentNature',
-        ])
-            ->where('driver_id', $driverId)
-            ->where('status', 'pending')
-            ->latest()
-            ->get();
+        $driverId = (int) $this->resolveDriverId($request);
+        $buckets = $this->getDriverRequestBuckets($driverId);
+        $invitations = $buckets['invitations'];
+        $matchingOrders = $buckets['matchingOrders'];
+        $matchingTrips = $buckets['matchingTrips'];
 
         $items = [];
+        $seenTripIds = [];
 
         foreach ($invitations as $inv) {
             $trip = $inv->scheduledTrip;
             $order = $inv->scheduledTripOrder;
             if (!$trip && !$order) continue;
+
+            if ($trip) {
+                $seenTripIds[] = $trip->id;
+            }
 
             $originCity = $order && $order->pickupCity 
                 ? $order->pickupCity->name_en 
@@ -1189,8 +1953,10 @@ class DriverHomeController extends Controller
                 ? $order->dropoffCity->name_en 
                 : ($trip && $trip->route && $trip->route->destinationCity ? $trip->route->destinationCity->name_en : 'Dammam');
 
-            // Strictly driver offered compensation ONLY! Never customer total_price.
-            $price      = floatval($inv->offered_price > 0 ? $inv->offered_price : ($trip ? $trip->price : 0));
+            // Strictly separate driver per-truck payout ONLY! Never customer total_price.
+            $pricing = $this->resolveDriverTripPricing($trip, $order, $inv);
+            $fleet = $this->getOrderFleetStats($order, $trip);
+            $price = (float) $pricing['driver_price'];
 
             $weight     = $order && $order->weight 
                 ? number_format($order->weight, 0) . ' Kg' 
@@ -1222,24 +1988,150 @@ class DriverHomeController extends Controller
             $statusTag = ($category === 'upcoming') ? 'Upcoming' : 'New';
 
             $items[] = [
-                'id'             => (string) $inv->id,
-                'trip_id'        => (string) ($trip ? $trip->id : ($order ? $order->scheduled_trip_id : '')),
-                'order_number'   => $order ? $order->order_number : null,
-                'status_tag'     => $statusTag,
-                'posted_ago'     => 'Posted ' . $inv->created_at->diffForHumans(null, true) . ' ago',
-                'has_unread_dot' => true,
-                'from_city'      => $originCity,
-                'to_city'        => $destCity,
-                'price_kwd'      => $price,
-                'loading_date'   => $dateStr,
-                'total_weight'   => $weight,
-                'truck_type'     => $truckType,
-                'note'           => $note,
-                'cargo_type'     => $cargoType,
-                'distance'       => $distance,
-                'category'       => $category,
-                'state'          => 'pending',
-                'token'          => $inv->token,
+                'id'                   => (string) $inv->id,
+                'trip_id'              => (string) ($trip ? $trip->id : ($order ? $order->scheduled_trip_id : '')),
+                'order_number'         => $order ? $order->order_number : null,
+                'status_tag'           => $statusTag,
+                'posted_ago'           => 'Posted ' . $inv->created_at->diffForHumans(null, true) . ' ago',
+                'has_unread_dot'       => true,
+                'from_city'            => $originCity,
+                'to_city'              => $destCity,
+                'price_kwd'            => $price,
+                'loading_date'         => $dateStr,
+                'total_weight'         => $weight,
+                'truck_type'           => $truckType,
+                'note'                 => $note,
+                'cargo_type'           => $cargoType,
+                'distance'             => $distance,
+                'category'             => $category,
+                'state'                => 'pending',
+                'token'                => $inv->token,
+                'requested_trucks'     => 1,
+                'fleet_required'       => $fleet['required'],
+                'fleet_accepted'       => $fleet['accepted'],
+                'fleet_remaining'      => $fleet['remaining'],
+                'driver_payment_type'  => $pricing['payment_type'],
+                'driver_payout_label'  => $pricing['payout_label'],
+            ];
+        }
+
+        // Add matching new customer orders that don't yet have a driver invitation
+        foreach ($matchingOrders as $ord) {
+            $trip = $ord->scheduledTrip;
+            if ($trip) {
+                $seenTripIds[] = $trip->id;
+            }
+
+            $originCity = $ord->pickupCity
+                ? ($ord->pickupCity->name_en ?: $ord->pickupCity->name_ar)
+                : ($trip && $trip->route && $trip->route->originCity ? $trip->route->originCity->name_en : 'Kuwait City');
+            $destCity = $ord->dropoffCity
+                ? ($ord->dropoffCity->name_en ?: $ord->dropoffCity->name_ar)
+                : ($trip && $trip->route && $trip->route->destinationCity ? $trip->route->destinationCity->name_en : 'Dammam');
+            $pricing = $this->resolveDriverTripPricing($trip, $ord);
+            $fleet = $this->getOrderFleetStats($ord, $trip);
+            $price = (float) $pricing['driver_price'];
+            $weight = $ord->weight
+                ? number_format($ord->weight, 0) . ' Kg'
+                : ($trip && $trip->total_weight_ton ? 'Up to ' . number_format($trip->total_weight_ton * 1000, 0) . ' Kg' : 'Up to 20,000 Kg');
+            $truckType = $ord->truckType
+                ? $ord->truckType->name_en
+                : ($trip && $trip->truckType ? $trip->truckType->name_en : 'Truck');
+            $cargoType = $ord->shipmentType
+                ? $ord->shipmentType->name_en
+                : ($trip && $trip->shipmentType ? $trip->shipmentType->name_en : 'General cargo');
+            $distance = $trip && $trip->route && $trip->route->estimated_distance
+                ? number_format($trip->route->estimated_distance, 0) . ' km'
+                : '472 km';
+            $dateStr = $ord->loading_date
+                ? date('d M', strtotime($ord->loading_date)) . ($ord->loading_time ? ', ' . substr($ord->loading_time, 0, 5) : '')
+                : ($trip && $trip->trip_date ? date('d M', strtotime($trip->trip_date)) . ($trip->trip_time ? ', ' . substr($trip->trip_time, 0, 5) : '') : 'Available now');
+            $note = $ord->notes ?: ($ord->goods_description ?: ($trip && $trip->notes ? $trip->notes : 'Scheduled cargo order'));
+            $tripDateTimestamp = $ord->loading_date
+                ? strtotime($ord->loading_date)
+                : ($trip && $trip->trip_date ? strtotime($trip->trip_date) : time());
+            $category = ($tripDateTimestamp > strtotime('today 23:59:59')) ? 'upcoming' : 'today';
+            $statusTag = ($category === 'upcoming') ? 'Upcoming' : 'New';
+
+            $items[] = [
+                'id'                   => 'order_' . $ord->id,
+                'trip_id'              => (string) ($trip ? $trip->id : $ord->scheduled_trip_id),
+                'order_number'         => $ord->order_number,
+                'status_tag'           => $fleet['required'] > 1 ? "{$fleet['remaining']} left" : $statusTag,
+                'posted_ago'           => $ord->created_at ? 'Posted ' . $ord->created_at->diffForHumans(null, true) . ' ago' : 'Posted recently',
+                'has_unread_dot'       => true,
+                'from_city'            => $originCity,
+                'to_city'              => $destCity,
+                'price_kwd'            => $price,
+                'loading_date'         => $dateStr,
+                'total_weight'         => $weight,
+                'truck_type'           => $truckType,
+                'note'                 => $note,
+                'cargo_type'           => $cargoType,
+                'distance'             => $distance,
+                'category'             => $category,
+                'requested_trucks'     => 1,
+                'fleet_required'       => $fleet['required'],
+                'fleet_accepted'       => $fleet['accepted'],
+                'fleet_remaining'      => $fleet['remaining'],
+                'driver_payment_type'  => $pricing['payment_type'],
+                'driver_payout_label'  => $pricing['payout_label'],
+                'state'                => 'pending',
+                'token'                => null,
+            ];
+        }
+
+        // Add matching scheduled trips that are not yet in items
+        foreach ($matchingTrips as $trip) {
+            if (in_array($trip->id, $seenTripIds)) {
+                continue;
+            }
+            $seenTripIds[] = $trip->id;
+
+            $originCity = $trip->route && $trip->route->originCity ? $trip->route->originCity->name_en : 'Kuwait City';
+            $destCity   = $trip->route && $trip->route->destinationCity ? $trip->route->destinationCity->name_en : 'Dubai';
+            $pricing = $this->resolveDriverTripPricing($trip);
+            $fleet = $this->getOrderFleetStats(null, $trip);
+            $price      = (float) $pricing['driver_price'];
+            $weight     = $trip->total_weight_ton ? 'Up to ' . number_format($trip->total_weight_ton * 1000, 0) . ' Kg' : 'Up to 25,000 Kg';
+            $truckType  = $trip->truckType ? $trip->truckType->name_en : 'Truck';
+            $cargoType  = $trip->shipmentType ? $trip->shipmentType->name_en : 'General cargo';
+            $distance   = $trip->route && $trip->route->estimated_distance 
+                ? number_format($trip->route->estimated_distance, 0) . ' km' 
+                : '100 km';
+            $dateStr    = $trip->trip_date 
+                ? date('d M', strtotime($trip->trip_date)) . ($trip->trip_time ? ', ' . substr($trip->trip_time, 0, 5) : '') 
+                : 'Available now';
+            $note       = $trip->notes ?: 'Scheduled trip';
+            $tripDateTimestamp = $trip->trip_date ? strtotime($trip->trip_date) : time();
+            $category = ($tripDateTimestamp > strtotime('today 23:59:59')) ? 'upcoming' : 'today';
+            $statusTag = $fleet['required'] > 1 ? "{$fleet['remaining']} left" : (($category === 'upcoming') ? 'Upcoming' : 'New');
+
+            $items[] = [
+                'id'                   => 'trip_' . $trip->id,
+                'trip_id'              => (string) $trip->id,
+                'order_number'         => null,
+                'status_tag'           => $statusTag,
+                'posted_ago'           => 'Posted ' . $trip->created_at->diffForHumans(null, true) . ' ago',
+                'has_unread_dot'       => true,
+                'from_city'            => $originCity,
+                'to_city'              => $destCity,
+                'price_kwd'            => $price,
+                'loading_date'         => $dateStr,
+                'total_weight'         => $weight,
+                'truck_type'           => $truckType,
+                'note'                 => $note,
+                'cargo_type'           => $cargoType,
+                'distance'             => $distance,
+                'category'             => $category,
+                'state'                => 'pending',
+                'token'                => null,
+                'requested_trucks'     => 1,
+                'fleet_required'       => $fleet['required'],
+                'fleet_accepted'       => $fleet['accepted'],
+                'fleet_remaining'      => $fleet['remaining'],
+                'driver_payment_type'  => $pricing['payment_type'],
+                'driver_payout_label'  => $pricing['payout_label'],
             ];
         }
 
@@ -1291,7 +2183,7 @@ class DriverHomeController extends Controller
      */
     public function tripDetails(Request $request, $id)
     {
-        $cleanId = trim(preg_replace('/^#?SL-?/i', '', (string) $id));
+        $cleanId = trim(preg_replace('/^#?(SL-|TRP-|trip_)/i', '', (string) $id));
         $user = $request->user();
         $driverId = null;
         if ($user && $user->role === 'driver') {
@@ -1306,6 +2198,113 @@ class DriverHomeController extends Controller
         }
         if (!$driverId) {
             $driverId = 18;
+        }
+
+        // Handle direct shipment invitations (shipment_inv_{id})
+        if (str_starts_with($cleanId, 'shipment_inv_')) {
+            $sInvId = (int) str_replace('shipment_inv_', '', $cleanId);
+            $sInv = ShipmentDriverInvitation::with([
+                'shipment.originCountry',
+                'shipment.originCity',
+                'shipment.destinationCountry',
+                'shipment.destinationCity',
+                'shipment.truckType',
+                'shipment.truckSubType',
+                'shipment.shipmentType',
+                'shipment.shipmentNature',
+                'shipment.customer.companyProfile',
+            ])->find($sInvId);
+
+            if ($sInv && $sInv->shipment) {
+                $sh = $sInv->shipment;
+                $sOriginCity = $sh->originCity ? $sh->originCity->name_en : 'Kuwait City';
+                $sDestCity = $sh->destinationCity ? $sh->destinationCity->name_en : 'Dammam';
+                $sOriginCountry = $sh->originCountry ? $sh->originCountry->name_en : 'Kuwait';
+                $sDestCountry = $sh->destinationCountry ? $sh->destinationCountry->name_en : 'Kuwait';
+                $sIsIntl = strcasecmp($sOriginCountry, $sDestCountry) !== 0;
+
+                $sPickupTitle = $sOriginCity . ($sOriginCountry ? " ({$sOriginCountry})" : '');
+                $sDropoffTitle = $sDestCity . ($sDestCountry ? " ({$sDestCountry})" : '');
+
+                $sCustomer = $sh->customer;
+                $sCustomerName = $sCustomer ? trim(($sCustomer->fname ?? '') . ' ' . ($sCustomer->lname ?? '')) : 'Shipper';
+                if (empty($sCustomerName)) $sCustomerName = 'Shipper';
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Trip details retrieved successfully',
+                    'data'    => [
+                        'request_id'             => '#SH-' . $sh->id,
+                        'id'                     => 'shipment_inv_' . $sInv->id,
+                        'order_number'           => null,
+                        'trip_id'                => (string) $sh->id,
+                        'status'                 => 'New request',
+                        'posted_ago'             => 'Posted ' . $sInv->created_at->diffForHumans(null, true) . ' ago',
+                        'from_city'              => $sOriginCity,
+                        'to_city'                => $sDestCity,
+                        'origin_country'         => $sOriginCountry,
+                        'destination_country'    => $sDestCountry,
+                        'is_international'       => $sIsIntl,
+                        'route_type'             => $sIsIntl ? 'International Cross-Border' : 'Domestic Route',
+                        'trip_value_kwd'         => floatval($sInv->offered_price > 0 ? $sInv->offered_price : ($sh->initial_price ?: 0)),
+                        'distance'               => '420 km',
+                        'duration'               => '~5 h 30 m',
+                        'payout_guarantee'       => 'Guaranteed direct payment processed to your driver wallet upon successful arrival, unloading, and delivery sign-off.',
+                        'designated_truck'       => '',
+                        'designated_truck_plate' => '',
+                        'required_credentials'   => [
+                            'Valid Heavy Driving License & Civil ID',
+                            'Truck Registration (Mulkiya) & Insurance',
+                        ],
+                        'pickup_title'           => $sPickupTitle,
+                        'pickup_address'         => $sh->pickup_address ?: $sPickupTitle,
+                        'pickup_area'            => $sh->pickup_area ?: '',
+                        'pickup_lat'             => $sh->pickup_lat !== null ? (float) $sh->pickup_lat : null,
+                        'pickup_lng'             => $sh->pickup_lng !== null ? (float) $sh->pickup_lng : null,
+                        'pickup_time'            => $sh->scheduled_date ? date('D d M Y', strtotime($sh->scheduled_date)) : 'Today',
+                        'pickup_time_slot'       => '',
+                        'loading_contact_name'   => $sh->loading_contact_name ?: '',
+                        'loading_contact_phone'  => $sh->loading_contact_phone ?: '',
+                        'pickup_instructions'    => '',
+                        'dropoff_title'          => $sDropoffTitle,
+                        'dropoff_address'        => $sh->dropoff_address ?: $sDropoffTitle,
+                        'dropoff_area'           => $sh->dropoff_area ?: '',
+                        'dropoff_lat'            => $sh->dropoff_lat !== null ? (float) $sh->dropoff_lat : null,
+                        'dropoff_lng'            => $sh->dropoff_lng !== null ? (float) $sh->dropoff_lng : null,
+                        'dropoff_time'           => 'Scheduled arrival',
+                        'dropoff_time_slot'      => '',
+                        'arrival_contact_name'   => $sh->arrival_contact_name ?: '',
+                        'arrival_contact_phone'  => $sh->arrival_contact_phone ?: '',
+                        'delivery_instructions'  => '',
+                        'shipment_name'          => $sh->shipment_name ?: ('Shipment #' . $sh->id),
+                        'cargo_type'             => $sh->shipmentType ? $sh->shipmentType->name_en : 'General cargo',
+                        'cargo_nature'           => $sh->shipmentNature ? $sh->shipmentNature->name_en : 'General',
+                        'total_weight'           => $sh->weight ? number_format((float)$sh->weight, 0) . ' Kg' : 'Up to 20,000 Kg',
+                        'truck_type'             => $sh->truckType ? $sh->truckType->name_en : 'Truck',
+                        'truck_sub_type'         => $sh->truckSubType ? $sh->truckSubType->name_en : '',
+                        'number_of_trucks'       => 1,
+                        'packaging'              => 'Palletised',
+                        'dimensions'             => null,
+                        'volume'                 => null,
+                        'packages_count'         => (int) ($sh->packages_count ?? 1),
+                        'is_fragile'             => (bool) $sh->is_fragile,
+                        'goods_description'      => $sh->goods_description ?: ($sh->shipment_description ?: ''),
+                        'hs_code'                => $sh->hs_code ?: '',
+                        'special_equipment'      => [],
+                        'customs_clearance'      => false,
+                        'instructions'           => $sh->goods_description ?: '',
+                        'documents'              => [],
+                        'customer_name'          => $sCustomerName,
+                        'customer_company'       => ($sCustomer && $sCustomer->companyProfile) ? $sCustomer->companyProfile->company_name : $sCustomerName,
+                        'customer_client_code'   => $sCustomer ? ($sCustomer->client_code ?? '') : '',
+                        'customer_initials'      => mb_strtoupper(mb_substr($sCustomerName, 0, 2)),
+                        'customer_rating'        => 4.9,
+                        'customer_trips_count'   => 1,
+                        'customer_phone'         => $sCustomer ? ($sCustomer->phone ?? '') : '',
+                        'customer_email'         => $sCustomer ? ($sCustomer->email ?? '') : '',
+                    ]
+                ], 200);
+            }
         }
 
         $trip = null;
@@ -1335,8 +2334,42 @@ class DriverHomeController extends Controller
             'driverTruck.truckModel',
         ];
 
+        // 0. If explicit order_{id} or STO-... order number is passed, resolve the exact ScheduledTripOrder first
+        if (preg_match('/^order_(\d+)/i', $cleanId, $om) || str_starts_with(strtoupper($cleanId), 'STO-')) {
+            $orderQuery = ScheduledTripOrder::with([
+                'customer.companyProfile',
+                'pickupCountry',
+                'pickupCity',
+                'dropoffCountry',
+                'dropoffCity',
+                'truckType',
+                'truckSubType',
+                'shipmentType',
+                'shipmentNature',
+                'scheduledTrip.route.originCountry',
+                'scheduledTrip.route.originCity',
+                'scheduledTrip.route.destinationCountry',
+                'scheduledTrip.route.destinationCity',
+                'scheduledTrip.truckType',
+                'scheduledTrip.truckSubType',
+                'scheduledTrip.shipmentType',
+                'scheduledTrip.shipmentNature',
+            ]);
+            $order = isset($om[1])
+                ? $orderQuery->find((int) $om[1])
+                : $orderQuery->where('order_number', $cleanId)->first();
+            if ($order) {
+                $trip = $order->scheduledTrip;
+                $invitation = ScheduledTripDriverInvitation::with($eagerRelations)
+                    ->where('scheduled_trip_order_id', $order->id)
+                    ->where('driver_id', $driverId)
+                    ->latest()
+                    ->first();
+            }
+        }
+
         // 1. Try finding by magic link token (if token string)
-        if (strlen($cleanId) >= 15 || !ctype_digit($cleanId)) {
+        if (!$order && (strlen($cleanId) >= 15 || !ctype_digit($cleanId))) {
             $invitation = ScheduledTripDriverInvitation::with($eagerRelations)
                 ->where('token', $cleanId)
                 ->first();
@@ -1380,7 +2413,7 @@ class DriverHomeController extends Controller
                     'shipmentNature',
                 ])->where('scheduled_trip_id', $trip->id)->latest()->first();
             }
-        } else {
+        } elseif (!$order) {
             $tripId = ctype_digit($cleanId) ? (int) $cleanId : (int) str_replace('trip_', '', $cleanId);
             $trip = ScheduledTrip::with([
                 'route.originCountry',
@@ -1452,6 +2485,25 @@ class DriverHomeController extends Controller
             }
         }
 
+        if (empty($designatedTruckDesc)) {
+            $dt = DriverTruck::with(['truckType', 'truckBrand', 'truckModel'])->where('driver_id', $driverId)->where('is_default', 1)->first()
+                ?: DriverTruck::with(['truckType', 'truckBrand', 'truckModel'])->where('driver_id', $driverId)->latest()->first();
+            if ($dt) {
+                $tType = $dt->truckType ? $dt->truckType->name_en : 'Truck';
+                $tBrand = $dt->truckBrand ? $dt->truckBrand->name_en : '';
+                $tModel = $dt->truckModel ? $dt->truckModel->name_en : '';
+                $tYear = $dt->manufacturing_year ? " ({$dt->manufacturing_year})" : '';
+                $designatedTruckPlate = $dt->plate_number ?? '';
+                $plateStr = $designatedTruckPlate ? "Plate: {$designatedTruckPlate}" : '';
+                
+                $truckName = trim("{$tType} " . trim("{$tBrand} {$tModel}"));
+                $designatedTruckDesc = trim("{$truckName}{$tYear}");
+                if ($plateStr) {
+                    $designatedTruckDesc .= " · {$plateStr}";
+                }
+            }
+        }
+
         $credentials = [
             'Valid Heavy Driving License & Civil ID',
             'Truck Registration (Mulkiya) & Insurance',
@@ -1461,8 +2513,10 @@ class DriverHomeController extends Controller
             $credentials[] = 'Customs Clearance & Bayan Manifest (Provided)';
         }
 
-        // Strictly driver offered compensation ONLY! Never customer total_price.
-        $price      = floatval($invitation && $invitation->offered_price > 0 ? $invitation->offered_price : ($trip ? $trip->price : 0));
+        // Strictly separate driver per-truck payout ONLY! Never customer total_price.
+        $pricing = $this->resolveDriverTripPricing($trip, $order, $invitation);
+        $fleet = $this->getOrderFleetStats($order, $trip);
+        $price = (float) $pricing['driver_price'];
 
         $distance   = $trip && $trip->route && $trip->route->estimated_distance 
             ? number_format($trip->route->estimated_distance, 0) . ' km' 
@@ -1472,31 +2526,28 @@ class DriverHomeController extends Controller
         $durationHours = max(1, round($rawDist / 75));
         $duration   = '~' . $durationHours . ' h 20 m';
 
-        // Pickup info
-        $pickupTitle = $originCity . ($originCountry ? " ({$originCountry})" : '');
-        $pickupAddress = $order && $order->pickup_address ? $order->pickup_address : $pickupTitle;
-        $pickupArea = $order ? ($order->pickup_area ?: '') : '';
-        $pickupTimeSlot = $order ? ($order->loading_time_slot ?: '') : '';
-        $loadingContactName = $order ? ($order->loading_contact_name ?: '') : '';
-        $loadingContactPhone = $order ? ($order->loading_contact_phone ?: '') : '';
-        $pickupInstructions = $order ? ($order->pickup_instructions ?: '') : '';
-
-        $pickupTime = $order && $order->loading_date 
-            ? date('D d M Y', strtotime($order->loading_date)) . ($order->loading_time ? ' · ' . substr($order->loading_time, 0, 5) : '')
-            : ($trip && $trip->trip_date ? date('D d M Y', strtotime($trip->trip_date)) . ($trip->trip_time ? ' · ' . substr($trip->trip_time, 0, 5) : '') : 'Thu 16 Jul 2026 · 14:00');
-
-        // Dropoff info
-        $dropoffTitle = $destCity . ($destCountry ? " ({$destCountry})" : '');
-        $dropoffAddress = $order && $order->dropoff_address ? $order->dropoff_address : $dropoffTitle;
-        $dropoffArea = $order ? ($order->dropoff_area ?: '') : '';
-        $dropoffTimeSlot = $order ? ($order->receiving_time_slot ?: '') : '';
-        $arrivalContactName = $order ? ($order->arrival_contact_name ?: '') : '';
-        $arrivalContactPhone = $order ? ($order->arrival_contact_phone ?: '') : '';
-        $deliveryInstructions = $order ? ($order->delivery_instructions ?: '') : '';
-
-        $dropoffTime = $order && $order->receiving_date 
-            ? date('D d M Y', strtotime($order->receiving_date)) . ($order->receiving_time ? ' · ' . substr($order->receiving_time, 0, 5) : '')
-            : ($trip && $trip->trip_date ? date('D d M Y', strtotime($trip->trip_date . ' +1 day')) . ' · 09:00' : 'Fri 17 Jul 2026 · 09:00');
+        // Coordinate, address & contact details shared between tripDetails and tripStatus
+        $loc = $this->resolveTripLocationDetails($order, $trip, $originCity, $originCountry, $destCity, $destCountry);
+        $pickupTitle = $loc['pickup_title'];
+        $pickupAddress = $loc['pickup_address'];
+        $pickupArea = $loc['pickup_area'];
+        $pickupLat = $loc['pickup_lat'];
+        $pickupLng = $loc['pickup_lng'];
+        $pickupTimeSlot = $loc['pickup_time_slot'];
+        $loadingContactName = $loc['loading_contact_name'];
+        $loadingContactPhone = $loc['loading_contact_phone'];
+        $pickupInstructions = $loc['pickup_instructions'];
+        $pickupTime = $loc['pickup_time'];
+        $dropoffTitle = $loc['dropoff_title'];
+        $dropoffAddress = $loc['dropoff_address'];
+        $dropoffArea = $loc['dropoff_area'];
+        $dropoffLat = $loc['dropoff_lat'];
+        $dropoffLng = $loc['dropoff_lng'];
+        $dropoffTimeSlot = $loc['dropoff_time_slot'];
+        $arrivalContactName = $loc['arrival_contact_name'];
+        $arrivalContactPhone = $loc['arrival_contact_phone'];
+        $deliveryInstructions = $loc['delivery_instructions'];
+        $dropoffTime = $loc['dropoff_time'];
 
         // Cargo specs
         $shipmentName = $order ? ($order->shipment_name ?: 'Scheduled Cargo #' . ($trip ? $trip->id : $order->id)) : ($trip ? 'Scheduled Cargo #' . $trip->id : 'Cargo');
@@ -1568,16 +2619,22 @@ class DriverHomeController extends Controller
             }
         }
 
-        $postedAgo = $invitation 
+        $postedAgo = $invitation
             ? 'Posted ' . $invitation->created_at->diffForHumans(null, true) . ' ago'
-            : ($trip ? 'Posted ' . $trip->created_at->diffForHumans(null, true) . ' ago' : 'Posted recently');
+            : ($order && $order->created_at
+                ? 'Posted ' . $order->created_at->diffForHumans(null, true) . ' ago'
+                : ($trip ? 'Posted ' . $trip->created_at->diffForHumans(null, true) . ' ago' : 'Posted recently'));
+
+        $payoutGuarantee = $pricing['payment_type'] === 'split_50_50'
+            ? 'Split payout: 50% credited to your wallet when starting transit + 50% upon delivery sign-off.'
+            : 'Guaranteed direct payment (100%) processed to your driver wallet upon delivery sign-off.';
 
         return response()->json([
             'status'  => true,
             'message' => 'Trip details retrieved successfully',
             'data'    => [
-                'request_id'             => '#SL-' . ($trip ? $trip->id : ($invitation ? $invitation->id : '1')),
-                'id'                     => (string) ($invitation ? $invitation->id : ($trip ? $trip->id : '1')),
+                'request_id'             => '#SL-' . ($trip ? $trip->id : ($invitation ? $invitation->id : ($order ? $order->id : '1'))),
+                'id'                     => (string) ($invitation ? $invitation->id : ($order ? 'order_' . $order->id : ($trip ? 'trip_' . $trip->id : '1'))),
                 'order_number'           => $order ? $order->order_number : null,
                 'trip_id'                => $trip ? (string) $trip->id : ($order ? (string) $order->scheduled_trip_id : ''),
                 'status'                 => 'New request',
@@ -1589,15 +2646,19 @@ class DriverHomeController extends Controller
                 'is_international'       => $isInternational,
                 'route_type'             => $routeType,
                 'trip_value_kwd'         => $price,
+                'driver_payment_type'    => $pricing['payment_type'],
+                'driver_payout_label'    => $pricing['payout_label'],
                 'distance'               => $distance,
                 'duration'               => $duration,
-                'payout_guarantee'       => 'Guaranteed direct payment processed to your driver wallet upon successful arrival, unloading, and delivery sign-off.',
+                'payout_guarantee'       => $payoutGuarantee,
                 'designated_truck'       => $designatedTruckDesc,
                 'designated_truck_plate' => $designatedTruckPlate,
                 'required_credentials'   => $credentials,
                 'pickup_title'           => $pickupTitle,
                 'pickup_address'         => $pickupAddress,
                 'pickup_area'            => $pickupArea,
+                'pickup_lat'             => $pickupLat,
+                'pickup_lng'             => $pickupLng,
                 'pickup_time'            => $pickupTime,
                 'pickup_time_slot'       => $pickupTimeSlot,
                 'loading_contact_name'   => $loadingContactName,
@@ -1606,6 +2667,8 @@ class DriverHomeController extends Controller
                 'dropoff_title'          => $dropoffTitle,
                 'dropoff_address'        => $dropoffAddress,
                 'dropoff_area'           => $dropoffArea,
+                'dropoff_lat'            => $dropoffLat,
+                'dropoff_lng'            => $dropoffLng,
                 'dropoff_time'           => $dropoffTime,
                 'dropoff_time_slot'      => $dropoffTimeSlot,
                 'arrival_contact_name'   => $arrivalContactName,
@@ -1617,7 +2680,11 @@ class DriverHomeController extends Controller
                 'total_weight'           => $totalWeight,
                 'truck_type'             => $truckType,
                 'truck_sub_type'         => $truckSubType,
-                'number_of_trucks'       => $numberOfTrucks,
+                'number_of_trucks'       => 1,
+                'fleet_required'         => $fleet['required'],
+                'fleet_accepted'         => $fleet['accepted'],
+                'fleet_remaining'        => $fleet['remaining'],
+                'fleet_ready'            => $fleet['fleet_ready'],
                 'packaging'              => 'Palletised',
                 'dimensions'             => $dimensions,
                 'volume'                 => $volume,
@@ -1649,77 +2716,311 @@ class DriverHomeController extends Controller
         $id = preg_replace('/^#?SL-?/i', '', (string) $id);
         $action = $request->input('action', 'accept'); // 'accept' or 'reject'
         $user = $request->user();
+        if (!$user && $request->filled('client_code')) {
+            $user = User::where('client_code', $request->client_code)->first();
+        }
         $driverId = $user ? $user->id : ($request->input('driver_id') ?: 18);
 
-        if (str_starts_with($id, 'trip_')) {
-            $tripId = (int) str_replace('trip_', '', $id);
-            $trip = ScheduledTrip::find($tripId);
-            if ($trip) {
-                if ($action === 'accept') {
-                    $trip->driver_id = $driverId;
-                    $trip->save();
+        $targetOrder = null;
+        $targetTrip = null;
+        $invitation = null;
 
-                    ScheduledTripDriverInvitation::updateOrCreate(
-                        ['scheduled_trip_id' => $tripId, 'driver_id' => $driverId],
-                        [
-                            'offered_price' => $trip->price,
-                            'channel'       => 'in_app',
-                            'status'        => 'accepted',
-                        ]
-                    );
-                }
-            }
+        if (preg_match('/^order_(\d+)/i', $id, $om) || str_starts_with(strtoupper($id), 'STO-')) {
+            $targetOrder = isset($om[1])
+                ? ScheduledTripOrder::with('scheduledTrip')->find((int) $om[1])
+                : ScheduledTripOrder::with('scheduledTrip')->where('order_number', $id)->first();
+            $targetTrip = $targetOrder ? $targetOrder->scheduledTrip : null;
+        } elseif (str_starts_with($id, 'trip_')) {
+            $tripId = (int) str_replace('trip_', '', $id);
+            $targetTrip = ScheduledTrip::find($tripId);
         } else {
             $invId = (int) $id;
             $invitation = ScheduledTripDriverInvitation::find($invId);
-
             if (!$invitation) {
-                // If $id was passed as trip_id or order_id
-                $invitation = ScheduledTripDriverInvitation::where(function($q) use ($invId) {
+                $invitation = ScheduledTripDriverInvitation::where(function ($q) use ($invId) {
                     $q->where('scheduled_trip_id', $invId)
                       ->orWhere('scheduled_trip_order_id', $invId);
                 })
-                ->where('driver_id', $driverId)
-                ->where('status', 'pending')
-                ->latest()
-                ->first();
+                    ->where('driver_id', $driverId)
+                    ->where('status', 'pending')
+                    ->latest()
+                    ->first();
+            }
+            if ($invitation) {
+                $targetOrder = $invitation->scheduledTripOrder;
+                $targetTrip = $invitation->scheduledTrip;
+            } else {
+                $targetTrip = ScheduledTrip::find($invId);
+            }
+        }
+
+        if (!$targetOrder && !$targetTrip && !$invitation) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Trip request not found.',
+            ], 404);
+        }
+
+        $slotError = null;
+        $fleetStats = null;
+
+        DB::transaction(function () use (
+            $action,
+            $driverId,
+            &$targetOrder,
+            &$targetTrip,
+            &$invitation,
+            &$slotError,
+            &$fleetStats
+        ) {
+            if ($targetOrder) {
+                $targetOrder = ScheduledTripOrder::where('id', $targetOrder->id)->lockForUpdate()->first();
+                if ($targetOrder && !$targetTrip) {
+                    $targetTrip = $targetOrder->scheduledTrip;
+                }
+            }
+            if ($targetTrip) {
+                $targetTrip = ScheduledTrip::where('id', $targetTrip->id)->lockForUpdate()->first();
+            }
+
+            $pricing = $this->resolveDriverTripPricing($targetTrip, $targetOrder, $invitation);
+            $offeredPrice = (float) $pricing['driver_price'];
+
+            if ($action === 'accept') {
+                if ($targetOrder) {
+                    $required = max(1, (int) ($targetOrder->number_of_trucks ?: $targetOrder->booked_capacity ?: 1));
+                    $alreadyClaimedOther = ScheduledTripDriverInvitation::where('scheduled_trip_order_id', $targetOrder->id)
+                        ->whereIn('status', ['accepted', 'completed'])
+                        ->where('driver_id', '!=', $driverId)
+                        ->count();
+                    if ($alreadyClaimedOther >= $required) {
+                        $slotError = "All {$required} truck slot(s) for this order have already been claimed by other drivers.";
+                        return;
+                    }
+                } elseif ($targetTrip) {
+                    $required = max(1, (int) ($targetTrip->number_of_trucks ?: 1));
+                    $alreadyClaimedOther = ScheduledTripDriverInvitation::where('scheduled_trip_id', $targetTrip->id)
+                        ->whereNull('scheduled_trip_order_id')
+                        ->whereIn('status', ['accepted', 'completed'])
+                        ->where('driver_id', '!=', $driverId)
+                        ->count();
+                    if ($alreadyClaimedOther >= $required) {
+                        $slotError = "All {$required} truck slot(s) for this trip have already been claimed.";
+                        return;
+                    }
+                }
             }
 
             if ($invitation) {
                 $invitation->status = $action === 'accept' ? 'accepted' : 'rejected';
-                $invitation->save();
-
+                $invitation->offered_price = $offeredPrice;
                 if ($action === 'accept') {
-                    if ($invitation->scheduledTrip) {
-                        $invitation->scheduledTrip->driver_id = $driverId;
-                        if (in_array($invitation->scheduledTrip->status, ['completed', 'canceled'])) {
-                            $invitation->scheduledTrip->status = 'in_transit';
-                        }
-                        $invitation->scheduledTrip->save();
-                    }
-                    if ($invitation->scheduledTripOrder) {
-                        $invitation->scheduledTripOrder->driver_id = $driverId;
-                        $invitation->scheduledTripOrder->status = 'confirmed';
-                        $invitation->scheduledTripOrder->save();
-                    }
+                    $invitation->driver_stage = $invitation->driver_stage ?: 'confirmed';
+                    $invitation->accepted_at = $invitation->accepted_at ?: now();
                 }
-            } else {
-                // Check if directly a scheduled trip
-                $trip = ScheduledTrip::find($invId);
-                if ($trip && $action === 'accept') {
-                    $trip->driver_id = $driverId;
-                    if (in_array($trip->status, ['completed', 'canceled'])) {
-                        $trip->status = 'in_transit';
+                $invitation->save();
+            } elseif ($targetOrder) {
+                $invitation = ScheduledTripDriverInvitation::updateOrCreate(
+                    [
+                        'scheduled_trip_order_id' => $targetOrder->id,
+                        'driver_id'               => $driverId,
+                    ],
+                    [
+                        'scheduled_trip_id' => $targetOrder->scheduled_trip_id,
+                        'offered_price'     => $offeredPrice,
+                        'channel'           => 'in_app',
+                        'status'            => $action === 'accept' ? 'accepted' : 'rejected',
+                        'driver_stage'      => $action === 'accept' ? 'confirmed' : null,
+                        'accepted_at'       => $action === 'accept' ? now() : null,
+                    ]
+                );
+            } elseif ($targetTrip) {
+                $invitation = ScheduledTripDriverInvitation::updateOrCreate(
+                    [
+                        'scheduled_trip_id'       => $targetTrip->id,
+                        'driver_id'               => $driverId,
+                        'scheduled_trip_order_id' => null,
+                    ],
+                    [
+                        'offered_price' => $offeredPrice,
+                        'channel'       => 'in_app',
+                        'status'        => $action === 'accept' ? 'accepted' : 'rejected',
+                        'driver_stage'  => $action === 'accept' ? 'confirmed' : null,
+                        'accepted_at'   => $action === 'accept' ? now() : null,
+                    ]
+                );
+            }
+
+            if ($action === 'accept') {
+                if ($targetOrder) {
+                    if (empty($targetOrder->driver_id)) {
+                        $targetOrder->driver_id = $driverId;
                     }
-                    $trip->save();
+                    if (in_array(strtolower((string) $targetOrder->status), ['new', 'pending', ''])) {
+                        $targetOrder->status = 'confirmed';
+                    }
+                    $targetOrder->save();
                 }
+
+                if ($targetTrip) {
+                    if (empty($targetTrip->driver_id)) {
+                        $targetTrip->driver_id = $driverId;
+                    }
+                    if (in_array(strtolower((string) $targetTrip->status), ['completed', 'cancelled', 'canceled'])) {
+                        $targetTrip->status = 'boarding';
+                    }
+                    $targetTrip->save();
+                }
+            }
+
+            $fleetStats = $this->getOrderFleetStats($targetOrder, $targetTrip);
+        });
+
+        if ($slotError !== null) {
+            return response()->json([
+                'status'  => false,
+                'message' => $slotError,
+            ], 422);
+        }
+
+        if ($action === 'accept' && $targetOrder && $targetOrder->customer_id && $fleetStats) {
+            try {
+                if ($custUser = User::find($targetOrder->customer_id)) {
+                    $driverUser = $user ?: User::find($driverId);
+                    $driverName = $driverUser ? trim(($driverUser->fname ?? '') . ' ' . ($driverUser->lname ?? '')) : 'A driver';
+                    $rem = (int) ($fleetStats['remaining'] ?? 0);
+                    $custUser->notify(new \App\Notifications\CustomerActivityNotification([
+                        'title'        => 'Driver Accepted Your Order #' . $targetOrder->order_number,
+                        'body'         => "{$driverName} accepted truck {$fleetStats['accepted']} of {$fleetStats['required']}. Remaining: {$rem} truck(s).",
+                        'type'         => 'order',
+                        'reference_id' => $targetOrder->order_number,
+                        'action_route' => '/orders_screen',
+                        'metadata'     => [
+                            'order_id'       => $targetOrder->id,
+                            'order_number'   => $targetOrder->order_number,
+                            'fleet_accepted' => $fleetStats['accepted'],
+                            'fleet_required' => $fleetStats['required'],
+                            'fleet_remaining'=> $rem,
+                        ],
+                    ]));
+                }
+            } catch (\Throwable $ignoreNotif) {
             }
         }
 
         return response()->json([
             'status'  => true,
             'message' => 'Trip request ' . ($action === 'accept' ? 'accepted' : 'rejected') . ' successfully.',
+            'data'    => [
+                'fleet' => $fleetStats,
+            ],
         ], 200);
+    }
+
+    /**
+     * Resolve pickup/dropoff addresses, coordinates, schedule, and contacts for trip details & status.
+     */
+    private function resolveTripLocationDetails(
+        ?ScheduledTripOrder $order,
+        ?ScheduledTrip $trip,
+        string $originCity,
+        string $originCountry,
+        string $destCity,
+        string $destCountry
+    ): array {
+        $pickupTitle = $originCity . ($originCountry ? " ({$originCountry})" : '');
+        $pickupAddress = $order && $order->pickup_address ? $order->pickup_address : $pickupTitle;
+        $pickupArea = $order ? ($order->pickup_area ?: '') : '';
+        $pickupLat = ($order && $order->pickup_lat !== null && $order->pickup_lat !== '') ? (float) $order->pickup_lat : null;
+        $pickupLng = ($order && $order->pickup_lng !== null && $order->pickup_lng !== '') ? (float) $order->pickup_lng : null;
+        $pickupTimeSlot = $order ? ($order->loading_time_slot ?: '') : '';
+        $loadingContactName = $order ? ($order->loading_contact_name ?: '') : '';
+        $loadingContactPhone = $order ? ($order->loading_contact_phone ?: '') : '';
+        $pickupInstructions = $order ? ($order->pickup_instructions ?: '') : '';
+
+        $pickupTime = $order && $order->loading_date
+            ? date('D d M Y', strtotime($order->loading_date)) . ($order->loading_time ? ' · ' . substr($order->loading_time, 0, 5) : '')
+            : ($trip && $trip->trip_date ? date('D d M Y', strtotime($trip->trip_date)) . ($trip->trip_time ? ' · ' . substr($trip->trip_time, 0, 5) : '') : 'Thu 16 Jul 2026 · 14:00');
+
+        $dropoffTitle = $destCity . ($destCountry ? " ({$destCountry})" : '');
+        $dropoffAddress = $order && $order->dropoff_address ? $order->dropoff_address : $dropoffTitle;
+        $dropoffArea = $order ? ($order->dropoff_area ?: '') : '';
+        $dropoffLat = ($order && $order->dropoff_lat !== null && $order->dropoff_lat !== '') ? (float) $order->dropoff_lat : null;
+        $dropoffLng = ($order && $order->dropoff_lng !== null && $order->dropoff_lng !== '') ? (float) $order->dropoff_lng : null;
+        $dropoffTimeSlot = $order ? ($order->receiving_time_slot ?: '') : '';
+        $arrivalContactName = $order ? ($order->arrival_contact_name ?: '') : '';
+        $arrivalContactPhone = $order ? ($order->arrival_contact_phone ?: '') : '';
+        $deliveryInstructions = $order ? ($order->delivery_instructions ?: '') : '';
+
+        if ($trip && ($pickupLat === null || $pickupLng === null)) {
+            $coordOrder = ScheduledTripOrder::where('scheduled_trip_id', $trip->id)
+                ->whereNotNull('pickup_lat')
+                ->whereNotNull('pickup_lng')
+                ->latest()
+                ->first();
+            if ($coordOrder) {
+                $pickupLat = (float) $coordOrder->pickup_lat;
+                $pickupLng = (float) $coordOrder->pickup_lng;
+            } else {
+                $coordShipment = Shipment::where('scheduled_trip_id', $trip->id)
+                    ->whereNotNull('pickup_lat')
+                    ->whereNotNull('pickup_lng')
+                    ->latest()
+                    ->first();
+                if ($coordShipment) {
+                    $pickupLat = (float) $coordShipment->pickup_lat;
+                    $pickupLng = (float) $coordShipment->pickup_lng;
+                }
+            }
+        }
+        if ($trip && ($dropoffLat === null || $dropoffLng === null)) {
+            $coordDropOrder = ScheduledTripOrder::where('scheduled_trip_id', $trip->id)
+                ->whereNotNull('dropoff_lat')
+                ->whereNotNull('dropoff_lng')
+                ->latest()
+                ->first();
+            if ($coordDropOrder) {
+                $dropoffLat = (float) $coordDropOrder->dropoff_lat;
+                $dropoffLng = (float) $coordDropOrder->dropoff_lng;
+            } else {
+                $coordDropShipment = Shipment::where('scheduled_trip_id', $trip->id)
+                    ->whereNotNull('dropoff_lat')
+                    ->whereNotNull('dropoff_lng')
+                    ->latest()
+                    ->first();
+                if ($coordDropShipment) {
+                    $dropoffLat = (float) $coordDropShipment->dropoff_lat;
+                    $dropoffLng = (float) $coordDropShipment->dropoff_lng;
+                }
+            }
+        }
+
+        $dropoffTime = $order && $order->receiving_date
+            ? date('D d M Y', strtotime($order->receiving_date)) . ($order->receiving_time ? ' · ' . substr($order->receiving_time, 0, 5) : '')
+            : ($trip && $trip->trip_date ? date('D d M Y', strtotime($trip->trip_date . ' +1 day')) . ' · 09:00' : 'Fri 17 Jul 2026 · 09:00');
+
+        return [
+            'pickup_title'          => $pickupTitle,
+            'pickup_address'        => $pickupAddress,
+            'pickup_area'           => $pickupArea,
+            'pickup_lat'            => $pickupLat,
+            'pickup_lng'            => $pickupLng,
+            'pickup_time'           => $pickupTime,
+            'pickup_time_slot'      => $pickupTimeSlot,
+            'loading_contact_name'  => $loadingContactName,
+            'loading_contact_phone' => $loadingContactPhone,
+            'pickup_instructions'   => $pickupInstructions,
+            'dropoff_title'         => $dropoffTitle,
+            'dropoff_address'       => $dropoffAddress,
+            'dropoff_area'          => $dropoffArea,
+            'dropoff_lat'           => $dropoffLat,
+            'dropoff_lng'           => $dropoffLng,
+            'dropoff_time'          => $dropoffTime,
+            'dropoff_time_slot'     => $dropoffTimeSlot,
+            'arrival_contact_name'  => $arrivalContactName,
+            'arrival_contact_phone' => $arrivalContactPhone,
+            'delivery_instructions' => $deliveryInstructions,
+        ];
     }
 
     /**
@@ -1727,78 +3028,41 @@ class DriverHomeController extends Controller
      */
     public function tripStatus(Request $request, $id)
     {
-        $user = $request->user();
-        $driverId = $user ? $user->id : ($request->input('driver_id') ?: 18);
+        $driverId = (int) $this->resolveDriverId($request);
 
-        // Normalize ID (TRP-14, SL-14, STO-20261103-9F58, 14, etc.)
-        $cleanId = trim((string)$id);
-        $cleanId = preg_replace('/^#?(TRP-|SL-)/i', '', $cleanId);
+        // Normalize ID (TRP-14, SL-14, STO-20261103-9F58, order_13, 14, trip_14, etc.)
+        $resolved = $this->resolveTripEntities($id, $driverId);
+        $order = $resolved['order'];
+        $trip = $resolved['trip'];
+        $inv = $resolved['invitation'];
 
-        $order = null;
-        $trip = null;
-
-        if (str_starts_with($cleanId, 'STO-')) {
-            $order = ScheduledTripOrder::with([
+        if ($order) {
+            $order->loadMissing([
+                'scheduledTrip.route.originCountry',
                 'scheduledTrip.route.originCity',
+                'scheduledTrip.route.destinationCountry',
                 'scheduledTrip.route.destinationCity',
                 'scheduledTrip.orders',
+                'pickupCountry',
                 'pickupCity',
+                'dropoffCountry',
                 'dropoffCity',
-                'driver'
-            ])->where('order_number', $cleanId)->first();
-            if ($order) {
+                'driver',
+            ]);
+            if (!$trip) {
                 $trip = $order->scheduledTrip;
             }
-        } else {
-            $numId = (int) $cleanId;
-
-            // 1. Try finding by Invitation ID first
-            $inv = ScheduledTripDriverInvitation::with([
-                'scheduledTrip.route.originCity',
-                'scheduledTrip.route.destinationCity',
-                'scheduledTrip.orders.pickupCity',
-                'scheduledTrip.orders.dropoffCity',
-                'scheduledTripOrder.pickupCity',
-                'scheduledTripOrder.dropoffCity',
-            ])->find($numId);
-
-            if ($inv) {
-                $trip = $inv->scheduledTrip;
-                $order = $inv->scheduledTripOrder ?: ($trip ? $trip->orders()->where(function($q) use ($driverId) {
-                    $q->where('driver_id', $driverId)->orWhereNull('driver_id');
-                })->latest()->first() : null);
-            }
-
-            // 2. Try finding ScheduledTrip
-            if (!$trip) {
-                $trip = ScheduledTrip::with([
-                    'route.originCity',
-                    'route.destinationCity',
-                    'orders.pickupCity',
-                    'orders.dropoffCity',
-                    'driverInvitations'
-                ])->find($numId);
-
-                if ($trip) {
-                    // Find order associated with this driver or trip's latest order
-                    $order = $trip->orders()->where(function($q) use ($driverId) {
-                        $q->where('driver_id', $driverId)->orWhereNull('driver_id');
-                    })->latest()->first() ?: $trip->orders()->latest()->first();
-                }
-            }
-
-            // 3. Try finding by Order ID
-            if (!$order && !$trip) {
-                $order = ScheduledTripOrder::with([
-                    'scheduledTrip.route.originCity',
-                    'scheduledTrip.route.destinationCity',
-                    'pickupCity',
-                    'dropoffCity'
-                ])->find($numId);
-                if ($order) {
-                    $trip = $order->scheduledTrip;
-                }
-            }
+        }
+        if ($trip) {
+            $trip->loadMissing([
+                'route.originCountry',
+                'route.originCity',
+                'route.destinationCountry',
+                'route.destinationCity',
+                'orders.pickupCity',
+                'orders.dropoffCity',
+                'driverInvitations',
+            ]);
         }
 
         // Fallback to active trip if not found
@@ -1814,15 +3078,22 @@ class DriverHomeController extends Controller
             ->first();
 
             if ($activeInv) {
+                $inv = $activeInv;
                 $trip = $activeInv->scheduledTrip;
                 $order = $activeInv->scheduledTripOrder ?: ($trip ? $trip->orders()->latest()->first() : null);
             }
         }
 
-        // Determine current order status from database (matches admin dropdown)
-        // Options in admin: 'new', 'confirmed', 'loaded', 'in_transit', 'delivered', 'canceled'
+        $fleet = $this->getOrderFleetStats($order, $trip);
+        $pricing = $this->resolveDriverTripPricing($trip, $order, $inv);
+
+        // Determine THIS driver's current stage first (supports multi-driver independent progress)
         $orderStatus = 'new';
-        if ($order && !empty($order->status)) {
+        if ($inv && !empty($inv->driver_stage)) {
+            $orderStatus = strtolower(trim($inv->driver_stage));
+        } elseif ($inv && $inv->status === 'completed') {
+            $orderStatus = 'delivered';
+        } elseif ($order && !empty($order->status)) {
             $orderStatus = strtolower(trim($order->status));
         } elseif ($trip && in_array($trip->status, ['completed'])) {
             $orderStatus = 'delivered';
@@ -2228,22 +3499,31 @@ class DriverHomeController extends Controller
             ],
         ];
 
+        $pickupCountryName = $order && $order->pickupCountry ? $order->pickupCountry->name_en : ($trip && $trip->route && $trip->route->originCountry ? $trip->route->originCountry->name_en : 'Kuwait');
         $dropoffCountryName = $order && $order->dropoffCountry ? $order->dropoffCountry->name_en : ($trip && $trip->route && $trip->route->destinationCountry ? $trip->route->destinationCountry->name_en : 'UAE');
-        $dropoffTitle = $destName . ($dropoffCountryName ? " ({$dropoffCountryName})" : '');
-        $dropoffAddress = $order && $order->dropoff_address ? $order->dropoff_address : $dropoffTitle;
-        $dropoffArea = $order ? ($order->dropoff_area ?: '') : '';
-        $dropoffTimeSlot = $order ? ($order->receiving_time_slot ?: '') : '';
-        $arrivalContactName = $order ? ($order->arrival_contact_name ?: '') : '';
-        $arrivalContactPhone = $order ? ($order->arrival_contact_phone ?: '') : '';
-        $deliveryInstructions = $order ? ($order->delivery_instructions ?: '') : '';
-        $dropoffTime = $order && $order->receiving_date 
-            ? date('D d M Y', strtotime($order->receiving_date)) . ($order->receiving_time ? ' · ' . substr($order->receiving_time, 0, 5) : '')
-            : '';
+        $loc = $this->resolveTripLocationDetails($order, $trip, $originName, $pickupCountryName, $destName, $dropoffCountryName);
+        $rawDist = (float) ($trip && $trip->route ? ($trip->route->estimated_distance ?? 420) : 420);
+        $distance = $trip && $trip->route && $trip->route->estimated_distance
+            ? number_format($trip->route->estimated_distance, 0) . ' km'
+            : '472 km';
+        $duration = '~' . max(1, round($rawDist / 75)) . ' h 20 m';
+
+        // Fleet readiness gate: prevent movement actions until all required trucks are accepted
+        $fleetGateMessage = null;
+        if (!$fleet['fleet_ready'] && $orderStatus !== 'delivered' && $orderStatus !== 'canceled') {
+            $fleetGateMessage = "Waiting for all trucks to accept ({$fleet['accepted']}/{$fleet['required']} accepted · {$fleet['remaining']} remaining). Fleet movement unlocks once all drivers confirm.";
+            $stages = array_map(function ($stage) {
+                if (!empty($stage['is_current'])) {
+                    $stage['action_button_text'] = null;
+                }
+                return $stage;
+            }, $stages);
+        }
 
         return response()->json([
             'status'  => true,
             'message' => 'Trip status fetched successfully',
-            'data'    => [
+            'data'    => array_merge([
                 'trip_id'                => $trip ? $trip->id : 14,
                 'trip_code'              => $tripCode,
                 'order_id'               => $order ? $order->id : 5,
@@ -2252,17 +3532,24 @@ class DriverHomeController extends Controller
                 'route_text'             => $routeText,
                 'origin'                 => $originName,
                 'destination'            => $destName,
-                'dropoff_title'          => $dropoffTitle,
-                'dropoff_address'        => $dropoffAddress,
-                'dropoff_area'           => $dropoffArea,
-                'dropoff_time'           => $dropoffTime,
-                'dropoff_time_slot'      => $dropoffTimeSlot,
-                'arrival_contact_name'   => $arrivalContactName,
-                'arrival_contact_phone'  => $arrivalContactPhone,
-                'delivery_instructions'  => $deliveryInstructions,
+                'from_city'              => $originName,
+                'to_city'                => $destName,
+                'origin_country'         => $pickupCountryName,
+                'destination_country'    => $dropoffCountryName,
+                'distance'               => $distance,
+                'duration'               => $duration,
+                'fleet_required'         => $fleet['required'],
+                'fleet_accepted'         => $fleet['accepted'],
+                'fleet_remaining'        => $fleet['remaining'],
+                'fleet_ready'            => $fleet['fleet_ready'],
+                'fleet_override'         => $fleet['fleet_override'],
+                'fleet_gate_message'     => $fleetGateMessage,
+                'driver_price'           => (float) $pricing['driver_price'],
+                'driver_payment_type'    => $pricing['payment_type'],
+                'driver_payout_label'    => $pricing['payout_label'],
                 'stages'                 => $stages,
                 'checklist'              => $checklist,
-            ],
+            ], $loc),
         ], 200);
     }
 
@@ -2271,32 +3558,15 @@ class DriverHomeController extends Controller
      */
     public function updateTripStage(Request $request, $id)
     {
-        $user = $request->user();
-        $driverId = $user ? $user->id : ($request->input('driver_id') ?: 18);
+        $driverId = (int) $this->resolveDriverId($request);
         $action = $request->input('action');
         $targetStatus = $request->input('status');
 
-        $cleanId = trim((string)$id);
-        $cleanId = preg_replace('/^#?(TRP-|SL-)/i', '', $cleanId);
-
-        $order = null;
-        $trip = null;
-
-        if (str_starts_with($cleanId, 'STO-')) {
-            $order = ScheduledTripOrder::where('order_number', $cleanId)->first();
-            if ($order) $trip = $order->scheduledTrip;
-        } else {
-            $numId = (int) $cleanId;
-            $trip = ScheduledTrip::find($numId);
-            if ($trip) {
-                $order = $trip->orders()->where(function($q) use ($driverId) {
-                    $q->where('driver_id', $driverId)->orWhereNull('driver_id');
-                })->latest()->first() ?: $trip->orders()->latest()->first();
-            } else {
-                $order = ScheduledTripOrder::find($numId);
-                if ($order) $trip = $order->scheduledTrip;
-            }
-        }
+        $resolved = $this->resolveTripEntities($id, $driverId);
+        $order = $resolved['order'];
+        $trip = $resolved['trip'];
+        $inv = $resolved['invitation'];
+        $inv = $resolved['invitation'];
 
         if (!$order && $trip) {
             $order = $trip->orders()->latest()->first();
@@ -2327,14 +3597,69 @@ class DriverHomeController extends Controller
             }
         }
 
-        if ($order && $newStatus) {
-            $order->status = $newStatus;
-            $order->save();
+        $fleet = $this->getOrderFleetStats($order, $trip);
+        if (!$fleet['fleet_ready'] && in_array($newStatus, ['arrived_pickup', 'loaded', 'in_transit', 'arrived_dropoff', 'delivered'])) {
+            return response()->json([
+                'status'  => false,
+                'message' => "Cannot start fleet movement yet. Waiting for all required trucks ({$fleet['accepted']}/{$fleet['required']} accepted, {$fleet['remaining']} remaining).",
+                'data'    => ['fleet' => $fleet],
+            ], 422);
         }
 
-        if ($trip && $newStatus === 'delivered') {
-            $trip->status = 'completed';
-            $trip->save();
+        if (!$inv && ($order || $trip)) {
+            $inv = ScheduledTripDriverInvitation::firstOrCreate(
+                [
+                    'scheduled_trip_id'       => $trip ? $trip->id : ($order ? $order->scheduled_trip_id : null),
+                    'driver_id'               => $driverId,
+                    'scheduled_trip_order_id' => $order ? $order->id : null,
+                ],
+                [
+                    'offered_price' => $this->resolveDriverTripPricing($trip, $order)['driver_price'],
+                    'channel'       => 'in_app',
+                    'status'        => 'accepted',
+                    'driver_stage'  => 'confirmed',
+                    'accepted_at'   => now(),
+                ]
+            );
+        }
+
+        if ($inv && $newStatus) {
+            $inv->driver_stage = $newStatus;
+            if ($newStatus === 'in_transit' && !$inv->started_at) {
+                $inv->started_at = now();
+            }
+            if ($newStatus === 'delivered') {
+                $inv->status = 'completed';
+                $inv->completed_at = $inv->completed_at ?: now();
+            }
+            $inv->save();
+        }
+
+        // Credit 50% upfront when entering 'in_transit' on split_50_50 payout trips
+        if ($newStatus === 'in_transit') {
+            $this->creditDriverInvitationPayout($driverId, $inv, $trip, $order, 'upfront');
+        }
+
+        if ($order && $newStatus) {
+            if ($fleet['required'] > 1) {
+                $this->syncMultiTruckOrderStatus($order, $trip);
+            } else {
+                $order->status = $newStatus;
+                $order->save();
+                if ($trip && $newStatus === 'in_transit' && !in_array($trip->status, ['completed', 'canceled'])) {
+                    $trip->status = 'in_transit';
+                    $trip->save();
+                } elseif ($trip && $newStatus === 'delivered') {
+                    $trip->status = 'completed';
+                    $trip->save();
+                }
+            }
+        } elseif ($trip && $newStatus === 'delivered') {
+            $updatedFleet = $this->getOrderFleetStats(null, $trip);
+            if ($updatedFleet['completed'] >= $updatedFleet['required']) {
+                $trip->status = 'completed';
+                $trip->save();
+            }
         }
 
         return $this->tripStatus($request, $id);

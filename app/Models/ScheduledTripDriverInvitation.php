@@ -16,6 +16,19 @@ class ScheduledTripDriverInvitation extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'accepted_at'     => 'datetime',
+        'started_at'      => 'datetime',
+        'completed_at'    => 'datetime',
+        'upfront_paid_at' => 'datetime',
+        'final_paid_at'   => 'datetime',
+    ];
+
+    public function proofOfDelivery()
+    {
+        return $this->hasOne(ProofOfDelivery::class, 'scheduled_trip_invitation_id');
+    }
+
     public function scheduledTripOrder()
     {
         return $this->belongsTo(ScheduledTripOrder::class, 'scheduled_trip_order_id');

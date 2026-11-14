@@ -81,7 +81,20 @@ class ScheduledTripController extends Controller
             });
         }
 
-        // Available Capacity / Number of Trucks Filter removed (Open Booking Capacity without restrictions)
+        $requestedTrucks = max(1, (int) ($request->input('number_of_trucks') ?: $request->input('truck_count') ?: 1));
+
+        // Only return trips that still have available truck slots unless an admin explicitly queries a closed status
+        if (!$request->filled('status')) {
+            $query->whereNotIn('status', ['completed', 'canceled'])
+                  ->where('available_capacity', '>', 0);
+        } elseif (!$request->boolean('include_zero_capacity')) {
+            $query->where('available_capacity', '>', 0);
+        }
+
+        // Prioritize trips that can fully satisfy requested truck count, while still showing partial availability
+        if ($requestedTrucks > 1) {
+            $query->orderByRaw('(CASE WHEN available_capacity >= ? THEN 1 ELSE 0 END) DESC', [$requestedTrucks]);
+        }
 
         // Cargo Weight vs Truck Max Payload Filter (in Tons)
         if ($request->filled('weight')) {
@@ -191,6 +204,14 @@ class ScheduledTripController extends Controller
         }
 
         $trips = $query->paginate($request->input('per_page', 20));
+        $trips->getCollection()->transform(function ($trip) use ($requestedTrucks) {
+            $avail = (int) ($trip->available_capacity ?? 0);
+            $trip->setAttribute('requested_trucks', $requestedTrucks);
+            $trip->setAttribute('available_trucks', $avail);
+            $trip->setAttribute('is_partial_truck_match', $requestedTrucks > 1 && $avail > 0 && $avail < $requestedTrucks);
+            $trip->makeHidden(['driver_price', 'driver_payment_type']);
+            return $trip;
+        });
 
         return response()->json([
             'status'  => true,
@@ -282,6 +303,8 @@ class ScheduledTripController extends Controller
             ], 404);
         }
 
+        $trip->makeHidden(['driver_price', 'driver_payment_type']);
+
         return response()->json([
             'status'  => true,
             'message' => 'Scheduled trip retrieved successfully',
@@ -305,9 +328,12 @@ class ScheduledTripController extends Controller
             'driver_id'          => 'nullable|exists:users,id',
             'trip_date'          => 'nullable|date',
             'trip_time'          => 'nullable',
-            'price'              => 'required|numeric|min:0',
-            'total_capacity'     => 'nullable|integer|min:1',
-            'available_capacity' => 'nullable|integer|min:0',
+            'price'               => 'required|numeric|min:0',
+            'driver_price'        => 'nullable|numeric|min:0',
+            'driver_payment_type' => 'nullable|in:full_after,split_50_50',
+            'fleet_override'      => 'nullable|boolean',
+            'total_capacity'      => 'nullable|integer|min:1',
+            'available_capacity'  => 'nullable|integer|min:0',
             'status'             => 'required|in:published,boarding,in_transit,completed,canceled',
         ], [
             'route_id.required'           => 'Please select a route.',
@@ -342,25 +368,32 @@ class ScheduledTripController extends Controller
             }
         }
 
+        $numTrucks = max(1, (int) ($request->number_of_trucks ?: 1));
+        $totalCapacity = $request->filled('total_capacity') ? (int) $request->total_capacity : $numTrucks;
+        $availableCapacity = $request->filled('available_capacity') ? min($totalCapacity, (int) $request->available_capacity) : $totalCapacity;
+
         $trip = ScheduledTrip::create([
-            'route_id'           => $request->route_id,
-            'truck_type_id'      => $request->truck_type_id,
-            'truck_sub_type_id'  => $request->truck_sub_type_id ?: null,
-            'shipment_type_id'   => $request->shipment_type_id ?: null,
-            'shipment_nature_id' => $request->shipment_nature_id ?: null,
-            'number_of_trucks'   => $request->number_of_trucks ?: 1,
-            'total_weight_ton'   => $request->total_weight_ton ?: null,
-            'driver_id'          => $request->driver_id ?: null,
-            'trip_date'          => $request->trip_date ?: null,
-            'trip_time'          => $request->trip_time ?: null,
-            'price'              => $request->price,
-            'pricing_additions'  => count($pricingAdditions) ? $pricingAdditions : null,
-            'total_capacity'     => $request->filled('total_capacity') ? $request->total_capacity : 9999,
-            'available_capacity' => $request->filled('available_capacity') ? $request->available_capacity : 9999,
-            'status'             => $request->status,
-            'customs_clearance'  => $request->has('customs_clearance') ? (bool) $request->customs_clearance : true,
-            'notes'              => $request->notes ?: null,
-            'required_documents' => $request->required_documents ?: null,
+            'route_id'            => $request->route_id,
+            'truck_type_id'       => $request->truck_type_id,
+            'truck_sub_type_id'   => $request->truck_sub_type_id ?: null,
+            'shipment_type_id'    => $request->shipment_type_id ?: null,
+            'shipment_nature_id'  => $request->shipment_nature_id ?: null,
+            'number_of_trucks'    => $numTrucks,
+            'total_weight_ton'    => $request->total_weight_ton ?: null,
+            'driver_id'           => $request->driver_id ?: null,
+            'trip_date'           => $request->trip_date ?: null,
+            'trip_time'           => $request->trip_time ?: null,
+            'price'               => $request->price,
+            'driver_price'        => $request->filled('driver_price') ? $request->driver_price : null,
+            'driver_payment_type' => in_array($request->driver_payment_type, ['full_after', 'split_50_50']) ? $request->driver_payment_type : 'full_after',
+            'fleet_override'      => $request->boolean('fleet_override'),
+            'pricing_additions'   => count($pricingAdditions) ? $pricingAdditions : null,
+            'total_capacity'      => $totalCapacity,
+            'available_capacity'  => $availableCapacity,
+            'status'              => $request->status,
+            'customs_clearance'   => $request->has('customs_clearance') ? (bool) $request->customs_clearance : true,
+            'notes'               => $request->notes ?: null,
+            'required_documents'  => $request->required_documents ?: null,
         ]);
 
         $trip->load([
@@ -406,9 +439,12 @@ class ScheduledTripController extends Controller
             'driver_id'          => 'nullable|exists:users,id',
             'trip_date'          => 'nullable|date',
             'trip_time'          => 'nullable',
-            'price'              => 'required|numeric|min:0',
-            'total_capacity'     => 'nullable|integer|min:1',
-            'available_capacity' => 'nullable|integer|min:0',
+            'price'               => 'required|numeric|min:0',
+            'driver_price'        => 'nullable|numeric|min:0',
+            'driver_payment_type' => 'nullable|in:full_after,split_50_50',
+            'fleet_override'      => 'nullable|boolean',
+            'total_capacity'      => 'nullable|integer|min:1',
+            'available_capacity'  => 'nullable|integer|min:0',
             'status'             => 'required|in:published,boarding,in_transit,completed,canceled',
         ]);
 
@@ -439,25 +475,35 @@ class ScheduledTripController extends Controller
             }
         }
 
+        $numTrucks = max(1, (int) ($request->number_of_trucks ?: $trip->number_of_trucks ?: 1));
+        $bookedSlots = (int) $trip->orders()->where('status', '!=', 'canceled')->sum('number_of_trucks');
+        $totalCapacity = $request->filled('total_capacity') ? (int) $request->total_capacity : $numTrucks;
+        $availableCapacity = $request->filled('available_capacity')
+            ? min($totalCapacity, max(0, (int) $request->available_capacity))
+            : max(0, $totalCapacity - $bookedSlots);
+
         $trip->update([
-            'route_id'           => $request->route_id,
-            'truck_type_id'      => $request->truck_type_id,
-            'truck_sub_type_id'  => $request->truck_sub_type_id ?: null,
-            'shipment_type_id'   => $request->has('shipment_type_id') ? ($request->shipment_type_id ?: null) : $trip->shipment_type_id,
-            'shipment_nature_id' => $request->has('shipment_nature_id') ? ($request->shipment_nature_id ?: null) : $trip->shipment_nature_id,
-            'number_of_trucks'   => $request->number_of_trucks ?: $trip->number_of_trucks,
-            'total_weight_ton'   => $request->total_weight_ton ?: $trip->total_weight_ton,
-            'driver_id'          => $request->filled('driver_id') ? $request->driver_id : $trip->driver_id,
-            'trip_date'          => $request->trip_date ?: null,
-            'trip_time'          => $request->trip_time ?: null,
-            'price'              => $request->price,
-            'pricing_additions'  => is_array($pricingAdditions) && count($pricingAdditions) ? $pricingAdditions : null,
-            'total_capacity'     => $request->filled('total_capacity') ? $request->total_capacity : ($trip->total_capacity ?: 9999),
-            'available_capacity' => $request->filled('available_capacity') ? $request->available_capacity : ($trip->available_capacity ?: 9999),
-            'status'             => $request->status,
-            'customs_clearance'  => $request->has('customs_clearance') ? (bool) $request->customs_clearance : $trip->customs_clearance,
-            'notes'              => $request->has('notes') ? $request->notes : $trip->notes,
-            'required_documents' => $request->has('required_documents') ? $request->required_documents : $trip->required_documents,
+            'route_id'            => $request->route_id,
+            'truck_type_id'       => $request->truck_type_id,
+            'truck_sub_type_id'   => $request->truck_sub_type_id ?: null,
+            'shipment_type_id'    => $request->has('shipment_type_id') ? ($request->shipment_type_id ?: null) : $trip->shipment_type_id,
+            'shipment_nature_id'  => $request->has('shipment_nature_id') ? ($request->shipment_nature_id ?: null) : $trip->shipment_nature_id,
+            'number_of_trucks'    => $numTrucks,
+            'total_weight_ton'    => $request->total_weight_ton ?: $trip->total_weight_ton,
+            'driver_id'           => $request->filled('driver_id') ? $request->driver_id : $trip->driver_id,
+            'trip_date'           => $request->trip_date ?: null,
+            'trip_time'           => $request->trip_time ?: null,
+            'price'               => $request->price,
+            'driver_price'        => $request->has('driver_price') ? ($request->driver_price ?: null) : $trip->driver_price,
+            'driver_payment_type' => in_array($request->driver_payment_type, ['full_after', 'split_50_50']) ? $request->driver_payment_type : ($trip->driver_payment_type ?? 'full_after'),
+            'fleet_override'      => $request->has('fleet_override') ? $request->boolean('fleet_override') : (bool) $trip->fleet_override,
+            'pricing_additions'   => is_array($pricingAdditions) && count($pricingAdditions) ? $pricingAdditions : null,
+            'total_capacity'      => $totalCapacity,
+            'available_capacity'  => $availableCapacity,
+            'status'              => $request->status,
+            'customs_clearance'   => $request->has('customs_clearance') ? (bool) $request->customs_clearance : $trip->customs_clearance,
+            'notes'               => $request->has('notes') ? $request->notes : $trip->notes,
+            'required_documents'  => $request->has('required_documents') ? $request->required_documents : $trip->required_documents,
         ]);
 
         $trip->load([

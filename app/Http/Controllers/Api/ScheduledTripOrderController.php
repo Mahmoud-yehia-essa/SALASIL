@@ -35,7 +35,10 @@ class ScheduledTripOrderController extends Controller
             'dropoffCountry:id,name_ar,name_en',
             'dropoffCity:id,name_ar,name_en',
             'invoice',
-            'proofOfDelivery'
+            'proofOfDelivery',
+            'driverInvitations.driver:id,fname,lname,phone,photo,client_code',
+            'driverInvitations.driver.driverProfile:id,user_id,plate_number,truck_type_id',
+            'driverInvitations.driverTruck:id,driver_id,plate_number,truck_type_id',
         ])->latest();
 
         // Filters
@@ -107,7 +110,10 @@ class ScheduledTripOrderController extends Controller
             'dropoffCountry:id,name_ar,name_en',
             'dropoffCity:id,name_ar,name_en',
             'invoice',
-            'proofOfDelivery'
+            'proofOfDelivery',
+            'driverInvitations.driver:id,fname,lname,phone,photo,client_code',
+            'driverInvitations.driver.driverProfile:id,user_id,plate_number,truck_type_id',
+            'driverInvitations.driverTruck:id,driver_id,plate_number,truck_type_id',
         ])->latest();
 
         if ($user) {
@@ -166,6 +172,9 @@ class ScheduledTripOrderController extends Controller
 
         $perPage = $request->input('per_page', 50);
         $paginated = $query->paginate($perPage);
+        $paginated->getCollection()->transform(function ($order) {
+            return $this->attachFleetProgress($order);
+        });
 
         return response()->json([
             'status'     => true,
@@ -226,7 +235,11 @@ class ScheduledTripOrderController extends Controller
             'dropoffCountry',
             'dropoffCity',
             'invoice',
-            'proofOfDelivery'
+            'proofOfDelivery',
+            'proofOfDeliveries',
+            'driverInvitations.driver:id,fname,lname,phone,photo,client_code',
+            'driverInvitations.driver.driverProfile:id,user_id,plate_number,truck_type_id',
+            'driverInvitations.driverTruck:id,driver_id,plate_number,truck_type_id',
         ])->find($id);
 
         if (!$order) {
@@ -236,11 +249,69 @@ class ScheduledTripOrderController extends Controller
             ], 404);
         }
 
+        $this->attachFleetProgress($order);
+
         return response()->json([
             'status'  => true,
             'message' => 'Scheduled trip order retrieved successfully',
             'data'    => $order
         ], 200);
+    }
+
+    /**
+     * Append live fleet acceptance & driver assignment breakdown without leaking driver payout fields.
+     */
+    private function attachFleetProgress(ScheduledTripOrder $order): ScheduledTripOrder
+    {
+        if ($order->scheduledTrip) {
+            $order->scheduledTrip->makeHidden(['driver_price', 'driver_payment_type']);
+        }
+
+        $required = max(1, (int) ($order->number_of_trucks ?: $order->booked_capacity ?: 1));
+        $acceptedInvitations = ($order->relationLoaded('driverInvitations')
+            ? $order->driverInvitations
+            : $order->driverInvitations()->with(['driver.driverProfile', 'driverTruck'])->get())
+            ->whereIn('status', ['accepted', 'completed'])
+            ->values();
+
+        $acceptedCount = $acceptedInvitations->count();
+        // Legacy fallback: direct driver_id on order before invitation rows existed
+        if ($acceptedCount === 0 && $order->driver_id) {
+            $acceptedCount = 1;
+        }
+
+        $assignedDrivers = $acceptedInvitations->map(function ($inv) use ($order) {
+            $drv = $inv->driver;
+            $drvName = $drv ? trim(($drv->fname ?? '') . ' ' . ($drv->lname ?? '')) : 'Driver';
+            $plate = optional($inv->driverTruck)->plate_number
+                ?: optional(optional($drv)->driverProfile)->plate_number;
+            $stage = $inv->driver_stage ?: ($inv->status === 'completed' ? 'delivered' : ($order->status ?: 'confirmed'));
+
+            return [
+                'invitation_id' => $inv->id,
+                'driver_id'     => $inv->driver_id,
+                'driver_name'   => $drvName !== '' ? $drvName : 'Driver #' . $inv->driver_id,
+                'driver_phone'  => $drv->phone ?? null,
+                'driver_photo'  => $drv->photo ?? null,
+                'truck_plate'   => $plate,
+                'status'        => $inv->status,
+                'stage'         => $stage,
+                'accepted_at'   => optional($inv->accepted_at ?? $inv->created_at)->toIso8601String(),
+                'started_at'    => optional($inv->started_at)->toIso8601String(),
+                'completed_at'  => optional($inv->completed_at)->toIso8601String(),
+            ];
+        })->values()->all();
+
+        $remaining = max(0, $required - $acceptedCount);
+        $fleetReady = $acceptedCount >= $required || (bool) optional($order->scheduledTrip)->fleet_override;
+
+        $order->setAttribute('fleet_required', $required);
+        $order->setAttribute('fleet_accepted', $acceptedCount);
+        $order->setAttribute('fleet_remaining', $remaining);
+        $order->setAttribute('fleet_ready', $fleetReady);
+        $order->setAttribute('assigned_drivers', $assignedDrivers);
+
+        return $order;
     }
 
     /**
@@ -320,20 +391,28 @@ class ScheduledTripOrderController extends Controller
             ? $request->customer_id
             : ($user ? $user->id : null);
 
-        $bookedUnits   = max(1, (int) ($request->booked_capacity ?: 1));
+        $bookedUnits = max(1, (int) ($request->number_of_trucks ?: $request->booked_capacity ?: 1));
+
+        // Pre-check capacity before computing order payload
+        if (in_array(strtolower((string) $trip->status), ['completed', 'canceled', 'cancelled'])) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'This scheduled trip is no longer available for booking.',
+            ], 422);
+        }
+
+        if ((int) $trip->available_capacity < $bookedUnits) {
+            return response()->json([
+                'status'  => false,
+                'message' => "Only {$trip->available_capacity} truck(s) available for this trip.",
+                'errors'  => [
+                    'number_of_trucks' => ["Requested {$bookedUnits} truck(s), but only {$trip->available_capacity} remaining."],
+                ],
+            ], 422);
+        }
+
         $tripPrice     = (float) $trip->price;
         $computedTotal = $tripPrice * $bookedUnits;
-        if (!empty($trip->pricing_additions) && is_array($trip->pricing_additions)) {
-            foreach ($trip->pricing_additions as $addition) {
-                $val = floatval($addition['value'] ?? 0);
-                $type = $addition['type'] ?? 'percentage';
-                if ($type === 'percentage') {
-                    $computedTotal += ($tripPrice * $bookedUnits) * ($val / 100.0);
-                } else {
-                    $computedTotal += $val * $bookedUnits;
-                }
-            }
-        }
         if (!empty($trip->pricing_additions) && is_array($trip->pricing_additions)) {
             foreach ($trip->pricing_additions as $addition) {
                 $val = floatval($addition['value'] ?? 0);
@@ -350,7 +429,10 @@ class ScheduledTripOrderController extends Controller
         $order->order_number      = 'STO-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
         $order->scheduled_trip_id = $trip->id;
         $order->customer_id       = $customerId;
-        $order->driver_id         = $trip->driver_id ?: null;
+        $tripStatusLower          = strtolower((string) $trip->status);
+        $order->driver_id         = ($trip->driver_id && !in_array($tripStatusLower, ['completed', 'cancelled', 'canceled']))
+            ? $trip->driver_id
+            : null;
 
         // Step 2 — Cargo Details
         $order->shipment_name        = $request->shipment_name ?: ('Cargo for Scheduled Trip #' . $trip->id);
@@ -370,7 +452,7 @@ class ScheduledTripOrderController extends Controller
         // Step 3 — Truck Specs (inherits from trip if not specified)
         $order->truck_type_id     = $request->truck_type_id ?: $trip->truck_type_id;
         $order->truck_sub_type_id = $request->truck_sub_type_id ?: $trip->truck_sub_type_id;
-        $order->number_of_trucks  = $request->number_of_trucks ?: ($trip->number_of_trucks ?: 1);
+        $order->number_of_trucks  = $bookedUnits;
         $order->special_equipment = $request->has('special_equipment')
             ? (is_array($request->special_equipment) ? $request->special_equipment : json_decode($request->special_equipment, true))
             : null;
@@ -505,15 +587,19 @@ class ScheduledTripOrderController extends Controller
             }
         }
 
-        DB::transaction(function () use ($order, $trip, $bookedUnits, $isCreditPayment, $customer) {
+        $capacityError = null;
+        DB::transaction(function () use ($order, $trip, $bookedUnits, $isCreditPayment, $customer, &$capacityError) {
+            $lockedTrip = ScheduledTrip::where('id', $trip->id)->lockForUpdate()->first();
+            if (!$lockedTrip || (int) $lockedTrip->available_capacity < $bookedUnits) {
+                $avail = $lockedTrip ? (int) $lockedTrip->available_capacity : 0;
+                $capacityError = "Only {$avail} truck(s) remaining for this trip.";
+                return;
+            }
+
             $order->save();
 
-            // Decrement capacity
-            if ($trip->available_capacity >= $bookedUnits) {
-                $trip->decrement('available_capacity', $bookedUnits);
-            } else {
-                $trip->update(['available_capacity' => 0]);
-            }
+            // Atomically decrement capacity
+            $lockedTrip->decrement('available_capacity', $bookedUnits);
 
             // Deduct user credit and record wallet transaction if paid via credit
             if ($isCreditPayment && $customer) {
@@ -522,12 +608,13 @@ class ScheduledTripOrderController extends Controller
                 $newBalance = (float) $customer->fresh()->credit;
 
                 WalletTransaction::create([
-                    'user_id'           => $customer->id,
-                    'amount'            => $orderTotal,
-                    'type'              => 'withdrawal',
-                    'balance_after'     => $newBalance,
-                    'description'       => 'Credit payment for Scheduled Trip Order #' . $order->order_number,
-                    'scheduled_trip_id' => $trip->id,
+                    'user_id'                 => $customer->id,
+                    'amount'                  => $orderTotal,
+                    'type'                    => 'withdrawal',
+                    'balance_after'           => $newBalance,
+                    'description'             => 'Credit payment for Scheduled Trip Order #' . $order->order_number,
+                    'scheduled_trip_id'       => $trip->id,
+                    'scheduled_trip_order_id' => $order->id,
                 ]);
             }
 
@@ -552,6 +639,13 @@ class ScheduledTripOrderController extends Controller
                 'notes'                    => 'Auto-generated invoice for Scheduled Trip Order #' . $order->order_number . ($isCreditPayment ? ' (Paid via Credit)' : ''),
             ]);
         });
+
+        if ($capacityError !== null) {
+            return response()->json([
+                'status'  => false,
+                'message' => $capacityError,
+            ], 422);
+        }
 
         try {
             if ($order->customer_id && ($notifUser = User::find($order->customer_id))) {
@@ -625,7 +719,11 @@ class ScheduledTripOrderController extends Controller
             'special_equipment'     => 'nullable',
             'truck_notes'           => 'nullable|string',
             'pickup_address'        => 'nullable|string|max:255',
+            'pickup_lat'            => 'nullable|numeric',
+            'pickup_lng'            => 'nullable|numeric',
             'dropoff_address'       => 'nullable|string|max:255',
+            'dropoff_lat'           => 'nullable|numeric',
+            'dropoff_lng'           => 'nullable|numeric',
             'loading_date'          => 'nullable|date',
             'loading_time'          => 'nullable',
             'loading_time_slot'     => 'nullable|string|max:100',
@@ -666,12 +764,16 @@ class ScheduledTripOrderController extends Controller
             'truck_notes',
             'pickup_area',
             'pickup_address',
+            'pickup_lat',
+            'pickup_lng',
             'loading_date',
             'loading_time',
             'loading_time_slot',
             'pickup_instructions',
             'dropoff_area',
             'dropoff_address',
+            'dropoff_lat',
+            'dropoff_lng',
             'receiving_date',
             'receiving_time',
             'receiving_time_slot',
@@ -739,8 +841,19 @@ class ScheduledTripOrderController extends Controller
             ], 422);
         }
 
+        $previousStatus = strtolower((string) $order->status);
         $order->status = $request->status;
         $order->save();
+
+        // Restore capacity if canceling an active/new order for the first time
+        if ($request->status === 'canceled' && $previousStatus !== 'canceled') {
+            $restoreUnits = max(1, (int) ($order->number_of_trucks ?: $order->booked_capacity ?: 1));
+            $trip = ScheduledTrip::find($order->scheduled_trip_id);
+            if ($trip) {
+                $newCap = min((int) $trip->total_capacity, (int) $trip->available_capacity + $restoreUnits);
+                $trip->update(['available_capacity' => $newCap]);
+            }
+        }
         try {
             if ($order->customer_id && ($statusUser = User::find($order->customer_id))) {
                 $statusUser->notify(new \App\Notifications\CustomerActivityNotification([

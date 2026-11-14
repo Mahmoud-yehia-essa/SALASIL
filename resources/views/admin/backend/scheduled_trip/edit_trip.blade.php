@@ -487,17 +487,44 @@ html.light-theme .btn-customs-toggle.active-no {
                         {{-- ════ 4. PRICING & FLEXIBLE ADDITIONS ════ --}}
             <div class="tp-section-title"><i class="bx bx-purchase-tag-alt me-1"></i>Step 4: Pricing & Flexible Price Additions</div>
             <div class="row g-4 mb-3">
-                <div class="col-12 col-md-6">
-                    <label class="form-label" style="color: #0F172A; font-weight: 700;">Price per Unit / Order (KWD) <span class="text-danger">*</span></label>
+                <div class="col-12 col-md-4">
+                    <label class="form-label" style="color: #0F172A; font-weight: 700;">Customer Price per Truck (KWD) <span class="text-danger">*</span></label>
                     <div class="input-group">
                         <input type="number" step="0.01" min="0" id="base_price_input" name="price" class="form-control" placeholder="0.00" value="{{ old('price', $trip->price) }}" style="background: #ffffff; color: #0F172A; border-color: #cbd5e1;">
                         <span class="input-group-text bg-light text-dark fw-bold border" style="border-color: #cbd5e1;">KWD</span>
                     </div>
-                    <div class="form-text text-muted" style="font-size:0.75rem;">Base rate per unit or truck in Kuwaiti Dinar (KWD). Additional surcharges can be configured below.</div>
+                    <div class="form-text text-muted" style="font-size:0.75rem;">Customer base rate per truck in Kuwaiti Dinar (KWD).</div>
                 </div>
-                {{-- Open Booking Capacity without limit --}}
-                <input type="hidden" name="total_capacity" value="{{ $trip->total_capacity ?: 9999 }}">
-                <input type="hidden" name="available_capacity" value="{{ $trip->available_capacity ?: 9999 }}">
+                <div class="col-12 col-md-4">
+                    <label class="form-label" style="color: #0F172A; font-weight: 700;">
+                        Driver Payout per Truck (KWD)
+                        <span class="badge bg-info bg-opacity-10 text-info ms-1" style="font-size:0.7rem;">يظهر للسائق فقط</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="number" step="0.01" min="0" id="driver_price_input" name="driver_price" class="form-control" placeholder="e.g. 80.00 (Optional)" value="{{ old('driver_price', $trip->driver_price) }}" style="background: #ffffff; color: #0F172A; border-color: #cbd5e1;">
+                        <span class="input-group-text bg-light text-dark fw-bold border" style="border-color: #cbd5e1;">KWD</span>
+                    </div>
+                    <div class="form-text text-muted" style="font-size:0.75rem;">Separate per-truck earnings shown only to the driver.</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label" style="color: #0F172A; font-weight: 700;">Driver Payment Schedule</label>
+                    <select name="driver_payment_type" id="driver_payment_type" class="form-select" style="background: #ffffff; color: #0F172A; border-color: #cbd5e1;">
+                        <option value="full_after" {{ old('driver_payment_type', $trip->driver_payment_type ?? 'full_after') === 'full_after' ? 'selected' : '' }}>
+                            100% Upon Completion (دفع كامل بعد انتهاء الرحلة)
+                        </option>
+                        <option value="split_50_50" {{ old('driver_payment_type', $trip->driver_payment_type) === 'split_50_50' ? 'selected' : '' }}>
+                            50% Start + 50% Completion (50% عند البداية و 50% عند النهاية)
+                        </option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <div class="form-check form-switch mt-1">
+                        <input class="form-check-input" type="checkbox" id="fleet_override" name="fleet_override" value="1" {{ old('fleet_override', $trip->fleet_override) ? 'checked' : '' }}>
+                        <label class="form-check-label fw-semibold" for="fleet_override" style="color: #0F172A;">
+                            Allow Early Fleet Movement Override (السماح ببدء التحرك قبل اكتمال باقي السائقين)
+                        </label>
+                    </div>
+                </div>
             </div>
 
             {{-- Dynamic Pricing Additions Box (Light Mode Compatible) --}}

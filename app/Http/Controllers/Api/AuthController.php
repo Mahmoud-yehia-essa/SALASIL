@@ -39,6 +39,32 @@ class AuthController extends Controller
                 }
             }
 
+            $appType = strtolower(trim((string) $request->input('app_type', '')));
+            $locale  = strtolower(trim((string) $request->input('locale', 'ar')));
+            $rawEmailInput = $request->filled('email') ? strtolower(trim((string) $request->email)) : null;
+
+            // Block mismatched app_type vs registration role immediately
+            if ($appType === 'driver' && $request->filled('role') && $request->role !== 'driver') {
+                return $this->buildWrongAppResponse('WRONG_APP_CUSTOMER_ON_DRIVER', $request->role, 'customer', $locale, true);
+            }
+            if ($appType === 'customer' && $request->role === 'driver') {
+                return $this->buildWrongAppResponse('WRONG_APP_DRIVER_ON_CUSTOMER', 'driver', 'driver', $locale, true);
+            }
+
+            // Check if this email or phone is already registered under the opposite app role
+            $effectiveAppType = $appType !== '' ? $appType : ($request->role === 'driver' ? 'driver' : 'customer');
+            $existingUser = $this->findExistingUserByEmailOrPhone(
+                $rawEmailInput,
+                $request->input('phone'),
+                $request->input('country_code')
+            );
+            if ($existingUser) {
+                $wrongAppResp = $this->checkCrossAppRole($existingUser, $effectiveAppType, $locale, true);
+                if ($wrongAppResp !== null) {
+                    return $wrongAppResp;
+                }
+            }
+
             // For driver: email is optional in Figma. If missing, generate fallback driver email.
             if ($request->role === 'driver' && !$request->filled('email')) {
                 $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone ?? uniqid());
@@ -66,6 +92,7 @@ class AuthController extends Controller
                 'secondary_phone' => 'nullable|string|max:50',
                 'password'        => 'required|string|min:6',
                 'role'            => 'required|in:individual_customer,company_customer,driver,admin',
+                'app_type'        => 'nullable|in:customer,driver',
                 'status'          => 'nullable|in:active,inactive,pending,banned',
                 'country_code'    => 'nullable|string|max:10',
                 'country_id'      => 'nullable|exists:countries,id',
@@ -125,6 +152,21 @@ class AuthController extends Controller
                     'message' => 'Validation error',
                     'errors'  => $validator->errors(),
                 ], 422);
+            }
+
+            // Prevent duplicate phone registrations on same app role (e.g. driver fallback emails)
+            if ($request->filled('phone')) {
+                $phoneMatchUser = $this->findExistingUserByEmailOrPhone(null, $request->input('phone'), $request->input('country_code'));
+                if ($phoneMatchUser) {
+                    $phoneMsg = str_starts_with($locale, 'ar')
+                        ? 'رقم الهاتف هذا مسجل بالفعل.'
+                        : 'This phone number is already registered.';
+                    return response()->json([
+                        'status'  => false,
+                        'message' => $phoneMsg,
+                        'errors'  => ['phone' => [$phoneMsg]],
+                    ], 422);
+                }
             }
 
             // 1.1 Safe File Validation (Protects against missing php_fileinfo on cPanel)
@@ -386,6 +428,8 @@ class AuthController extends Controller
             'phone'          => 'required_without_all:login,email|string',
             'password'       => 'required|string',
             'firebase_token' => 'nullable|string',
+            'app_type'       => 'nullable|in:customer,driver',
+            'locale'         => 'nullable|string|max:10',
         ], [
             'login.required_without_all' => 'Please provide an email to login.',
             'password.required'          => 'Password is required.',
@@ -426,6 +470,17 @@ class AuthController extends Controller
                 'status'  => false,
                 'message' => 'Invalid email or password.',
             ], 401);
+        }
+
+        // 3.1 Enforce strict app-role separation (Customer app vs Driver app)
+        $wrongAppResp = $this->checkCrossAppRole(
+            $user,
+            $request->input('app_type'),
+            $request->input('locale', $user->locale ?? 'ar'),
+            false
+        );
+        if ($wrongAppResp !== null) {
+            return $wrongAppResp;
         }
 
         // 4. Check User Account Status
@@ -522,6 +577,18 @@ class AuthController extends Controller
 
         $email = strtolower(trim($request->email));
         $user = User::where('email', $email)->first();
+
+        if ($user && $request->filled('app_type')) {
+            $wrongAppResp = $this->checkCrossAppRole(
+                $user,
+                $request->input('app_type'),
+                $request->input('locale', $user->locale ?? 'ar'),
+                false
+            );
+            if ($wrongAppResp !== null) {
+                return $wrongAppResp;
+            }
+        }
 
         // Generate 4-digit OTP
         $otp = (string) rand(1000, 9999);
@@ -751,6 +818,122 @@ class AuthController extends Controller
             Log::error('Error saving uploaded file in ' . $subfolder . ': ' . $ex->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Find an existing user by email or phone variants (used to enforce strict app-role isolation).
+     */
+    private function findExistingUserByEmailOrPhone(?string $email, ?string $phone, ?string $countryCode = null): ?User
+    {
+        $cleanEmail = $email ? strtolower(trim($email)) : '';
+        $rawPhone = $phone ? trim($phone) : '';
+        $cleanPhone = $rawPhone !== '' ? preg_replace('/\D+/', '', $rawPhone) : '';
+        $code = $countryCode ? trim($countryCode) : '';
+        $cleanCode = $code !== '' ? preg_replace('/\D+/', '', $code) : '';
+
+        $phoneVariants = [];
+        if (strlen($cleanPhone) >= 6) {
+            $trimmedLeadingZero = ltrim($cleanPhone, '0');
+            $phoneVariants = array_values(array_unique(array_filter([
+                $rawPhone,
+                $cleanPhone,
+                $trimmedLeadingZero,
+                $code !== '' ? ($code . $cleanPhone) : null,
+                $code !== '' && $trimmedLeadingZero !== '' ? ($code . $trimmedLeadingZero) : null,
+                $cleanCode !== '' ? ($cleanCode . $cleanPhone) : null,
+            ])));
+        }
+
+        if ($cleanEmail === '' && empty($phoneVariants)) {
+            return null;
+        }
+
+        return User::where(function ($q) use ($cleanEmail, $phoneVariants, $code, $rawPhone, $cleanPhone) {
+            if ($cleanEmail !== '') {
+                $q->whereRaw('LOWER(email) = ?', [$cleanEmail]);
+            }
+            if (!empty($phoneVariants)) {
+                $method = $cleanEmail !== '' ? 'orWhereIn' : 'whereIn';
+                $q->$method('phone', $phoneVariants);
+                if ($code !== '') {
+                    $q->orWhere(function ($sq) use ($code, $rawPhone, $cleanPhone) {
+                        $sq->where('country_code', $code)
+                           ->whereIn('phone', array_values(array_unique(array_filter([$rawPhone, $cleanPhone]))));
+                    });
+                }
+            }
+        })->first();
+    }
+
+    /**
+     * Ensure customer accounts only use the Customer app and driver accounts only use the Driver app.
+     */
+    private function checkCrossAppRole(
+        User $user,
+        ?string $appType,
+        ?string $locale = 'ar',
+        bool $isRegister = false
+    ) {
+        $normalizedApp = strtolower(trim((string) $appType));
+        if (!in_array($normalizedApp, ['customer', 'driver'], true)) {
+            return null;
+        }
+
+        $role = strtolower(trim((string) $user->role));
+        $lang = strtolower(trim((string) ($locale ?: 'ar')));
+
+        if ($normalizedApp === 'driver' && $role !== 'driver') {
+            if ($role === 'admin') {
+                return $this->buildWrongAppResponse('WRONG_APP_ADMIN_ON_DRIVER', $role, 'admin', $lang, $isRegister);
+            }
+            return $this->buildWrongAppResponse('WRONG_APP_CUSTOMER_ON_DRIVER', $role, 'customer', $lang, $isRegister);
+        }
+
+        if ($normalizedApp === 'customer' && $role === 'driver') {
+            return $this->buildWrongAppResponse('WRONG_APP_DRIVER_ON_CUSTOMER', $role, 'driver', $lang, $isRegister);
+        }
+
+        return null;
+    }
+
+    private function buildWrongAppResponse(
+        string $errorCode,
+        string $userRole,
+        string $expectedApp,
+        string $locale,
+        bool $isRegister
+    ) {
+        $isAr = str_starts_with($locale, 'ar');
+
+        if ($errorCode === 'WRONG_APP_CUSTOMER_ON_DRIVER') {
+            $message = $isAr
+                ? ($isRegister
+                    ? 'هذا المستخدم مسجل كعميل (Customer)، لا يستطيع التسجيل أو الدخول على تطبيق السائق (Driver). الرجاء الدخول من خلال تطبيق العميل.'
+                    : 'هذا المستخدم مسجل كعميل (Customer)، لا يستطيع الدخول على تطبيق السائق (Driver). الرجاء الدخول من خلال تطبيق العميل.')
+                : ($isRegister
+                    ? 'This user is registered as a Customer and cannot register or log in on the Driver app. Please sign in through the Customer app.'
+                    : 'This user is registered as a Customer and cannot log in to the Driver app. Please sign in through the Customer app.');
+        } elseif ($errorCode === 'WRONG_APP_DRIVER_ON_CUSTOMER') {
+            $message = $isAr
+                ? ($isRegister
+                    ? 'هذا المستخدم مسجل كسائق (Driver)، لا يستطيع التسجيل أو الدخول على تطبيق العميل (Customer). الرجاء الدخول من خلال تطبيق السائق.'
+                    : 'هذا المستخدم مسجل كسائق (Driver)، لا يستطيع الدخول على تطبيق العميل (Customer). الرجاء الدخول من خلال تطبيق السائق.')
+                : ($isRegister
+                    ? 'This user is registered as a Driver and cannot register or log in on the Customer app. Please sign in through the Driver app.'
+                    : 'This user is registered as a Driver and cannot log in to the Customer app. Please sign in through the Driver app.');
+        } else {
+            $message = $isAr
+                ? 'حساب الإدارة لا يمكنه الدخول إلى تطبيق السائق. الرجاء استخدام لوحة التحكم.'
+                : 'Admin accounts cannot log in to the Driver app. Please use the admin dashboard.';
+        }
+
+        return response()->json([
+            'status'       => false,
+            'error_code'   => $errorCode,
+            'user_role'    => $userRole,
+            'expected_app' => $expectedApp,
+            'message'      => $message,
+        ], 403);
     }
 
 }
