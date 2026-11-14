@@ -680,20 +680,67 @@ $user->save();
     }
 
     /**
-     * Delete client/user from database.
+     * Delete client/user permanently from database (without soft delete).
      */
     public function DeleteUser($id)
     {
-        $user = User::findOrFail($id);
+        $user = User::find($id);
 
+        if (!$user) {
+            // Check direct table in case already flagged or legacy
+            $dbUser = DB::table('users')->where('id', $id)->first();
+            if ($dbUser) {
+                if (!empty($dbUser->photo) && file_exists(public_path('upload/user_images/' . $dbUser->photo))) {
+                    @unlink(public_path('upload/user_images/' . $dbUser->photo));
+                }
+                DB::table('users')->where('id', $id)->delete();
+                $notification = [
+                    'message' => 'Client Account Permanently Deleted Successfully!',
+                    'alert-type' => 'success'
+                ];
+                return redirect()->back()->with($notification);
+            }
+
+            $notification = [
+                'message' => 'User not found or already deleted!',
+                'alert-type' => 'error'
+            ];
+            return redirect()->back()->with($notification);
+        }
+
+        // 1. Delete user avatar/photo from storage
         if (!empty($user->photo) && file_exists(public_path('upload/user_images/' . $user->photo))) {
             @unlink(public_path('upload/user_images/' . $user->photo));
         }
 
-        $user->delete();
+        // 2. Delete company documents from storage
+        if ($user->companyDocuments) {
+            foreach ($user->companyDocuments as $cDoc) {
+                if (!empty($cDoc->file_path) && file_exists(public_path($cDoc->file_path))) {
+                    @unlink(public_path($cDoc->file_path));
+                }
+            }
+        }
+
+        // 3. Delete driver documents from storage
+        if ($user->driverProfile) {
+            foreach (['civil_id_front', 'civil_id_back', 'driving_license_front', 'driving_license_back', 'passport_image', 'truck_registration'] as $field) {
+                $path = $user->driverProfile->$field;
+                if (!empty($path) && file_exists(public_path($path))) {
+                    @unlink(public_path($path));
+                }
+            }
+        }
+
+        // 4. Force permanent deletion from database
+        if (method_exists($user, 'forceDelete')) {
+            $user->forceDelete();
+        } else {
+            $user->delete();
+        }
 
         $notification = [
-            'message' => 'Client Account Deleted Successfully!',
+            'message' => 'Client Account Permanently Deleted Successfully!',
             'alert-type' => 'success'
         ];
 
