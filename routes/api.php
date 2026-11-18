@@ -74,6 +74,11 @@ Route::post('/driver/documents/update', [DriverHomeController::class, 'updateDri
 Route::post('/driver/profile/update', [DriverHomeController::class, 'updateProfile']);
 Route::get('/driver/truck', [DriverHomeController::class, 'getDriverTruck']);
 Route::post('/driver/truck/update', [DriverHomeController::class, 'updateDriverTruck']);
+Route::get('/driver/trucks', [DriverHomeController::class, 'getDriverTrucks']);
+Route::post('/driver/trucks', [DriverHomeController::class, 'addDriverTruck']);
+Route::post('/driver/trucks/{id}/update', [DriverHomeController::class, 'updateDriverTruckById']);
+Route::post('/driver/trucks/{id}/set-main', [DriverHomeController::class, 'setMainDriverTruck']);
+Route::delete('/driver/trucks/{id}', [DriverHomeController::class, 'deleteDriverTruck']);
 Route::get('/driver/notifications', [DriverHomeController::class, 'notifications']);
 Route::post('/driver/notifications/mark-all-read', [DriverHomeController::class, 'markAllNotificationsRead']);
 Route::delete('/driver/notifications/clear-all', [DriverHomeController::class, 'clearAllNotifications']);

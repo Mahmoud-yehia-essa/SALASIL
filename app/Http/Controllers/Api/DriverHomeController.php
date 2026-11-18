@@ -4917,30 +4917,63 @@ class DriverHomeController extends Controller
     }
 
     /**
-     * Get the current driver's truck details.
+     * Ensure legacy driver profiles have at least one matching row in driver_trucks
+     * and that one truck is flagged is_default = 1 when trucks exist.
      */
-    public function getDriverTruck(Request $request)
+    private function ensureDriverInitialTruck(int $driverId, ?User $driver = null): ?DriverProfile
     {
-        $driverId = $this->resolveDriverId($request);
-        $driver = User::find($driverId);
-
-        $truck = DriverTruck::with(['truckType', 'truckSubType', 'truckBrand', 'truckModel'])
-            ->where('driver_id', $driverId)
-            ->where('is_default', 1)
-            ->first();
-
-        if (!$truck) {
-            $truck = DriverTruck::with(['truckType', 'truckSubType', 'truckBrand', 'truckModel'])
-                ->where('driver_id', $driverId)
-                ->latest()
-                ->first();
-        }
-
+        $driver = $driver ?: User::find($driverId);
         $driverProfile = $driver ? $driver->driverProfile : null;
         if (!$driverProfile && $driver) {
-            $driverProfile = \App\Models\DriverProfile::where('user_id', $driverId)->first();
+            $driverProfile = DriverProfile::where('user_id', $driverId)->first();
         }
 
+        $count = DriverTruck::where('driver_id', $driverId)->count();
+        if ($count === 0 && $driverProfile && $driverProfile->truck_type_id) {
+            DriverTruck::create([
+                'driver_id'          => $driverId,
+                'truck_type_id'      => $driverProfile->truck_type_id,
+                'plate_number'       => $driverProfile->plate_number,
+                'manufacturing_year' => $driverProfile->model_year ? (int) $driverProfile->model_year : null,
+                'is_default'         => 1,
+                'is_verified'        => 0,
+            ]);
+        } elseif ($count > 0 && !DriverTruck::where('driver_id', $driverId)->where('is_default', 1)->exists()) {
+            $firstTruck = DriverTruck::where('driver_id', $driverId)->latest('id')->first();
+            if ($firstTruck) {
+                $firstTruck->is_default = 1;
+                $firstTruck->save();
+            }
+        }
+
+        return $driverProfile;
+    }
+
+    /**
+     * Keep DriverProfile primary truck columns synchronized with the active main DriverTruck.
+     */
+    private function syncMainTruckToProfile(int $driverId, ?DriverTruck $mainTruck): void
+    {
+        if (!$mainTruck) {
+            return;
+        }
+        $driverProfile = DriverProfile::firstOrCreate(['user_id' => $driverId]);
+        $driverProfile->truck_type_id = $mainTruck->truck_type_id;
+        if (!empty($mainTruck->plate_number)) {
+            $driverProfile->plate_number = $mainTruck->plate_number;
+        }
+        if (!empty($mainTruck->manufacturing_year)) {
+            $driverProfile->model_year = (string) $mainTruck->manufacturing_year;
+        }
+        $driverProfile->is_main_truck = 1;
+        $driverProfile->save();
+    }
+
+    /**
+     * Format a DriverTruck model (or DriverProfile fallback) consistently for API responses.
+     */
+    private function formatDriverTruckPayload(?DriverTruck $truck, int $driverId, ?DriverProfile $driverProfile = null): array
+    {
         $truckTypeId = $truck ? $truck->truck_type_id : ($driverProfile && $driverProfile->truck_type_id ? $driverProfile->truck_type_id : null);
         $truckType = $truck && $truck->truckType ? $truck->truckType : ($truckTypeId ? TruckType::find($truckTypeId) : null);
         $truckTypeName = $truckType ? ($truckType->name_en ?: $truckType->name_ar) : '';
@@ -4951,22 +4984,19 @@ class DriverHomeController extends Controller
         $truckSubTypeNameAr = $truckSubType ? ($truckSubType->name_ar ?: $truckSubType->name_en) : null;
 
         $plateNumber = $truck && $truck->plate_number ? $truck->plate_number : ($driverProfile && $driverProfile->plate_number ? $driverProfile->plate_number : '');
-        $modelYear = $truck && $truck->manufacturing_year ? (string)$truck->manufacturing_year : ($driverProfile && $driverProfile->model_year ? (string)$driverProfile->model_year : '');
+        $modelYear = $truck && $truck->manufacturing_year ? (string) $truck->manufacturing_year : ($driverProfile && $driverProfile->model_year ? (string) $driverProfile->model_year : '');
 
-        // Real capacity from database
         $maxWeightNum = null;
         if ($truckSubType && $truckSubType->max_payload) {
-            $maxWeightNum = (float)$truckSubType->max_payload * 1000;
+            $maxWeightNum = (float) $truckSubType->max_payload * 1000;
         } elseif ($truckType && $truckType->max_weight) {
-            $maxWeightNum = (float)$truckType->max_weight * 1000;
+            $maxWeightNum = (float) $truckType->max_weight * 1000;
         }
         $maxCapacity = $maxWeightNum !== null ? number_format($maxWeightNum, 0) . ' Kg' : null;
 
-        // Subtitle: Real brand & model if available in database, or real sub-type name if available, otherwise General (No Sub-type)
         $brandName = $truck && $truck->truckBrand ? ($truck->truckBrand->name_en ?: $truck->truckBrand->name_ar) : null;
         $modelName = $truck && $truck->truckModel ? ($truck->truckModel->name_en ?: $truck->truckModel->name_ar) : null;
 
-        $fullModelTitle = null;
         if ($brandName && $modelName) {
             $fullModelTitle = $brandName . ' ' . $modelName;
         } elseif ($truckSubTypeName) {
@@ -4975,45 +5005,208 @@ class DriverHomeController extends Controller
             $fullModelTitle = 'General (No Sub-type)';
         }
 
-        $isDefault = $truck ? (bool)$truck->is_default : true;
-        $isVerified = $truck ? (bool)$truck->is_verified : false;
-        $axlesCount = $truck && $truck->axles_count ? (string)$truck->axles_count : null;
-
+        $isDefault = $truck ? (bool) $truck->is_default : true;
+        $isVerified = $truck ? (bool) $truck->is_verified : false;
+        $axlesCount = $truck && $truck->axles_count ? (string) $truck->axles_count : null;
         $title = trim($truckTypeName . ($modelYear ? ' · ' . $modelYear : ''));
+
+        return [
+            'id'                     => $truck ? $truck->id : 0,
+            'driver_id'              => $driverId,
+            'truck_type_id'          => $truckTypeId,
+            'truck_type_name'        => $truckTypeName,
+            'truck_type_name_ar'     => $truckTypeNameAr,
+            'truck_sub_type_id'      => $truck ? $truck->truck_sub_type_id : null,
+            'truck_sub_type_name'    => $truckSubTypeName,
+            'truck_sub_type_name_ar' => $truckSubTypeNameAr,
+            'title'                  => $title,
+            'model_name'             => $fullModelTitle,
+            'plate_number'           => $plateNumber,
+            'model_year'             => $modelYear,
+            'max_capacity'           => $maxCapacity,
+            'axles'                  => $axlesCount,
+            'is_default'             => $isDefault,
+            'is_verified'            => $isVerified,
+            'status'                 => $isDefault ? 'Default Truck' : 'Secondary',
+            'verification_status'    => $isVerified ? 'Verified' : 'Unverified',
+            'photo_url'              => $truckType && $truckType->photo ? url('upload/truck_images/' . $truckType->photo) : null,
+        ];
+    }
+
+    /**
+     * Build formatted list of all trucks belonging to a driver ordered with Main Truck first.
+     */
+    private function buildDriverTrucksList(int $driverId, ?DriverProfile $driverProfile = null): array
+    {
+        $trucks = DriverTruck::with(['truckType', 'truckSubType', 'truckBrand', 'truckModel'])
+            ->where('driver_id', $driverId)
+            ->orderByDesc('is_default')
+            ->orderByDesc('id')
+            ->get();
+
+        if ($trucks->isEmpty() && $driverProfile) {
+            return [$this->formatDriverTruckPayload(null, $driverId, $driverProfile)];
+        }
+
+        return $trucks->map(function ($t) use ($driverId, $driverProfile) {
+            return $this->formatDriverTruckPayload($t, $driverId, $driverProfile);
+        })->values()->all();
+    }
+
+    /**
+     * Get the current driver's main truck details.
+     */
+    public function getDriverTruck(Request $request)
+    {
+        $driverId = (int) $this->resolveDriverId($request);
+        $driver = User::find($driverId);
+        $driverProfile = $this->ensureDriverInitialTruck($driverId, $driver);
+
+        $truck = DriverTruck::with(['truckType', 'truckSubType', 'truckBrand', 'truckModel'])
+            ->where('driver_id', $driverId)
+            ->where('is_default', 1)
+            ->first()
+            ?: DriverTruck::with(['truckType', 'truckSubType', 'truckBrand', 'truckModel'])
+                ->where('driver_id', $driverId)
+                ->latest('id')
+                ->first();
 
         return response()->json([
             'status'  => true,
             'message' => 'Driver truck retrieved successfully',
-            'data'    => [
-                'id'                  => $truck ? $truck->id : 0,
-                'driver_id'           => $driverId,
-                'truck_type_id'       => $truckTypeId,
-                'truck_type_name'     => $truckTypeName,
-                'truck_type_name_ar'  => $truckTypeNameAr,
-                'truck_sub_type_id'   => $truck ? $truck->truck_sub_type_id : null,
-                'truck_sub_type_name' => $truckSubTypeName,
-                'truck_sub_type_name_ar' => $truckSubTypeNameAr,
-                'title'               => $title,
-                'model_name'          => $fullModelTitle,
-                'plate_number'        => $plateNumber,
-                'model_year'          => $modelYear,
-                'max_capacity'        => $maxCapacity,
-                'axles'               => $axlesCount,
-                'is_default'          => $isDefault,
-                'is_verified'         => $isVerified,
-                'status'              => $isDefault ? 'Default Truck' : 'Secondary',
-                'verification_status' => $isVerified ? 'Verified' : 'Unverified',
-                'photo_url'           => $truckType && $truckType->photo ? url('upload/truck_images/' . $truckType->photo) : null,
-            ]
+            'data'    => $this->formatDriverTruckPayload($truck, $driverId, $driverProfile),
         ], 200);
     }
 
     /**
-     * Update the driver's truck type, truck sub-type, and specifications.
+     * List all trucks registered for the driver, with the active Main Truck first.
+     */
+    public function getDriverTrucks(Request $request)
+    {
+        $driverId = (int) $this->resolveDriverId($request);
+        $driver = User::find($driverId);
+        $driverProfile = $this->ensureDriverInitialTruck($driverId, $driver);
+        $list = $this->buildDriverTrucksList($driverId, $driverProfile);
+
+        $mainTruck = null;
+        foreach ($list as $item) {
+            if (!empty($item['is_default'])) {
+                $mainTruck = $item;
+                break;
+            }
+        }
+        if (!$mainTruck && !empty($list)) {
+            $mainTruck = $list[0];
+        }
+
+        return response()->json([
+            'status'     => true,
+            'message'    => 'Driver trucks retrieved successfully',
+            'total'      => count($list),
+            'main_truck' => $mainTruck,
+            'data'       => $list,
+        ], 200);
+    }
+
+    /**
+     * Add a new truck to the driver's fleet, optionally setting it as the Main Truck for requests.
+     */
+    public function addDriverTruck(Request $request)
+    {
+        $driverId = (int) $this->resolveDriverId($request);
+        $driver = User::find($driverId);
+
+        $validator = Validator::make($request->all(), [
+            'truck_type_id'     => 'required|exists:truck_types,id',
+            'truck_sub_type_id' => 'nullable|exists:truck_sub_types,id',
+            'plate_number'      => 'required|string|max:50',
+            'model_year'        => 'nullable|string|max:10',
+            'axles_count'       => 'nullable|integer|min:1|max:10',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Validation error',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $truckTypeId = (int) $request->input('truck_type_id');
+        $truckSubTypeId = $request->filled('truck_sub_type_id') ? (int) $request->input('truck_sub_type_id') : null;
+        if ($truckSubTypeId !== null) {
+            $validSub = TruckSubType::where('id', $truckSubTypeId)->where('truck_type_id', $truckTypeId)->exists();
+            if (!$validSub) {
+                $truckSubTypeId = null;
+            }
+        }
+
+        $driverProfile = null;
+        $truck = null;
+
+        DB::transaction(function () use ($driverId, $driver, $request, $truckTypeId, $truckSubTypeId, &$driverProfile, &$truck) {
+            $driverProfile = $this->ensureDriverInitialTruck($driverId, $driver);
+            $existingCount = DriverTruck::where('driver_id', $driverId)->count();
+            $reqDefault = filter_var(
+                $request->input('is_default', $request->input('set_as_main', false)),
+                FILTER_VALIDATE_BOOLEAN
+            );
+            $makeDefault = $existingCount === 0 || $reqDefault;
+
+            if ($makeDefault) {
+                DriverTruck::where('driver_id', $driverId)->update(['is_default' => 0]);
+            }
+
+            $truck = new DriverTruck();
+            $truck->driver_id = $driverId;
+            $truck->truck_type_id = $truckTypeId;
+            $truck->truck_sub_type_id = $truckSubTypeId;
+            $truck->plate_number = trim((string) $request->input('plate_number'));
+            $truck->manufacturing_year = $request->filled('model_year') ? (int) preg_replace('/\D/', '', (string) $request->input('model_year')) : null;
+            $truck->axles_count = $request->filled('axles_count') ? (int) $request->input('axles_count') : null;
+            $truck->is_default = $makeDefault ? 1 : 0;
+            $truck->is_verified = 0;
+            $truck->save();
+
+            if ($makeDefault) {
+                $this->syncMainTruckToProfile($driverId, $truck);
+                $driverProfile = DriverProfile::where('user_id', $driverId)->first();
+            }
+        });
+
+        $truck->load(['truckType', 'truckSubType', 'truckBrand', 'truckModel']);
+        $list = $this->buildDriverTrucksList($driverId, $driverProfile);
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Truck added successfully',
+            'data'    => $this->formatDriverTruckPayload($truck, $driverId, $driverProfile),
+            'trucks'  => $list,
+        ], 201);
+    }
+
+    /**
+     * Update the driver's main (default) truck specifications.
      */
     public function updateDriverTruck(Request $request)
     {
-        $driverId = $this->resolveDriverId($request);
+        return $this->saveDriverTruckUpdate($request, null);
+    }
+
+    /**
+     * Update a specific truck in the driver's fleet by ID.
+     */
+    public function updateDriverTruckById(Request $request, $id)
+    {
+        return $this->saveDriverTruckUpdate($request, (int) $id);
+    }
+
+    /**
+     * Shared update helper for both main truck endpoint and truck-by-ID endpoint.
+     */
+    private function saveDriverTruckUpdate(Request $request, ?int $truckId = null)
+    {
+        $driverId = (int) $this->resolveDriverId($request);
         $driver = User::find($driverId);
 
         $validator = Validator::make($request->all(), [
@@ -5028,56 +5221,176 @@ class DriverHomeController extends Controller
             return response()->json([
                 'status'  => false,
                 'message' => 'Validation error',
-                'errors'  => $validator->errors()
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
-        $truckTypeId = $request->input('truck_type_id');
-        $truckSubTypeId = $request->input('truck_sub_type_id');
-
-        // 1. Update or create default DriverTruck
-        $truck = DriverTruck::where('driver_id', $driverId)->where('is_default', 1)->first();
-        if (!$truck) {
-            $truck = DriverTruck::where('driver_id', $driverId)->latest()->first();
-        }
-        if (!$truck) {
-            $truck = new DriverTruck();
-            $truck->driver_id = $driverId;
-            $truck->is_default = 1;
+        $truckTypeId = (int) $request->input('truck_type_id');
+        $truckSubTypeId = $request->filled('truck_sub_type_id') ? (int) $request->input('truck_sub_type_id') : null;
+        if ($truckSubTypeId !== null) {
+            $validSub = TruckSubType::where('id', $truckSubTypeId)->where('truck_type_id', $truckTypeId)->exists();
+            if (!$validSub) {
+                $truckSubTypeId = null;
+            }
         }
 
-        $truck->truck_type_id = $truckTypeId;
-        $truck->truck_sub_type_id = $truckSubTypeId ?: null;
+        $notFound = false;
+        $truck = null;
+        $driverProfile = null;
 
-        if ($request->filled('plate_number')) {
-            $truck->plate_number = trim($request->input('plate_number'));
-        }
-        if ($request->filled('model_year')) {
-            $truck->manufacturing_year = trim($request->input('model_year'));
-        }
-        if ($request->filled('axles_count')) {
-            $truck->axles_count = (int)$request->input('axles_count');
-        }
-        $truck->save();
+        DB::transaction(function () use ($driverId, $driver, $request, $truckId, $truckTypeId, $truckSubTypeId, &$notFound, &$truck, &$driverProfile) {
+            $driverProfile = $this->ensureDriverInitialTruck($driverId, $driver);
 
-        // 2. Sync to DriverProfile
-        $driverProfile = $driver ? $driver->driverProfile : null;
-        if (!$driverProfile && $driver) {
-            $driverProfile = \App\Models\DriverProfile::firstOrCreate(['user_id' => $driverId]);
-        }
-        if ($driverProfile) {
-            $driverProfile->truck_type_id = $truckTypeId;
+            if ($truckId !== null && $truckId > 0) {
+                $truck = DriverTruck::where('driver_id', $driverId)->find($truckId);
+                if (!$truck) {
+                    $notFound = true;
+                    return;
+                }
+            } else {
+                $truck = DriverTruck::where('driver_id', $driverId)->where('is_default', 1)->first()
+                    ?: DriverTruck::where('driver_id', $driverId)->latest('id')->first();
+                if (!$truck) {
+                    $truck = new DriverTruck();
+                    $truck->driver_id = $driverId;
+                    $truck->is_default = 1;
+                }
+            }
+
+            $truck->truck_type_id = $truckTypeId;
+            $truck->truck_sub_type_id = $truckSubTypeId;
+
             if ($request->filled('plate_number')) {
-                $driverProfile->plate_number = trim($request->input('plate_number'));
+                $truck->plate_number = trim((string) $request->input('plate_number'));
             }
             if ($request->filled('model_year')) {
-                $driverProfile->model_year = trim($request->input('model_year'));
+                $yearNum = (int) preg_replace('/\D/', '', (string) $request->input('model_year'));
+                $truck->manufacturing_year = $yearNum > 0 ? $yearNum : null;
             }
-            $driverProfile->save();
+            if ($request->filled('axles_count')) {
+                $truck->axles_count = (int) $request->input('axles_count');
+            }
+
+            if ($request->has('is_default') || $request->has('set_as_main')) {
+                $reqDefault = filter_var(
+                    $request->input('is_default', $request->input('set_as_main', false)),
+                    FILTER_VALIDATE_BOOLEAN
+                );
+                if ($reqDefault) {
+                    DriverTruck::where('driver_id', $driverId)
+                        ->where('id', '!=', $truck->id)
+                        ->update(['is_default' => 0]);
+                    $truck->is_default = 1;
+                }
+            }
+
+            $truck->save();
+
+            if ($truck->is_default) {
+                $this->syncMainTruckToProfile($driverId, $truck);
+                $driverProfile = DriverProfile::where('user_id', $driverId)->first();
+            }
+        });
+
+        if ($notFound) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Truck not found for this driver',
+            ], 404);
         }
 
-        // Return updated truck details using getDriverTruck
-        return $this->getDriverTruck($request);
+        $truck->load(['truckType', 'truckSubType', 'truckBrand', 'truckModel']);
+        $list = $this->buildDriverTrucksList($driverId, $driverProfile);
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Driver truck updated successfully',
+            'data'    => $this->formatDriverTruckPayload($truck, $driverId, $driverProfile),
+            'trucks'  => $list,
+        ], 200);
+    }
+
+    /**
+     * Designate a registered truck as the driver's Main Truck (used to match incoming trip requests).
+     */
+    public function setMainDriverTruck(Request $request, $id)
+    {
+        $driverId = (int) $this->resolveDriverId($request);
+        $driver = User::find($driverId);
+        $driverProfile = $this->ensureDriverInitialTruck($driverId, $driver);
+
+        $truck = DriverTruck::where('driver_id', $driverId)->find((int) $id);
+        if (!$truck) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Truck not found for this driver',
+            ], 404);
+        }
+
+        DB::transaction(function () use ($driverId, $truck, &$driverProfile) {
+            DriverTruck::where('driver_id', $driverId)->update(['is_default' => 0]);
+            $truck->is_default = 1;
+            $truck->save();
+            $this->syncMainTruckToProfile($driverId, $truck);
+            $driverProfile = DriverProfile::where('user_id', $driverId)->first();
+        });
+
+        $list = $this->buildDriverTrucksList($driverId, $driverProfile);
+        $truck->load(['truckType', 'truckSubType', 'truckBrand', 'truckModel']);
+
+        return response()->json([
+            'status'     => true,
+            'message'    => 'Main truck updated successfully. Trip requests will now match this truck.',
+            'main_truck' => $this->formatDriverTruckPayload($truck, $driverId, $driverProfile),
+            'data'       => $list,
+        ], 200);
+    }
+
+    /**
+     * Remove a secondary truck from the driver's fleet.
+     */
+    public function deleteDriverTruck(Request $request, $id)
+    {
+        $driverId = (int) $this->resolveDriverId($request);
+        $driver = User::find($driverId);
+        $driverProfile = $this->ensureDriverInitialTruck($driverId, $driver);
+
+        $truck = DriverTruck::where('driver_id', $driverId)->find((int) $id);
+        if (!$truck) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Truck not found for this driver',
+            ], 404);
+        }
+
+        if (DriverTruck::where('driver_id', $driverId)->count() <= 1) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'You must keep at least one registered truck.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($driverId, $truck, &$driverProfile) {
+            $wasDefault = (bool) $truck->is_default;
+            $truck->delete();
+            if ($wasDefault) {
+                $replacement = DriverTruck::where('driver_id', $driverId)->latest('id')->first();
+                if ($replacement) {
+                    $replacement->is_default = 1;
+                    $replacement->save();
+                    $this->syncMainTruckToProfile($driverId, $replacement);
+                }
+                $driverProfile = DriverProfile::where('user_id', $driverId)->first();
+            }
+        });
+
+        $list = $this->buildDriverTrucksList($driverId, $driverProfile);
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Truck removed successfully',
+            'data'    => $list,
+        ], 200);
     }
 
     /**
