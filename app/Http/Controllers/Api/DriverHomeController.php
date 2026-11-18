@@ -53,14 +53,33 @@ class DriverHomeController extends Controller
         $driver = $user ?: User::find($driverId);
 
         // 2. Count "Trip Requests" (Pending invitations + Matching new customer orders + Open scheduled trips + Direct shipment invitations)
-        $requestBuckets = $this->getDriverRequestBuckets((int) $driverId);
+        $countryFilter = $this->resolveDriverCountryFilter($request);
+        [$driverTruckTypeId] = $this->resolveDriverTruckFilters((int) $driverId);
+        $requestBuckets = $this->getDriverRequestBuckets((int) $driverId, $countryFilter);
         $scheduledRequestsCount = $requestBuckets['invitations']->count()
             + $requestBuckets['matchingOrders']->count()
             + $requestBuckets['matchingTrips']->count();
 
-        $shipmentRequestsCount = ShipmentDriverInvitation::where('driver_id', $driverId)
+        $shipmentInvs = ShipmentDriverInvitation::with([
+            'shipment.pickupCountry',
+            'shipment.pickupCity.country',
+        ])
+            ->where('driver_id', $driverId)
             ->where('status', 'pending')
-            ->count();
+            ->get()
+            ->filter(function ($sInv) use ($countryFilter, $driverTruckTypeId) {
+                $sh = $sInv->shipment;
+                if (!$sh) {
+                    return false;
+                }
+                if ($driverTruckTypeId && $sh->truck_type_id && (int) $sh->truck_type_id !== (int) $driverTruckTypeId) {
+                    return false;
+                }
+                [$countryId, $country] = $this->resolveShipmentOriginCountry($sh);
+                return $this->matchesOriginCountry($countryId, $country, $countryFilter);
+            });
+
+        $shipmentRequestsCount = $shipmentInvs->count();
 
         $tripRequestsCount = $scheduledRequestsCount + $shipmentRequestsCount;
 
@@ -554,9 +573,189 @@ class DriverHomeController extends Controller
     }
 
     /**
+     * Resolve the driver's current physical country filter from request query/body params.
+     */
+    private function resolveDriverCountryFilter(Request $request): array
+    {
+        $rawCode = strtoupper(trim((string) $request->input('current_country_code', '')));
+        $rawName = trim((string) $request->input('current_country', ''));
+
+        if ($rawCode === '' && $rawName === '') {
+            return [
+                'has_filter'   => false,
+                'country_id'   => null,
+                'country_code' => '',
+                'country_name' => '',
+                'raw_name'     => '',
+            ];
+        }
+
+        $countries = Country::all();
+        $matched = null;
+
+        if ($rawCode !== '') {
+            $matched = $countries->first(
+                fn($c) => strtoupper(trim((string) $c->code)) === $rawCode
+            );
+        }
+
+        if (!$matched && $rawName !== '') {
+            $normalizedRaw = $this->normalizeCountryToken($rawName);
+            $matched = $countries->first(function ($c) use ($normalizedRaw) {
+                $en = $this->normalizeCountryToken((string) $c->name_en);
+                $ar = $this->normalizeCountryToken((string) $c->name_ar);
+                if ($normalizedRaw !== '' && ($en === $normalizedRaw || $ar === $normalizedRaw)) {
+                    return true;
+                }
+                return $this->countryAliasesMatch($c, $normalizedRaw, '');
+            });
+        }
+
+        if (!$matched && $rawCode !== '') {
+            $matched = $countries->first(
+                fn($c) => $this->countryAliasesMatch($c, '', $rawCode)
+            );
+        }
+
+        return [
+            'has_filter'   => true,
+            'country_id'   => $matched ? (int) $matched->id : null,
+            'country_code' => $matched ? strtoupper(trim((string) $matched->code)) : $rawCode,
+            'country_name' => $matched ? trim((string) $matched->name_en) : $rawName,
+            'raw_name'     => $rawName,
+        ];
+    }
+
+    private function normalizeCountryToken(string $value): string
+    {
+        $clean = mb_strtolower(trim($value), 'UTF-8');
+        $clean = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $clean);
+        return trim((string) preg_replace('/\s+/', ' ', (string) $clean));
+    }
+
+    private function countryAliasesMatch(?Country $country, string $normalizedName, string $isoCode): bool
+    {
+        if (!$country) {
+            return false;
+        }
+
+        $dbCode = strtoupper(trim((string) $country->code));
+        if ($isoCode !== '' && $dbCode !== '' && $dbCode === $isoCode) {
+            return true;
+        }
+
+        $aliasMap = [
+            'KW' => ['kuwait', 'state of kuwait', 'الكويت', 'دولة الكويت', 'kw'],
+            'SA' => ['saudi arabia', 'kingdom of saudi arabia', 'ksa', 'saudi', 'السعودية', 'السعوديه', 'المملكة العربية السعودية', 'المملكه العربيه السعوديه', 'sa'],
+            'AE' => ['uae', 'united arab emirates', 'u a e', 'emirates', 'الامارات', 'الإمارات', 'الامارات العربية المتحدة', 'الإمارات العربية المتحدة', 'ae'],
+            'QA' => ['qatar', 'state of qatar', 'قطر', 'دولة قطر', 'qa'],
+            'BH' => ['bahrain', 'kingdom of bahrain', 'البحرين', 'مملكة البحرين', 'bh'],
+            'OM' => ['oman', 'sultanate of oman', 'عمان', 'سلطنة عمان', 'om'],
+            'EG' => ['egypt', 'arab republic of egypt', 'مصر', 'جمهورية مصر العربية', 'eg'],
+            'JO' => ['jordan', 'hashemite kingdom of jordan', 'الاردن', 'الأردن', 'المملكة الأردنية الهاشمية', 'jo'],
+        ];
+
+        $en = $this->normalizeCountryToken((string) $country->name_en);
+        $ar = $this->normalizeCountryToken((string) $country->name_ar);
+
+        foreach ($aliasMap as $code => $aliases) {
+            $dbBelongs = ($dbCode === $code) || in_array($en, $aliases, true) || in_array($ar, $aliases, true);
+            if (!$dbBelongs) {
+                continue;
+            }
+            if ($isoCode !== '' && $isoCode === $code) {
+                return true;
+            }
+            if ($normalizedName !== '' && in_array($normalizedName, $aliases, true)) {
+                return true;
+            }
+        }
+
+        if ($normalizedName !== '') {
+            if (($en !== '' && $en === $normalizedName) || ($ar !== '' && $ar === $normalizedName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function resolveOrderOriginCountry(ScheduledTripOrder $order): array
+    {
+        $country = $order->pickupCountry
+            ?: ($order->pickupCity ? $order->pickupCity->country : null)
+            ?: ($order->scheduledTrip && $order->scheduledTrip->route ? $order->scheduledTrip->route->originCountry : null)
+            ?: ($order->scheduledTrip && $order->scheduledTrip->route && $order->scheduledTrip->route->originCity
+                ? $order->scheduledTrip->route->originCity->country
+                : null);
+
+        $countryId = $order->pickup_country_id
+            ?: ($order->pickupCity ? $order->pickupCity->country_id : null)
+            ?: ($order->scheduledTrip && $order->scheduledTrip->route ? $order->scheduledTrip->route->origin_country_id : null)
+            ?: ($order->scheduledTrip && $order->scheduledTrip->route && $order->scheduledTrip->route->originCity
+                ? $order->scheduledTrip->route->originCity->country_id
+                : null);
+
+        return [$countryId ? (int) $countryId : null, $country];
+    }
+
+    private function resolveTripOriginCountry(ScheduledTrip $trip): array
+    {
+        $route = $trip->route;
+        $country = $route
+            ? ($route->originCountry ?: ($route->originCity ? $route->originCity->country : null))
+            : null;
+        $countryId = $route
+            ? ($route->origin_country_id ?: ($route->originCity ? $route->originCity->country_id : null))
+            : null;
+
+        return [$countryId ? (int) $countryId : null, $country];
+    }
+
+    private function resolveShipmentOriginCountry(Shipment $shipment): array
+    {
+        $country = $shipment->pickupCountry
+            ?: ($shipment->pickupCity ? $shipment->pickupCity->country : null);
+        $countryId = $shipment->pickup_country_id
+            ?: ($shipment->pickupCity ? $shipment->pickupCity->country_id : null);
+
+        return [$countryId ? (int) $countryId : null, $country];
+    }
+
+    private function matchesOriginCountry(?int $originCountryId, ?Country $originCountry, array $countryFilter): bool
+    {
+        if (empty($countryFilter['has_filter'])) {
+            return true;
+        }
+
+        if (!empty($countryFilter['country_id'])) {
+            if ($originCountryId !== null && (int) $originCountryId === (int) $countryFilter['country_id']) {
+                return true;
+            }
+            if ($originCountry) {
+                $targetCode = strtoupper(trim((string) ($countryFilter['country_code'] ?? '')));
+                $targetName = $this->normalizeCountryToken((string) ($countryFilter['country_name'] ?? ''));
+                if ($this->countryAliasesMatch($originCountry, $targetName, $targetCode)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Driver is in a country that has no matching row in DB `countries` (e.g. Egypt while DB only lists GCC).
+        if ($originCountry) {
+            $rawName = $this->normalizeCountryToken((string) ($countryFilter['raw_name'] ?? $countryFilter['country_name'] ?? ''));
+            $isoCode = strtoupper(trim((string) ($countryFilter['country_code'] ?? '')));
+            return $this->countryAliasesMatch($originCountry, $rawName, $isoCode);
+        }
+
+        return false;
+    }
+
+    /**
      * Fetch matching pending invitations, new uninvited orders, and open scheduled trips for a driver.
      */
-    private function getDriverRequestBuckets(int $driverId): array
+    private function getDriverRequestBuckets(int $driverId, array $countryFilter = []): array
     {
         [$driverTruckTypeId, $driverTruckSubTypeId] = $this->resolveDriverTruckFilters($driverId);
 
@@ -570,7 +769,7 @@ class DriverHomeController extends Controller
         $invitations = ScheduledTripDriverInvitation::with([
             'scheduledTripOrder.customer.companyProfile',
             'scheduledTripOrder.pickupCountry',
-            'scheduledTripOrder.pickupCity',
+            'scheduledTripOrder.pickupCity.country',
             'scheduledTripOrder.dropoffCountry',
             'scheduledTripOrder.dropoffCity',
             'scheduledTripOrder.truckType',
@@ -578,7 +777,7 @@ class DriverHomeController extends Controller
             'scheduledTripOrder.shipmentType',
             'scheduledTripOrder.shipmentNature',
             'scheduledTrip.route.originCountry',
-            'scheduledTrip.route.originCity',
+            'scheduledTrip.route.originCity.country',
             'scheduledTrip.route.destinationCountry',
             'scheduledTrip.route.destinationCity',
             'scheduledTrip.truckType',
@@ -590,7 +789,28 @@ class DriverHomeController extends Controller
             ->where('status', 'pending')
             ->latest()
             ->get()
-            ->filter(fn($inv) => $inv->scheduledTrip || $inv->scheduledTripOrder)
+            ->filter(function ($inv) use ($countryFilter, $driverTruckTypeId) {
+                $ord = $inv->scheduledTripOrder;
+                $trip = $inv->scheduledTrip;
+                if (!$trip && !$ord) {
+                    return false;
+                }
+
+                $itemTruckTypeId = $ord
+                    ? ($ord->truck_type_id ?: ($trip ? $trip->truck_type_id : null))
+                    : ($trip ? $trip->truck_type_id : null);
+                if ($driverTruckTypeId && $itemTruckTypeId && (int) $itemTruckTypeId !== (int) $driverTruckTypeId) {
+                    return false;
+                }
+
+                if ($ord) {
+                    [$countryId, $country] = $this->resolveOrderOriginCountry($ord);
+                } else {
+                    [$countryId, $country] = $this->resolveTripOriginCountry($trip);
+                }
+
+                return $this->matchesOriginCountry($countryId, $country, $countryFilter);
+            })
             ->values();
 
         $seenOrderIds = $invitations->pluck('scheduled_trip_order_id')->filter()->values()->toArray();
@@ -628,7 +848,7 @@ class DriverHomeController extends Controller
                 'scheduledTrip.truckType',
                 'scheduledTrip.shipmentType',
                 'pickupCountry',
-                'pickupCity',
+                'pickupCity.country',
                 'dropoffCountry',
                 'dropoffCity',
                 'truckType',
@@ -663,9 +883,13 @@ class DriverHomeController extends Controller
                 $orderQuery->whereNotIn('id', $seenOrderIds);
             }
 
-            $matchingOrders = $orderQuery->latest()->get()->filter(function ($ord) use ($completedTripCutoffs, $driverId) {
+            $matchingOrders = $orderQuery->latest()->get()->filter(function ($ord) use ($completedTripCutoffs, $driverId, $countryFilter) {
                 $cutoff = $completedTripCutoffs->get($ord->scheduled_trip_id);
                 if ($cutoff && $ord->created_at && $ord->created_at->lte($cutoff)) {
+                    return false;
+                }
+                [$countryId, $country] = $this->resolveOrderOriginCountry($ord);
+                if (!$this->matchesOriginCountry($countryId, $country, $countryFilter)) {
                     return false;
                 }
                 $required = max(1, (int) ($ord->number_of_trucks ?: $ord->booked_capacity ?: 1));
@@ -687,7 +911,7 @@ class DriverHomeController extends Controller
         if ($driverTruckTypeId) {
             $matchingQuery = ScheduledTrip::with([
                 'route.originCountry',
-                'route.originCity',
+                'route.originCity.country',
                 'route.destinationCountry',
                 'route.destinationCity',
                 'truckType',
@@ -718,7 +942,11 @@ class DriverHomeController extends Controller
                 });
             }
 
-            $matchingTrips = $matchingQuery->latest()->get()->filter(function ($trip) {
+            $matchingTrips = $matchingQuery->latest()->get()->filter(function ($trip) use ($countryFilter) {
+                [$countryId, $country] = $this->resolveTripOriginCountry($trip);
+                if (!$this->matchesOriginCountry($countryId, $country, $countryFilter)) {
+                    return false;
+                }
                 $required = max(1, (int) ($trip->number_of_trucks ?: 1));
                 $accepted = $trip->driverInvitations
                     ->whereNull('scheduled_trip_order_id')
@@ -1928,7 +2156,9 @@ class DriverHomeController extends Controller
     public function tripRequests(Request $request)
     {
         $driverId = (int) $this->resolveDriverId($request);
-        $buckets = $this->getDriverRequestBuckets($driverId);
+        $countryFilter = $this->resolveDriverCountryFilter($request);
+        [$driverTruckTypeId] = $this->resolveDriverTruckFilters($driverId);
+        $buckets = $this->getDriverRequestBuckets($driverId, $countryFilter);
         $invitations = $buckets['invitations'];
         $matchingOrders = $buckets['matchingOrders'];
         $matchingTrips = $buckets['matchingTrips'];
@@ -1952,6 +2182,13 @@ class DriverHomeController extends Controller
             $destCity   = $order && $order->dropoffCity 
                 ? $order->dropoffCity->name_en 
                 : ($trip && $trip->route && $trip->route->destinationCity ? $trip->route->destinationCity->name_en : 'Dammam');
+
+            $originCountryName = $order && $order->pickupCountry
+                ? $order->pickupCountry->name_en
+                : ($trip && $trip->route && $trip->route->originCountry ? $trip->route->originCountry->name_en : 'Kuwait');
+            $destCountryName = $order && $order->dropoffCountry
+                ? $order->dropoffCountry->name_en
+                : ($trip && $trip->route && $trip->route->destinationCountry ? $trip->route->destinationCountry->name_en : 'Saudi Arabia');
 
             // Strictly separate driver per-truck payout ONLY! Never customer total_price.
             $pricing = $this->resolveDriverTripPricing($trip, $order, $inv);
@@ -1996,6 +2233,10 @@ class DriverHomeController extends Controller
                 'has_unread_dot'       => true,
                 'from_city'            => $originCity,
                 'to_city'              => $destCity,
+                'from_country'         => $originCountryName,
+                'to_country'           => $destCountryName,
+                'origin_country'       => $originCountryName,
+                'destination_country'  => $destCountryName,
                 'price_kwd'            => $price,
                 'loading_date'         => $dateStr,
                 'total_weight'         => $weight,
@@ -2028,6 +2269,11 @@ class DriverHomeController extends Controller
             $destCity = $ord->dropoffCity
                 ? ($ord->dropoffCity->name_en ?: $ord->dropoffCity->name_ar)
                 : ($trip && $trip->route && $trip->route->destinationCity ? $trip->route->destinationCity->name_en : 'Dammam');
+            [, $ordOriginCountry] = $this->resolveOrderOriginCountry($ord);
+            $originCountryName = $ordOriginCountry ? $ordOriginCountry->name_en : 'Kuwait';
+            $destCountryName = $ord->dropoffCountry
+                ? $ord->dropoffCountry->name_en
+                : ($trip && $trip->route && $trip->route->destinationCountry ? $trip->route->destinationCountry->name_en : 'Saudi Arabia');
             $pricing = $this->resolveDriverTripPricing($trip, $ord);
             $fleet = $this->getOrderFleetStats($ord, $trip);
             $price = (float) $pricing['driver_price'];
@@ -2062,6 +2308,10 @@ class DriverHomeController extends Controller
                 'has_unread_dot'       => true,
                 'from_city'            => $originCity,
                 'to_city'              => $destCity,
+                'from_country'         => $originCountryName,
+                'to_country'           => $destCountryName,
+                'origin_country'       => $originCountryName,
+                'destination_country'  => $destCountryName,
                 'price_kwd'            => $price,
                 'loading_date'         => $dateStr,
                 'total_weight'         => $weight,
@@ -2090,6 +2340,8 @@ class DriverHomeController extends Controller
 
             $originCity = $trip->route && $trip->route->originCity ? $trip->route->originCity->name_en : 'Kuwait City';
             $destCity   = $trip->route && $trip->route->destinationCity ? $trip->route->destinationCity->name_en : 'Dubai';
+            $originCountryName = $trip->route && $trip->route->originCountry ? $trip->route->originCountry->name_en : 'Kuwait';
+            $destCountryName   = $trip->route && $trip->route->destinationCountry ? $trip->route->destinationCountry->name_en : 'UAE';
             $pricing = $this->resolveDriverTripPricing($trip);
             $fleet = $this->getOrderFleetStats(null, $trip);
             $price      = (float) $pricing['driver_price'];
@@ -2116,6 +2368,10 @@ class DriverHomeController extends Controller
                 'has_unread_dot'       => true,
                 'from_city'            => $originCity,
                 'to_city'              => $destCity,
+                'from_country'         => $originCountryName,
+                'to_country'           => $destCountryName,
+                'origin_country'       => $originCountryName,
+                'destination_country'  => $destCountryName,
                 'price_kwd'            => $price,
                 'loading_date'         => $dateStr,
                 'total_weight'         => $weight,
@@ -2137,8 +2393,10 @@ class DriverHomeController extends Controller
 
         // 2. Also fetch shipment invitations directly sent to this driver with status 'pending'
         $shipmentInvs = ShipmentDriverInvitation::with([
-            'shipment.originCity',
-            'shipment.destinationCity',
+            'shipment.pickupCountry',
+            'shipment.pickupCity.country',
+            'shipment.dropoffCountry',
+            'shipment.dropoffCity',
             'shipment.truckType',
             'shipment.shipmentType',
         ])
@@ -2150,24 +2408,37 @@ class DriverHomeController extends Controller
         foreach ($shipmentInvs as $sInv) {
             $sh = $sInv->shipment;
             if (!$sh) continue;
+            if ($driverTruckTypeId && $sh->truck_type_id && (int) $sh->truck_type_id !== (int) $driverTruckTypeId) {
+                continue;
+            }
+            [$shCountryId, $shCountry] = $this->resolveShipmentOriginCountry($sh);
+            if (!$this->matchesOriginCountry($shCountryId, $shCountry, $countryFilter)) {
+                continue;
+            }
+            $shOriginCountryName = $shCountry ? $shCountry->name_en : 'Kuwait';
+            $shDestCountryName = $sh->dropoffCountry ? $sh->dropoffCountry->name_en : 'Saudi Arabia';
             $items[] = [
-                'id'             => 'shipment_inv_' . $sInv->id,
-                'trip_id'        => (string) $sh->id,
-                'status_tag'     => 'New',
-                'posted_ago'     => 'Posted ' . $sInv->created_at->diffForHumans(null, true) . ' ago',
-                'has_unread_dot' => true,
-                'from_city'      => $sh->originCity ? $sh->originCity->name_en : 'Kuwait City',
-                'to_city'        => $sh->destinationCity ? $sh->destinationCity->name_en : 'Dammam',
-                'price_kwd'      => floatval($sInv->offered_price > 0 ? $sInv->offered_price : $sh->total_cost),
-                'loading_date'   => $sh->pickup_date ? date('d M, H:i', strtotime($sh->pickup_date)) : 'Today',
-                'total_weight'   => $sh->weight_ton ? 'Up to ' . number_format($sh->weight_ton * 1000, 0) . ' Kg' : 'Up to 20,000 Kg',
-                'truck_type'     => $sh->truckType ? $sh->truckType->name_en : 'Flatbed',
-                'note'           => $sh->special_instructions ?: 'Quick loading',
-                'cargo_type'     => $sh->shipmentType ? $sh->shipmentType->name_en : 'General cargo',
-                'distance'       => '420 km',
-                'category'       => 'today',
-                'state'          => 'pending',
-                'token'          => $sInv->token,
+                'id'                   => 'shipment_inv_' . $sInv->id,
+                'trip_id'              => (string) $sh->id,
+                'status_tag'           => 'New',
+                'posted_ago'           => 'Posted ' . $sInv->created_at->diffForHumans(null, true) . ' ago',
+                'has_unread_dot'       => true,
+                'from_city'            => $sh->pickupCity ? $sh->pickupCity->name_en : 'Kuwait City',
+                'to_city'              => $sh->dropoffCity ? $sh->dropoffCity->name_en : 'Dammam',
+                'from_country'         => $shOriginCountryName,
+                'to_country'           => $shDestCountryName,
+                'origin_country'       => $shOriginCountryName,
+                'destination_country'  => $shDestCountryName,
+                'price_kwd'            => floatval($sInv->offered_price > 0 ? $sInv->offered_price : $sh->total_cost),
+                'loading_date'         => $sh->pickup_date ? date('d M, H:i', strtotime($sh->pickup_date)) : 'Today',
+                'total_weight'         => $sh->weight_ton ? 'Up to ' . number_format($sh->weight_ton * 1000, 0) . ' Kg' : 'Up to 20,000 Kg',
+                'truck_type'           => $sh->truckType ? $sh->truckType->name_en : 'Flatbed',
+                'note'                 => $sh->special_instructions ?: 'Quick loading',
+                'cargo_type'           => $sh->shipmentType ? $sh->shipmentType->name_en : 'General cargo',
+                'distance'             => '420 km',
+                'category'             => 'today',
+                'state'                => 'pending',
+                'token'                => $sInv->token,
             ];
         }
 
@@ -2339,7 +2610,7 @@ class DriverHomeController extends Controller
             $orderQuery = ScheduledTripOrder::with([
                 'customer.companyProfile',
                 'pickupCountry',
-                'pickupCity',
+                'pickupCity.country',
                 'dropoffCountry',
                 'dropoffCity',
                 'truckType',
@@ -3044,7 +3315,7 @@ class DriverHomeController extends Controller
                 'scheduledTrip.route.destinationCity',
                 'scheduledTrip.orders',
                 'pickupCountry',
-                'pickupCity',
+                'pickupCity.country',
                 'dropoffCountry',
                 'dropoffCity',
                 'driver',
