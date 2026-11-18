@@ -209,7 +209,6 @@ class ScheduledTripController extends Controller
             $trip->setAttribute('requested_trucks', $requestedTrucks);
             $trip->setAttribute('available_trucks', $avail);
             $trip->setAttribute('is_partial_truck_match', $requestedTrucks > 1 && $avail > 0 && $avail < $requestedTrucks);
-            $trip->makeHidden(['driver_price', 'driver_payment_type']);
             return $trip;
         });
 
@@ -302,8 +301,6 @@ class ScheduledTripController extends Controller
                 'message' => 'Scheduled trip not found'
             ], 404);
         }
-
-        $trip->makeHidden(['driver_price', 'driver_payment_type']);
 
         return response()->json([
             'status'  => true,

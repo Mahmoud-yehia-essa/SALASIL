@@ -263,10 +263,6 @@ class ScheduledTripOrderController extends Controller
      */
     private function attachFleetProgress(ScheduledTripOrder $order): ScheduledTripOrder
     {
-        if ($order->scheduledTrip) {
-            $order->scheduledTrip->makeHidden(['driver_price', 'driver_payment_type']);
-        }
-
         $required = max(1, (int) ($order->number_of_trucks ?: $order->booked_capacity ?: 1));
         $acceptedInvitations = ($order->relationLoaded('driverInvitations')
             ? $order->driverInvitations
@@ -372,6 +368,8 @@ class ScheduledTripOrderController extends Controller
             'documents'             => 'nullable|array',
             'initial_price'         => 'nullable|numeric|min:0',
             'total_price'           => 'nullable|numeric|min:0',
+            'driver_price'          => 'nullable|numeric|min:0',
+            'driver_payment_type'   => 'nullable|in:full_after,split_50_50',
             'notes'                 => 'nullable|string',
         ];
 
@@ -562,6 +560,23 @@ class ScheduledTripOrderController extends Controller
         $order->booked_capacity   = $bookedUnits;
         $order->initial_price     = $request->initial_price ?: $computedTotal;
         $order->total_price       = $request->total_price ?: ($request->initial_price ?: $computedTotal);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('scheduled_trip_orders', 'driver_price')) {
+            if ($request->filled('driver_price') && is_numeric($request->driver_price) && (float) $request->driver_price > 0) {
+                $order->driver_price = round((float) $request->driver_price, 2);
+            } elseif ($trip->driver_price !== null && (float) $trip->driver_price > 0) {
+                $order->driver_price = round((float) $trip->driver_price, 2);
+            } else {
+                $order->driver_price = null;
+            }
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('scheduled_trip_orders', 'driver_payment_type')) {
+            $reqPayType = $request->input('driver_payment_type');
+            $order->driver_payment_type = in_array($reqPayType, ['full_after', 'split_50_50'], true)
+                ? $reqPayType
+                : (in_array($trip->driver_payment_type, ['full_after', 'split_50_50'], true)
+                    ? $trip->driver_payment_type
+                    : 'full_after');
+        }
         $order->status            = 'new';
         $order->payment_method    = $request->payment_method ?: 'cash';
 
@@ -737,6 +752,8 @@ class ScheduledTripOrderController extends Controller
             'arrival_contact_name'  => 'nullable|string|max:255',
             'arrival_contact_phone' => 'nullable|string|max:255',
             'customs_clearance'     => 'nullable|boolean',
+            'driver_price'          => 'nullable|numeric|min:0',
+            'driver_payment_type'   => 'nullable|in:full_after,split_50_50',
             'documents'             => 'nullable|array',
             'notes'                 => 'nullable|string',
         ]);
@@ -793,6 +810,18 @@ class ScheduledTripOrderController extends Controller
 
         if ($request->has('customs_clearance')) {
             $order->customs_clearance = (bool) $request->customs_clearance;
+        }
+
+        if ($request->has('driver_price') && \Illuminate\Support\Facades\Schema::hasColumn('scheduled_trip_orders', 'driver_price')) {
+            $order->driver_price = ($request->filled('driver_price') && is_numeric($request->driver_price) && (float) $request->driver_price > 0)
+                ? round((float) $request->driver_price, 2)
+                : null;
+        }
+
+        if ($request->has('driver_payment_type') && \Illuminate\Support\Facades\Schema::hasColumn('scheduled_trip_orders', 'driver_payment_type')) {
+            if (in_array($request->driver_payment_type, ['full_after', 'split_50_50'], true)) {
+                $order->driver_payment_type = $request->driver_payment_type;
+            }
         }
 
         if ($request->has('documents')) {

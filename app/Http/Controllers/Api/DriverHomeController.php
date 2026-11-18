@@ -365,6 +365,8 @@ class DriverHomeController extends Controller
         $driverPrice = 0.0;
         if ($inv && floatval($inv->offered_price) > 0) {
             $driverPrice = floatval($inv->offered_price);
+        } elseif ($order && isset($order->driver_price) && $order->driver_price !== null && floatval($order->driver_price) > 0) {
+            $driverPrice = floatval($order->driver_price);
         } elseif ($trip && $trip->driver_price !== null && floatval($trip->driver_price) > 0) {
             $driverPrice = floatval($trip->driver_price);
         } elseif ($trip && floatval($trip->price) > 0) {
@@ -373,9 +375,13 @@ class DriverHomeController extends Controller
             $driverPrice = floatval($order->trip_price);
         }
 
-        $paymentType = ($trip && in_array($trip->driver_payment_type, ['full_after', 'split_50_50']))
-            ? $trip->driver_payment_type
-            : 'full_after';
+        if ($order && isset($order->driver_payment_type) && in_array($order->driver_payment_type, ['full_after', 'split_50_50'], true)) {
+            $paymentType = $order->driver_payment_type;
+        } elseif ($trip && in_array($trip->driver_payment_type, ['full_after', 'split_50_50'], true)) {
+            $paymentType = $trip->driver_payment_type;
+        } else {
+            $paymentType = 'full_after';
+        }
 
         $payoutLabel = $paymentType === 'split_50_50'
             ? '50% at trip start + 50% upon delivery'
