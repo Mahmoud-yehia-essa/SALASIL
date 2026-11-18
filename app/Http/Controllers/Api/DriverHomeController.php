@@ -130,6 +130,10 @@ class DriverHomeController extends Controller
             ->count();
 
         $completedTripsCount = count($completedTripsList) + $completedShipmentsCount;
+        $realKmDriven = 0;
+        foreach ($completedTripsList as $cTrip) {
+            $realKmDriven += (int) ($cTrip['distance_km'] ?? 0);
+        }
 
         // 5. Calculate "Earnings" (Earned strictly from completed trips and credited wallet balance)
         $walletEarnings = (float) WalletTransaction::where('user_id', $driverId)
@@ -276,7 +280,7 @@ class DriverHomeController extends Controller
                 'driver_phone'          => $driver ? ($driver->phone ? '+965 ' . $driver->phone : '+965 94959092') : '+965 94959092',
                 'rating'                => $ratingVal,
                 'trips_done'            => (int) $completedTripsCount,
-                'km_driven'             => (string) ($completedTripsCount > 0 ? ($completedTripsCount * 100) : 0),
+                'km_driven'             => (string) ($realKmDriven > 0 ? $realKmDriven : 0),
                 'registration_date'     => $registrationDateStr,
                 'with_salasil'          => $registrationDateStr,
                 'truck_type'            => $truckTypeName,
@@ -1221,6 +1225,33 @@ class DriverHomeController extends Controller
             } catch (\Throwable $ignoreNotif) {
             }
 
+            $shipDistInfo = $this->resolveTripDistance(null, null, $shipment);
+            $shipCustInfo = $this->resolveCustomerDisplayName(null, null, $shipment);
+            $shipTruck = $this->resolveDriverDesignatedTruck($driver, null, null);
+            $shipCode = $shipment ? ($shipment->tracking_number ?: ('SHP-' . $shipment->id)) : ('SHP-' . $sInv->id);
+            $shipSummary = [
+                'trip_code'            => $shipCode,
+                'order_number'         => $shipCode,
+                'from_city'            => $shipment && $shipment->pickupCity ? ($shipment->pickupCity->name_en ?: 'Origin') : 'Origin',
+                'to_city'              => $shipment && $shipment->deliveryCity ? ($shipment->deliveryCity->name_en ?: 'Destination') : 'Destination',
+                'distance'             => $shipDistInfo['distance'],
+                'distance_km'          => $shipDistInfo['km'],
+                'duration'             => $shipDistInfo['duration'],
+                'trip_fare'            => $amount,
+                'waiting_time_fare'    => 0.0,
+                'waiting_time_minutes' => 0,
+                'total_payout'         => $amount,
+                'credited_now'         => $amount,
+                'driver_payment_type'  => 'full_after',
+                'driver_payout_label'  => '100% after delivery',
+                'customer_name'        => $shipCustInfo['display_name'],
+                'receiver_name'        => $pod ? ($pod->receiver_name ?: '') : '',
+                'designated_truck'     => $shipTruck,
+                'delivery_time'        => date('H:i'),
+                'delivered_date'       => date('d M Y'),
+                'earnings'             => $driver ? (float) $driver->credit : 0,
+            ];
+
             return response()->json([
                 'status'  => true,
                 'message' => 'Delivery completed successfully and Proof of Delivery saved.',
@@ -1229,6 +1260,7 @@ class DriverHomeController extends Controller
                     'proof_of_delivery' => $pod,
                     'amount'            => $amount,
                     'earnings'          => $driver ? (float) $driver->credit : 0,
+                    'summary'           => $shipSummary,
                 ],
             ], 200);
         }
@@ -1361,6 +1393,48 @@ class DriverHomeController extends Controller
             'receiver_name' => $pod ? $pod->receiver_name : '',
         ]);
 
+        if ($order) {
+            $order->loadMissing(['pickupCity', 'dropoffCity', 'scheduledTrip.route.originCity', 'scheduledTrip.route.destinationCity', 'customer.companyProfile', 'truckType']);
+        }
+        if ($trip) {
+            $trip->loadMissing(['route.originCity', 'route.destinationCity', 'truckType', 'orders']);
+        }
+        $sumFrom = ($order && $order->pickupCity)
+            ? ($order->pickupCity->name_en ?: $order->pickupCity->name_ar)
+            : (($trip && $trip->route && $trip->route->originCity) ? $trip->route->originCity->name_en : 'Origin');
+        $sumTo = ($order && $order->dropoffCity)
+            ? ($order->dropoffCity->name_en ?: $order->dropoffCity->name_ar)
+            : (($trip && $trip->route && $trip->route->destinationCity) ? $trip->route->destinationCity->name_en : 'Destination');
+        $distInfo = $this->resolveTripDistance($order, $trip);
+        $custInfo = $this->resolveCustomerDisplayName($order, $trip);
+        $designatedTruck = $this->resolveDriverDesignatedTruck($driver, $order, $trip);
+        $tripCode = $trip ? ('TRP-' . $trip->id) : ($order ? ('TRP-' . $order->scheduled_trip_id) : 'TRP-1');
+        $orderNum = $order ? ($order->order_number ?: ('ORD-' . $order->id)) : $tripCode;
+        $deliveredAt = $pod && $pod->delivered_at ? $pod->delivered_at : now();
+
+        $summaryPayload = [
+            'trip_code'            => $tripCode,
+            'order_number'         => $orderNum,
+            'from_city'            => $sumFrom,
+            'to_city'              => $sumTo,
+            'distance'             => $distInfo['distance'],
+            'distance_km'          => $distInfo['km'],
+            'duration'             => $distInfo['duration'],
+            'trip_fare'            => $amount,
+            'waiting_time_fare'    => 0.0,
+            'waiting_time_minutes' => 0,
+            'total_payout'         => $amount,
+            'credited_now'         => (float) $creditedNow,
+            'driver_payment_type'  => $pricing['payment_type'],
+            'driver_payout_label'  => $pricing['payout_label'],
+            'customer_name'        => $custInfo['display_name'],
+            'receiver_name'        => $pod ? ($pod->receiver_name ?: '') : '',
+            'designated_truck'     => $designatedTruck,
+            'delivery_time'        => date('H:i', strtotime((string) $deliveredAt)),
+            'delivered_date'       => date('d M Y', strtotime((string) $deliveredAt)),
+            'earnings'             => $driver ? (float) $driver->credit : 0,
+        ];
+
         return response()->json([
             'status'  => true,
             'message' => 'Delivery completed successfully and Proof of Delivery saved.',
@@ -1371,6 +1445,7 @@ class DriverHomeController extends Controller
                 'amount'            => $amount,
                 'credited_now'      => $creditedNow,
                 'earnings'          => $driver ? (float) $driver->credit : 0,
+                'summary'           => $summaryPayload,
             ]
         ], 200);
     }
@@ -1479,7 +1554,8 @@ class DriverHomeController extends Controller
                 $loadingDate = date('d M', strtotime($order->loading_date)) . ($order->loading_time ? ', ' . substr($order->loading_time, 0, 5) : ', 14:00');
             }
 
-            $dist = ($trip->route && $trip->route->estimated_distance) ? number_format($trip->route->estimated_distance, 0) . ' km' : '472 km';
+            $distInfo = $this->resolveTripDistance($order, $trip);
+            $dist = $distInfo['distance'];
             $note = $order && $order->notes ? $order->notes : ($trip->notes ?: 'Driver assists');
 
             $list[] = [
@@ -1624,9 +1700,8 @@ class DriverHomeController extends Controller
 
             $tripCode = $trip ? "TRP-{$trip->id}" : 'TRP-14';
             $orderNumber = $order ? $order->order_number : ($tripCode);
-            $customerName = ($order && $order->customer)
-                ? (($order->customer->company_name) ?: "{$order->customer->fname} {$order->customer->lname}")
-                : 'essa co';
+            $custInfo = $this->resolveCustomerDisplayName($order, $trip);
+            $customerName = $custInfo['display_name'];
 
             $receiverName = ($order && $order->proofOfDelivery && $order->proofOfDelivery->receiver_name)
                 ? $order->proofOfDelivery->receiver_name
@@ -1636,12 +1711,8 @@ class DriverHomeController extends Controller
                 ? $order->proofOfDelivery->receiver_phone
                 : ($order ? ($order->arrival_contact_phone ?? '') : '');
 
-            $designatedTruck = 'Tanker (2021) · Plate: 1234';
-            if ($order && $order->truckType) {
-                $designatedTruck = ($order->truckType->name_en ?: 'Tanker') . ' (2021) · Plate: 1234';
-            } elseif ($trip && $trip->truckType) {
-                $designatedTruck = ($trip->truckType->name_en ?: 'Truck') . ' · Plate: 1234';
-            }
+            $designatedTruck = $this->resolveDriverDesignatedTruck($driver, $order, $trip);
+            $txDistInfo = $this->resolveTripDistance($order, $trip);
 
             $dateFormatted = $tx->created_at ? $tx->created_at->format('d M Y') : date('d M Y');
             $timeFormatted = $tx->created_at ? $tx->created_at->format('H:i') : date('H:i');
@@ -1669,7 +1740,7 @@ class DriverHomeController extends Controller
                 'receiver_name'           => $receiverName,
                 'receiver_phone'          => $receiverPhone,
                 'designated_truck'        => $designatedTruck,
-                'distance'                => '100 km',
+                'distance'                => $txDistInfo['distance'],
                 'payout_method'           => 'Driver Wallet (محفظة السائق)',
                 'bank_name'               => 'Salasil Driver Wallet',
                 'masked_iban'             => 'Wallet ID •••• ' . ($driver ? $driver->client_code : 'DR-95818'),
@@ -1979,7 +2050,8 @@ class DriverHomeController extends Controller
                 : ($trip && $trip->total_weight_ton ? number_format($trip->total_weight_ton * 1000, 0) . ' Kg' : '20,000 Kg');
             $truckType = ($order && $order->truckType) ? $order->truckType->name_en : ($trip && $trip->truckType ? $trip->truckType->name_en : 'Tanker');
             $cargoType = ($order && $order->shipmentType) ? $order->shipmentType->name_en : ($order && $order->shipment_name ? $order->shipment_name : 'General Cargo');
-            $dist = ($trip && $trip->route && $trip->route->estimated_distance) ? number_format($trip->route->estimated_distance, 0) . ' km' : '100 km';
+            $distInfo = $this->resolveTripDistance($order, $trip);
+            $dist = $distInfo['distance'];
 
             $list[] = [
                 'id'              => $order ? ('ORD-' . $order->id) : ('TRP-' . $trip->id),
@@ -2000,6 +2072,7 @@ class DriverHomeController extends Controller
                 'note'            => $pod ? ('Received by: ' . $receiverName) : 'Completed delivery',
                 'cargo_type'      => $cargoType,
                 'distance'        => $dist,
+                'distance_km'     => $distInfo['km'],
                 'category'        => 'completed',
                 'state'           => 'completed',
                 'receiver_name'   => $pod ? $receiverName : null,
@@ -2055,7 +2128,8 @@ class DriverHomeController extends Controller
             $weight = $order->weight ? number_format(floatval($order->weight), 0) . ' Kg' : ($trip && $trip->total_weight_ton ? number_format($trip->total_weight_ton * 1000, 0) . ' Kg' : '100,000 Kg');
             $truckType = ($order->truckType) ? $order->truckType->name_en : ($trip && $trip->truckType ? $trip->truckType->name_en : 'Tanker');
             $cargoType = ($order->shipmentType) ? $order->shipmentType->name_en : ($order->shipment_name ?: 'General Cargo');
-            $dist = ($trip && $trip->route && $trip->route->estimated_distance) ? number_format($trip->route->estimated_distance, 0) . ' km' : '100 km';
+            $distInfo = $this->resolveTripDistance($order, $trip);
+            $dist = $distInfo['distance'];
 
             $list[] = [
                 'id'              => 'TRP-' . ($trip ? $trip->id : $order->id),
@@ -2076,6 +2150,7 @@ class DriverHomeController extends Controller
                 'note'            => 'Received by: ' . $receiverName,
                 'cargo_type'      => $cargoType,
                 'distance'        => $dist,
+                'distance_km'     => $distInfo['km'],
                 'category'        => 'completed',
                 'state'           => 'completed',
                 'receiver_name'   => $receiverName,
@@ -2826,13 +2901,9 @@ class DriverHomeController extends Controller
         $fleet = $this->getOrderFleetStats($order, $trip);
         $price = (float) $pricing['driver_price'];
 
-        $distance   = $trip && $trip->route && $trip->route->estimated_distance 
-            ? number_format($trip->route->estimated_distance, 0) . ' km' 
-            : '472 km';
-
-        $rawDist    = (float) ($trip && $trip->route ? ($trip->route->estimated_distance ?? 420) : 420);
-        $durationHours = max(1, round($rawDist / 75));
-        $duration   = '~' . $durationHours . ' h 20 m';
+        $distInfo = $this->resolveTripDistance($order, $trip);
+        $distance = $distInfo['distance'];
+        $duration = $distInfo['duration'];
 
         // Coordinate, address & contact details shared between tripDetails and tripStatus
         $loc = $this->resolveTripLocationDetails($order, $trip, $originCity, $originCountry, $destCity, $destCountry);
@@ -3357,6 +3428,201 @@ class DriverHomeController extends Controller
             }
         } catch (\Throwable $ignoreNotif) {
         }
+    }
+
+    /**
+     * Compute accurate trip distance (km) and estimated travel duration from GPS coordinates
+     * (Haversine) or route estimated_distance, avoiding hardcoded placeholder distances.
+     */
+    private function resolveTripDistance(?ScheduledTripOrder $order, ?ScheduledTrip $trip, ?Shipment $shipment = null): array
+    {
+        $pickupLat = null;
+        $pickupLng = null;
+        $dropoffLat = null;
+        $dropoffLng = null;
+
+        if ($order) {
+            if (is_numeric($order->pickup_lat) && (float) $order->pickup_lat != 0.0 && is_numeric($order->pickup_lng) && (float) $order->pickup_lng != 0.0) {
+                $pickupLat = (float) $order->pickup_lat;
+                $pickupLng = (float) $order->pickup_lng;
+            }
+            if (is_numeric($order->dropoff_lat) && (float) $order->dropoff_lat != 0.0 && is_numeric($order->dropoff_lng) && (float) $order->dropoff_lng != 0.0) {
+                $dropoffLat = (float) $order->dropoff_lat;
+                $dropoffLng = (float) $order->dropoff_lng;
+            }
+        }
+
+        if ($trip && (($pickupLat === null || $dropoffLat === null))) {
+            $trip->loadMissing('orders', 'route');
+            if ($trip->orders) {
+                foreach ($trip->orders as $sib) {
+                    if ($pickupLat === null && is_numeric($sib->pickup_lat) && (float) $sib->pickup_lat != 0.0 && is_numeric($sib->pickup_lng) && (float) $sib->pickup_lng != 0.0) {
+                        $pickupLat = (float) $sib->pickup_lat;
+                        $pickupLng = (float) $sib->pickup_lng;
+                    }
+                    if ($dropoffLat === null && is_numeric($sib->dropoff_lat) && (float) $sib->dropoff_lat != 0.0 && is_numeric($sib->dropoff_lng) && (float) $sib->dropoff_lng != 0.0) {
+                        $dropoffLat = (float) $sib->dropoff_lat;
+                        $dropoffLng = (float) $sib->dropoff_lng;
+                    }
+                }
+            }
+            if ($trip->route) {
+                if ($pickupLat === null && is_numeric($trip->route->origin_lat) && (float) $trip->route->origin_lat != 0.0 && is_numeric($trip->route->origin_lng) && (float) $trip->route->origin_lng != 0.0) {
+                    $pickupLat = (float) $trip->route->origin_lat;
+                    $pickupLng = (float) $trip->route->origin_lng;
+                }
+                if ($dropoffLat === null && is_numeric($trip->route->destination_lat) && (float) $trip->route->destination_lat != 0.0 && is_numeric($trip->route->destination_lng) && (float) $trip->route->destination_lng != 0.0) {
+                    $dropoffLat = (float) $trip->route->destination_lat;
+                    $dropoffLng = (float) $trip->route->destination_lng;
+                }
+            }
+        }
+
+        if ($shipment) {
+            if ($pickupLat === null && is_numeric($shipment->pickup_lat) && (float) $shipment->pickup_lat != 0.0 && is_numeric($shipment->pickup_lng) && (float) $shipment->pickup_lng != 0.0) {
+                $pickupLat = (float) $shipment->pickup_lat;
+                $pickupLng = (float) $shipment->pickup_lng;
+            }
+            if ($dropoffLat === null && is_numeric($shipment->delivery_lat) && (float) $shipment->delivery_lat != 0.0 && is_numeric($shipment->delivery_lng) && (float) $shipment->delivery_lng != 0.0) {
+                $dropoffLat = (float) $shipment->delivery_lat;
+                $dropoffLng = (float) $shipment->delivery_lng;
+            }
+        }
+
+        $haversineKm = 0.0;
+        if ($pickupLat !== null && $pickupLng !== null && $dropoffLat !== null && $dropoffLng !== null) {
+            if (abs($pickupLat - $dropoffLat) > 0.0001 || abs($pickupLng - $dropoffLng) > 0.0001) {
+                $earthRadiusKm = 6371.0;
+                $dLat = deg2rad($dropoffLat - $pickupLat);
+                $dLng = deg2rad($dropoffLng - $pickupLng);
+                $a = sin($dLat / 2) * sin($dLat / 2)
+                    + cos(deg2rad($pickupLat)) * cos(deg2rad($dropoffLat))
+                    * sin($dLng / 2) * sin($dLng / 2);
+                $c = 2 * atan2(sqrt($a), sqrt(max(0.0, 1 - $a)));
+                $haversineKm = $earthRadiusKm * $c;
+            }
+        }
+
+        $routeEstKm = ($trip && $trip->route && is_numeric($trip->route->estimated_distance))
+            ? (float) $trip->route->estimated_distance
+            : 0.0;
+
+        // Prefer real GPS coordinate distance when coordinates are pinned on order or route default placeholder (100 km) differs materially
+        $km = 0.0;
+        if ($haversineKm >= 1.0 && (
+            ($order && is_numeric($order->pickup_lat) && is_numeric($order->dropoff_lat))
+            || $routeEstKm <= 0
+            || (abs($routeEstKm - 100.0) < 0.01 && abs($haversineKm - 100.0) > 15.0)
+        )) {
+            $km = $haversineKm;
+        } elseif ($routeEstKm > 0) {
+            $km = $routeEstKm;
+        } elseif ($haversineKm > 0) {
+            $km = $haversineKm;
+        }
+
+        $roundedKm = $km > 0 ? max(1, (int) round($km)) : 0;
+        if ($roundedKm > 0) {
+            $totalHours = $roundedKm / 75.0;
+            $hours = (int) floor($totalHours);
+            $mins = (int) round(($totalHours - $hours) * 60);
+            if ($mins >= 60) {
+                $hours += 1;
+                $mins = 0;
+            }
+            $duration = $hours > 0
+                ? ('~' . $hours . ' h' . ($mins > 0 ? " {$mins} m" : ''))
+                : ('~' . max(5, $mins) . ' m');
+        } else {
+            $duration = '--';
+        }
+
+        return [
+            'km'       => $roundedKm,
+            'distance' => $roundedKm > 0 ? number_format($roundedKm, 0) . ' km' : '--',
+            'duration' => $duration,
+        ];
+    }
+
+    /**
+     * Resolve customer company or full name cleanly without mock fallbacks.
+     */
+    private function resolveCustomerDisplayName(?ScheduledTripOrder $order, ?ScheduledTrip $trip, ?Shipment $shipment = null): array
+    {
+        $custUser = null;
+        if ($order && $order->customer_id) {
+            $order->loadMissing('customer.companyProfile');
+            $custUser = $order->customer;
+        } elseif ($shipment && $shipment->user_id) {
+            $shipment->loadMissing('user.companyProfile');
+            $custUser = $shipment->user;
+        } elseif ($trip) {
+            $trip->loadMissing('orders.customer.companyProfile');
+            $firstOrder = $trip->orders->first();
+            $custUser = $firstOrder ? $firstOrder->customer : null;
+        }
+
+        $company = ($custUser && $custUser->companyProfile && !empty($custUser->companyProfile->company_name))
+            ? trim((string) $custUser->companyProfile->company_name)
+            : ($custUser && !empty($custUser->company_name) ? trim((string) $custUser->company_name) : '');
+        $name = $custUser ? trim(($custUser->fname ?? '') . ' ' . ($custUser->lname ?? '')) : '';
+
+        return [
+            'customer_name'    => $name,
+            'customer_company' => $company,
+            'display_name'     => $company !== '' ? $company : ($name !== '' ? $name : 'Customer'),
+        ];
+    }
+
+    /**
+     * Resolve the driver's real designated truck description and plate number.
+     */
+    private function resolveDriverDesignatedTruck(?User $driver, ?ScheduledTripOrder $order, ?ScheduledTrip $trip): string
+    {
+        $truckType = ($order && $order->truckType)
+            ? ($order->truckType->name_en ?: $order->truckType->name_ar)
+            : (($trip && $trip->truckType) ? ($trip->truckType->name_en ?: $trip->truckType->name_ar) : '');
+
+        if ($driver) {
+            $defaultTruck = DriverTruck::with(['truckType', 'truckBrand', 'truckModel'])
+                ->where('driver_id', $driver->id)
+                ->where('is_default', 1)
+                ->first()
+                ?: DriverTruck::with(['truckType', 'truckBrand', 'truckModel'])
+                    ->where('driver_id', $driver->id)
+                    ->latest()
+                    ->first();
+            $profile = $driver->driverProfile ?: DriverProfile::where('user_id', $driver->id)->first();
+
+            if ($defaultTruck) {
+                $tName = $defaultTruck->truckType ? ($defaultTruck->truckType->name_en ?: $truckType) : $truckType;
+                $tBrand = $defaultTruck->truckBrand ? $defaultTruck->truckBrand->name_en : '';
+                $tModel = $defaultTruck->truckModel ? $defaultTruck->truckModel->name_en : '';
+                $plate = trim((string) ($defaultTruck->plate_number ?? ''));
+                $modelYear = trim((string) ($defaultTruck->manufacturing_year ?? ''));
+                $fullType = trim("{$tName} " . trim("{$tBrand} {$tModel}"));
+                $label = trim($fullType . ($modelYear !== '' ? " ({$modelYear})" : ''));
+                if ($plate !== '') {
+                    $label .= " · Plate: {$plate}";
+                }
+                if ($label !== '') {
+                    return $label;
+                }
+            }
+            if ($profile) {
+                $profile->loadMissing('truckType');
+                $tName = $profile->truckType ? ($profile->truckType->name_en ?: $truckType) : $truckType;
+                $plate = trim((string) ($profile->plate_number ?? ''));
+                $modelYear = trim((string) ($profile->model_year ?? ''));
+                $label = trim(($tName ?: 'Commercial Truck') . ($modelYear !== '' ? " ({$modelYear})" : ''));
+                if ($plate !== '') {
+                    $label .= " · Plate: {$plate}";
+                }
+                return $label;
+            }
+        }
+
+        return $truckType !== '' ? $truckType : 'Assigned Truck';
     }
 
     /**
@@ -3944,11 +4210,12 @@ class DriverHomeController extends Controller
         $pickupCountryName = $order && $order->pickupCountry ? $order->pickupCountry->name_en : ($trip && $trip->route && $trip->route->originCountry ? $trip->route->originCountry->name_en : 'Kuwait');
         $dropoffCountryName = $order && $order->dropoffCountry ? $order->dropoffCountry->name_en : ($trip && $trip->route && $trip->route->destinationCountry ? $trip->route->destinationCountry->name_en : 'UAE');
         $loc = $this->resolveTripLocationDetails($order, $trip, $originName, $pickupCountryName, $destName, $dropoffCountryName);
-        $rawDist = (float) ($trip && $trip->route ? ($trip->route->estimated_distance ?? 420) : 420);
-        $distance = $trip && $trip->route && $trip->route->estimated_distance
-            ? number_format($trip->route->estimated_distance, 0) . ' km'
-            : '472 km';
-        $duration = '~' . max(1, round($rawDist / 75)) . ' h 20 m';
+        $distInfo = $this->resolveTripDistance($order, $trip);
+        $distance = $distInfo['distance'];
+        $duration = $distInfo['duration'];
+        $custInfo = $this->resolveCustomerDisplayName($order, $trip);
+        $statusDriver = $driverId > 0 ? User::find($driverId) : null;
+        $designatedTruck = $this->resolveDriverDesignatedTruck($statusDriver, $order, $trip);
 
         // Fleet readiness gate: prevent movement actions until all required trucks are accepted
         $fleetGateMessage = null;
@@ -3979,7 +4246,12 @@ class DriverHomeController extends Controller
                 'origin_country'         => $pickupCountryName,
                 'destination_country'    => $dropoffCountryName,
                 'distance'               => $distance,
+                'distance_km'            => $distInfo['km'],
                 'duration'               => $duration,
+                'trip_value_kwd'         => (float) $pricing['driver_price'],
+                'customer_name'          => $custInfo['display_name'],
+                'customer_company'       => $custInfo['customer_company'],
+                'designated_truck'       => $designatedTruck,
                 'fleet_required'         => $fleet['required'],
                 'fleet_accepted'         => $fleet['accepted'],
                 'fleet_remaining'        => $fleet['remaining'],
