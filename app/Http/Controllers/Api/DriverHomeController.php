@@ -1196,6 +1196,31 @@ class DriverHomeController extends Controller
                 }
             }
 
+            try {
+                if ($shipment && $shipment->user_id && ($custUser = User::find($shipment->user_id))) {
+                    $driverName = $driver ? trim(($driver->fname ?? '') . ' ' . ($driver->lname ?? '')) : '';
+                    if ($driverName === '') {
+                        $driverName = 'Your driver';
+                    }
+                    $refCode = $shipment->tracking_number ?: ('SHP-' . $shipment->id);
+                    $custUser->notify(new \App\Notifications\CustomerActivityNotification([
+                        'title'        => "Delivery Completed & Signed · #{$refCode}",
+                        'body'         => "{$driverName} completed delivery for shipment #{$refCode}. Proof of Delivery has been recorded.",
+                        'type'         => 'order',
+                        'reference_id' => $refCode,
+                        'action_route' => '/order_tracking_screen',
+                        'metadata'     => [
+                            'shipment_id'     => $shipment->id,
+                            'tracking_number' => $refCode,
+                            'stage'           => 'delivered',
+                            'driver_id'       => $driverId,
+                            'driver_name'     => $driverName,
+                        ],
+                    ]));
+                }
+            } catch (\Throwable $ignoreNotif) {
+            }
+
             return response()->json([
                 'status'  => true,
                 'message' => 'Delivery completed successfully and Proof of Delivery saved.',
@@ -1330,6 +1355,11 @@ class DriverHomeController extends Controller
         $creditedNow = $this->creditDriverInvitationPayout($driverId, $inv, $trip, $order, 'final');
         $amount = (float) $pricing['driver_price'];
         $driver = User::find($driverId);
+
+        $this->notifyCustomerTripStage($order, $trip, 'delivered', $driverId, [
+            'driver'        => $driver,
+            'receiver_name' => $pod ? $pod->receiver_name : '',
+        ]);
 
         return response()->json([
             'status'  => true,
@@ -3161,29 +3191,11 @@ class DriverHomeController extends Controller
             ], 422);
         }
 
-        if ($action === 'accept' && $targetOrder && $targetOrder->customer_id && $fleetStats) {
-            try {
-                if ($custUser = User::find($targetOrder->customer_id)) {
-                    $driverUser = $user ?: User::find($driverId);
-                    $driverName = $driverUser ? trim(($driverUser->fname ?? '') . ' ' . ($driverUser->lname ?? '')) : 'A driver';
-                    $rem = (int) ($fleetStats['remaining'] ?? 0);
-                    $custUser->notify(new \App\Notifications\CustomerActivityNotification([
-                        'title'        => 'Driver Accepted Your Order #' . $targetOrder->order_number,
-                        'body'         => "{$driverName} accepted truck {$fleetStats['accepted']} of {$fleetStats['required']}. Remaining: {$rem} truck(s).",
-                        'type'         => 'order',
-                        'reference_id' => $targetOrder->order_number,
-                        'action_route' => '/orders_screen',
-                        'metadata'     => [
-                            'order_id'       => $targetOrder->id,
-                            'order_number'   => $targetOrder->order_number,
-                            'fleet_accepted' => $fleetStats['accepted'],
-                            'fleet_required' => $fleetStats['required'],
-                            'fleet_remaining'=> $rem,
-                        ],
-                    ]));
-                }
-            } catch (\Throwable $ignoreNotif) {
-            }
+        if ($action === 'accept' && ($targetOrder || $targetTrip)) {
+            $this->notifyCustomerTripStage($targetOrder, $targetTrip, 'accepted', $driverId, [
+                'driver' => $user,
+                'fleet'  => $fleetStats,
+            ]);
         }
 
         return response()->json([
@@ -3193,6 +3205,158 @@ class DriverHomeController extends Controller
                 'fleet' => $fleetStats,
             ],
         ], 200);
+    }
+
+    /**
+     * Send a professional in-app bell notification to the customer who owns the trip/order
+     * whenever the driver accepts the trip or advances to a new trip stage.
+     */
+    private function notifyCustomerTripStage(
+        ?ScheduledTripOrder $order,
+        ?ScheduledTrip $trip,
+        string $stageKey,
+        int $driverId,
+        array $extra = []
+    ): void {
+        try {
+            $driverUser = $extra['driver'] ?? User::find($driverId);
+            $driverName = $driverUser
+                ? trim(($driverUser->fname ?? '') . ' ' . ($driverUser->lname ?? ''))
+                : '';
+            if ($driverName === '') {
+                $driverName = 'Your driver';
+            }
+
+            $ordersToNotify = [];
+            if ($order) {
+                $order->loadMissing([
+                    'scheduledTrip.route.originCity',
+                    'scheduledTrip.route.destinationCity',
+                    'pickupCity',
+                    'dropoffCity',
+                ]);
+                $ordersToNotify[] = $order;
+            } elseif ($trip) {
+                $trip->loadMissing([
+                    'route.originCity',
+                    'route.destinationCity',
+                    'orders.pickupCity',
+                    'orders.dropoffCity',
+                ]);
+                foreach ($trip->orders as $o) {
+                    if ($o->customer_id) {
+                        $ordersToNotify[] = $o;
+                    }
+                }
+            }
+
+            foreach ($ordersToNotify as $targetOrder) {
+                if (!$targetOrder->customer_id) {
+                    continue;
+                }
+                $custUser = User::find($targetOrder->customer_id);
+                if (!$custUser) {
+                    continue;
+                }
+
+                $targetTrip = $trip ?: $targetOrder->scheduledTrip;
+                $fleet = $extra['fleet'] ?? $this->getOrderFleetStats($targetOrder, $targetTrip);
+
+                $originCity = $targetTrip && $targetTrip->route && $targetTrip->route->originCity
+                    ? ($targetTrip->route->originCity->name_en ?: $targetTrip->route->originCity->name_ar)
+                    : ($targetOrder->pickupCity ? ($targetOrder->pickupCity->name_en ?: $targetOrder->pickupCity->name_ar) : 'Pick-Up');
+                $destCity = $targetTrip && $targetTrip->route && $targetTrip->route->destinationCity
+                    ? ($targetTrip->route->destinationCity->name_en ?: $targetTrip->route->destinationCity->name_ar)
+                    : ($targetOrder->dropoffCity ? ($targetOrder->dropoffCity->name_en ?: $targetOrder->dropoffCity->name_ar) : 'Drop-Off');
+                $routeText = "{$originCity} → {$destCity}";
+
+                $orderNumber = $targetOrder->order_number ?: ('ORD-' . $targetOrder->id);
+                $tripCode = $targetTrip ? ('TRP-' . $targetTrip->id) : ('TRP-' . $targetOrder->id);
+
+                $required = (int) ($fleet['required'] ?? 1);
+                $accepted = (int) ($fleet['accepted'] ?? 1);
+                $remaining = (int) ($fleet['remaining'] ?? 0);
+                $truckTag = $required > 1 ? " (Fleet {$accepted}/{$required})" : '';
+
+                $pickupAddress = trim((string) ($targetOrder->pickup_address ?? ''));
+                $pickupHint = ($pickupAddress !== '' && $pickupAddress !== $originCity)
+                    ? " ({$pickupAddress})"
+                    : '';
+                $dropoffAddress = trim((string) ($targetOrder->dropoff_address ?? ''));
+                $dropoffHint = ($dropoffAddress !== '' && $dropoffAddress !== $destCity)
+                    ? " ({$dropoffAddress})"
+                    : '';
+                $receiverName = trim((string) ($extra['receiver_name'] ?? ''));
+
+                switch ($stageKey) {
+                    case 'accepted':
+                        if ($required > 1 && $remaining > 0) {
+                            $title = "Truck {$accepted} of {$required} Assigned · #{$orderNumber}";
+                            $body = "{$driverName} accepted truck {$accepted} of {$required} for {$routeText}. Waiting for {$remaining} remaining truck(s) to confirm.";
+                        } elseif ($required > 1) {
+                            $title = "Full Fleet Confirmed ({$accepted}/{$required}) · #{$orderNumber}";
+                            $body = "{$driverName} confirmed the final truck for {$routeText}. All {$required} trucks are assigned and ready for departure.";
+                        } else {
+                            $title = "Trip Accepted by Driver · #{$orderNumber}";
+                            $body = "{$driverName} accepted your shipment on {$routeText} and is heading to pick-up ({$originCity}).";
+                        }
+                        break;
+
+                    case 'arrived_pickup':
+                        $title = "Driver Arrived at Pick-Up · #{$orderNumber}";
+                        $body = "{$driverName}{$truckTag} arrived at the pick-up location{$pickupHint} on {$routeText} to begin loading.";
+                        break;
+
+                    case 'loaded':
+                        $title = "Loading Confirmed · #{$orderNumber}";
+                        $body = "{$driverName}{$truckTag} confirmed cargo loading on {$routeText}. Your shipment is secured and ready to depart.";
+                        break;
+
+                    case 'in_transit':
+                        $title = "Shipment In Transit · #{$orderNumber}";
+                        $body = "{$driverName}{$truckTag} is now on the road to {$destCity} ({$routeText}). Tap to track live progress.";
+                        break;
+
+                    case 'arrived_dropoff':
+                        $title = "Driver Arrived at Drop-Off · #{$orderNumber}";
+                        $body = "{$driverName}{$truckTag} reached the drop-off destination{$dropoffHint} on {$routeText} for delivery handover.";
+                        break;
+
+                    case 'delivered':
+                        $receiverNote = $receiverName !== '' ? " Signed by {$receiverName}." : '';
+                        $title = "Delivery Completed & Signed · #{$orderNumber}";
+                        $body = "{$driverName}{$truckTag} successfully completed delivery on {$routeText}.{$receiverNote} Tap to view trip summary.";
+                        break;
+
+                    default:
+                        $label = ucfirst(str_replace('_', ' ', $stageKey));
+                        $title = "Trip Update: {$label} · #{$orderNumber}";
+                        $body = "{$driverName} updated your shipment ({$routeText}) to {$label}.";
+                        break;
+                }
+
+                $custUser->notify(new \App\Notifications\CustomerActivityNotification([
+                    'title'        => $title,
+                    'body'         => $body,
+                    'type'         => 'order',
+                    'reference_id' => $orderNumber,
+                    'action_route' => '/order_tracking_screen',
+                    'metadata'     => [
+                        'order_id'        => $targetOrder->id,
+                        'order_number'    => $orderNumber,
+                        'trip_code'       => $tripCode,
+                        'stage'           => $stageKey,
+                        'driver_id'       => $driverId,
+                        'driver_name'     => $driverName,
+                        'route_text'      => $routeText,
+                        'fleet_accepted'  => $accepted,
+                        'fleet_required'  => $required,
+                        'fleet_remaining' => $remaining,
+                    ],
+                ]));
+            }
+        } catch (\Throwable $ignoreNotif) {
+        }
     }
 
     /**
@@ -3938,6 +4102,12 @@ class DriverHomeController extends Controller
                 $trip->status = 'completed';
                 $trip->save();
             }
+        }
+
+        if ($newStatus) {
+            $this->notifyCustomerTripStage($order, $trip, $newStatus, $driverId, [
+                'fleet' => $fleet,
+            ]);
         }
 
         return $this->tripStatus($request, $id);
