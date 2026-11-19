@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Country;
 use App\Models\DriverTruck;
 use App\Models\User;
 use App\Models\TruckType;
 use App\Models\TruckSubType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class DriverTruckController extends Controller
 {
@@ -16,12 +18,17 @@ class DriverTruckController extends Controller
      */
     public function AllDriverTrucks()
     {
-        $driverTrucks = DriverTruck::with(['driver', 'truckType', 'truckSubType'])->latest()->get();
+        $relations = ['driver', 'truckType', 'truckSubType'];
+        if (Schema::hasColumn('driver_trucks', 'plate_country_id')) {
+            $relations[] = 'plateCountry';
+        }
+        $driverTrucks = DriverTruck::with($relations)->latest()->get();
         $drivers = User::where('role', 'driver')->orderBy('fname', 'asc')->get();
         $truckTypes = TruckType::orderBy('name_en', 'asc')->get();
         $truckSubTypes = TruckSubType::where('is_active', 1)->orderBy('name_en', 'asc')->get();
+        $countries = Country::where('is_active', 1)->orderBy('name_en', 'asc')->get();
 
-        return view('admin.backend.driver_truck.all_driver_trucks', compact('driverTrucks', 'drivers', 'truckTypes', 'truckSubTypes'));
+        return view('admin.backend.driver_truck.all_driver_trucks', compact('driverTrucks', 'drivers', 'truckTypes', 'truckSubTypes', 'countries'));
     }
 
     /**
@@ -29,7 +36,11 @@ class DriverTruckController extends Controller
      */
     public function FilterDriverTrucksAjax(Request $request)
     {
-        $query = DriverTruck::with(['driver', 'truckType', 'truckSubType']);
+        $relations = ['driver', 'truckType', 'truckSubType'];
+        if (Schema::hasColumn('driver_trucks', 'plate_country_id')) {
+            $relations[] = 'plateCountry';
+        }
+        $query = DriverTruck::with($relations);
 
         if ($request->filled('driver_id')) {
             $query->where('driver_id', $request->driver_id);
@@ -44,6 +55,28 @@ class DriverTruckController extends Controller
                 $query->whereNull('truck_sub_type_id');
             } else {
                 $query->where('truck_sub_type_id', $request->truck_sub_type_id);
+            }
+        }
+
+        if ($request->filled('plate_country_id')) {
+            $country = Country::find((int) $request->plate_country_id);
+            if ($country) {
+                $code = strtoupper(trim((string) $country->code));
+                $hasCol = Schema::hasColumn('driver_trucks', 'plate_country_id');
+                $hasCodeCol = Schema::hasColumn('driver_trucks', 'plate_country_code');
+                $query->where(function ($q) use ($country, $code, $hasCol, $hasCodeCol) {
+                    if ($hasCol) {
+                        $q->orWhere('plate_country_id', $country->id);
+                    }
+                    if ($hasCodeCol && $code !== '') {
+                        $q->orWhereRaw('UPPER(plate_country_code) = ?', [$code]);
+                    }
+                    if ($code !== '') {
+                        $q->orWhere('plate_number', 'like', $code . ' -%')
+                          ->orWhere('plate_number', 'like', $code . ' ·%')
+                          ->orWhere('plate_number', 'like', $code . ' %');
+                    }
+                });
             }
         }
 

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\User; // تضمين صريح
 use App\Models\TruckType;
 use App\Models\TruckSubType;
+use App\Models\Country;
 
 
 
@@ -45,5 +46,10 @@ class DriverTruck extends Model
     public function truckModel()
     {
         return $this->belongsTo(TruckModel::class, 'truck_model_id');
+    }
+
+    public function plateCountry()
+    {
+        return $this->belongsTo(Country::class, 'plate_country_id');
     }
 }

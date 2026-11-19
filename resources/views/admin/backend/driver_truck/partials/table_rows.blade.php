@@ -50,12 +50,26 @@
         @endif
     </td>
 
-    <!-- Plate Number -->
+    <!-- Plate Number & Country -->
     <td>
         @if($item->plate_number)
-            <span class="badge bg-dark text-warning border border-warning border-opacity-50 px-3 py-1.5 rounded-3 fw-mono fs-7" style="font-family: monospace; letter-spacing: 1px;">
-                <i class="bx bx-id-card me-1"></i> {{ $item->plate_number }}
-            </span>
+            @php
+                $pCountry = $item->relationLoaded('plateCountry') ? $item->plateCountry : null;
+                $pCode = $pCountry && $pCountry->code ? strtoupper($pCountry->code) : ($item->plate_country_code ?? null);
+                if (!$pCode && preg_match('/^([A-Z]{2,3})\s*[-·:|]\s*/', $item->plate_number, $m)) {
+                    $pCode = strtoupper($m[1]);
+                }
+            @endphp
+            <div class="d-flex flex-column align-items-start gap-1">
+                <span class="badge bg-dark text-warning border border-warning border-opacity-50 px-3 py-1.5 rounded-3 fw-mono fs-7" style="font-family: monospace; letter-spacing: 1px;">
+                    <i class="bx bx-id-card me-1"></i> {{ $item->plate_number }}
+                </span>
+                @if($pCountry || $pCode)
+                    <small class="text-info fw-semibold" style="font-size: 0.72rem;">
+                        <i class="bx bx-globe me-1"></i>{{ $pCountry ? ($pCountry->name_en . ($pCode ? " ({$pCode})" : '')) : $pCode }}
+                    </small>
+                @endif
+            </div>
         @else
             <span class="text-slate-400 fs-7">Not Specified</span>
         @endif

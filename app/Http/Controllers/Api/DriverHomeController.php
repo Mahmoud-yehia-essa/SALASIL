@@ -19,6 +19,7 @@ use App\Models\TruckSubType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -4970,6 +4971,41 @@ class DriverHomeController extends Controller
     }
 
     /**
+     * Resolve plate country (from countries table managed in admin/country/all)
+     * and normalize plate_number with a clear country prefix (e.g. "KW - 12345").
+     */
+    private function resolvePlateWithCountry(Request $request, string $rawPlate): array
+    {
+        $cleanPlate = trim(preg_replace('/\s+/', ' ', $rawPlate));
+        $country = null;
+
+        if ($request->filled('plate_country_id')) {
+            $country = Country::find((int) $request->input('plate_country_id'));
+        }
+        if (!$country && $request->filled('plate_country_code')) {
+            $codeInput = strtoupper(trim((string) $request->input('plate_country_code')));
+            $country = Country::whereRaw('UPPER(code) = ?', [$codeInput])->first();
+        }
+
+        $code = $country && !empty($country->code)
+            ? strtoupper(trim((string) $country->code))
+            : strtoupper(trim((string) $request->input('plate_country_code', '')));
+
+        $formattedPlate = $cleanPlate;
+        if ($cleanPlate !== '' && $code !== '') {
+            // Strip existing matching prefix so we never duplicate "KW - KW - 12345"
+            $stripped = preg_replace('/^' . preg_quote($code, '/') . '\s*[-·:|]\s*/i', '', $cleanPlate);
+            $formattedPlate = $code . ' - ' . trim($stripped);
+        }
+
+        return [
+            'plate_number'       => $formattedPlate,
+            'plate_country_id'   => $country ? $country->id : null,
+            'plate_country_code' => $code !== '' ? $code : null,
+        ];
+    }
+
+    /**
      * Format a DriverTruck model (or DriverProfile fallback) consistently for API responses.
      */
     private function formatDriverTruckPayload(?DriverTruck $truck, int $driverId, ?DriverProfile $driverProfile = null): array
@@ -4984,6 +5020,27 @@ class DriverHomeController extends Controller
         $truckSubTypeNameAr = $truckSubType ? ($truckSubType->name_ar ?: $truckSubType->name_en) : null;
 
         $plateNumber = $truck && $truck->plate_number ? $truck->plate_number : ($driverProfile && $driverProfile->plate_number ? $driverProfile->plate_number : '');
+        $plateCountryId = null;
+        $plateCountryCode = null;
+        $plateCountryName = null;
+        $plateCountryNameAr = null;
+
+        if ($truck && Schema::hasColumn('driver_trucks', 'plate_country_id') && !empty($truck->plate_country_id)) {
+            $plateCountryId = (int) $truck->plate_country_id;
+            $pc = $truck->relationLoaded('plateCountry') ? $truck->plateCountry : Country::find($plateCountryId);
+            if ($pc) {
+                $plateCountryCode = strtoupper((string) $pc->code);
+                $plateCountryName = $pc->name_en;
+                $plateCountryNameAr = $pc->name_ar;
+            }
+        }
+        if (!$plateCountryCode && $truck && Schema::hasColumn('driver_trucks', 'plate_country_code') && !empty($truck->plate_country_code)) {
+            $plateCountryCode = strtoupper((string) $truck->plate_country_code);
+        }
+        if (!$plateCountryCode && preg_match('/^([A-Z]{2,3})\s*[-·:|]\s*/', $plateNumber, $pm)) {
+            $plateCountryCode = strtoupper($pm[1]);
+        }
+
         $modelYear = $truck && $truck->manufacturing_year ? (string) $truck->manufacturing_year : ($driverProfile && $driverProfile->model_year ? (string) $driverProfile->model_year : '');
 
         $maxWeightNum = null;
@@ -5022,6 +5079,10 @@ class DriverHomeController extends Controller
             'title'                  => $title,
             'model_name'             => $fullModelTitle,
             'plate_number'           => $plateNumber,
+            'plate_country_id'       => $plateCountryId,
+            'plate_country_code'     => $plateCountryCode,
+            'plate_country_name'     => $plateCountryName,
+            'plate_country_name_ar'  => $plateCountryNameAr,
             'model_year'             => $modelYear,
             'max_capacity'           => $maxCapacity,
             'axles'                  => $axlesCount,
@@ -5157,11 +5218,19 @@ class DriverHomeController extends Controller
                 DriverTruck::where('driver_id', $driverId)->update(['is_default' => 0]);
             }
 
+            $plateMeta = $this->resolvePlateWithCountry($request, (string) $request->input('plate_number'));
+
             $truck = new DriverTruck();
             $truck->driver_id = $driverId;
             $truck->truck_type_id = $truckTypeId;
             $truck->truck_sub_type_id = $truckSubTypeId;
-            $truck->plate_number = trim((string) $request->input('plate_number'));
+            $truck->plate_number = $plateMeta['plate_number'];
+            if (Schema::hasColumn('driver_trucks', 'plate_country_id')) {
+                $truck->plate_country_id = $plateMeta['plate_country_id'];
+            }
+            if (Schema::hasColumn('driver_trucks', 'plate_country_code')) {
+                $truck->plate_country_code = $plateMeta['plate_country_code'];
+            }
             $truck->manufacturing_year = $request->filled('model_year') ? (int) preg_replace('/\D/', '', (string) $request->input('model_year')) : null;
             $truck->axles_count = $request->filled('axles_count') ? (int) $request->input('axles_count') : null;
             $truck->is_default = $makeDefault ? 1 : 0;
@@ -5261,7 +5330,14 @@ class DriverHomeController extends Controller
             $truck->truck_sub_type_id = $truckSubTypeId;
 
             if ($request->filled('plate_number')) {
-                $truck->plate_number = trim((string) $request->input('plate_number'));
+                $plateMeta = $this->resolvePlateWithCountry($request, (string) $request->input('plate_number'));
+                $truck->plate_number = $plateMeta['plate_number'];
+                if (Schema::hasColumn('driver_trucks', 'plate_country_id') && ($request->filled('plate_country_id') || $request->filled('plate_country_code'))) {
+                    $truck->plate_country_id = $plateMeta['plate_country_id'];
+                }
+                if (Schema::hasColumn('driver_trucks', 'plate_country_code') && ($request->filled('plate_country_id') || $request->filled('plate_country_code'))) {
+                    $truck->plate_country_code = $plateMeta['plate_country_code'];
+                }
             }
             if ($request->filled('model_year')) {
                 $yearNum = (int) preg_replace('/\D/', '', (string) $request->input('model_year'));

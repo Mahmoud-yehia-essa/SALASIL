@@ -171,6 +171,23 @@
                     </select>
                 </div>
             </div>
+
+            <!-- 5. Filter by Plate Country -->
+            @if(isset($countries) && count($countries) > 0)
+            <div class="col-12 col-sm-6 col-lg-3">
+                <label for="filter_plate_country_id" class="form-label fw-semibold text-slate-300 fs-7 mb-1">Plate Country (دولة اللوحة)</label>
+                <div class="position-relative">
+                    <select id="filter_plate_country_id" class="form-select rounded-3">
+                        <option value="">All Countries (الكل)</option>
+                        @foreach($countries as $country)
+                            <option value="{{ $country->id }}">
+                                {{ $country->code ? strtoupper($country->code) . ' · ' : '' }}{{ $country->name_en }} ({{ $country->name_ar }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -248,7 +265,7 @@
         });
 
         // Trigger AJAX filtering when other filter dropdowns change
-        $(document).on('change', '#filter_driver_id, #filter_truck_sub_type_id, #filter_is_verified', function() {
+        $(document).on('change', '#filter_driver_id, #filter_truck_sub_type_id, #filter_is_verified, #filter_plate_country_id', function() {
             fetchFilteredDriverTrucks();
         });
 
@@ -259,6 +276,7 @@
             $('#filter_truck_type_id').val('');
             $subTypeSelect.html(originalSubTypeOptions).val('');
             $('#filter_is_verified').val('all');
+            $('#filter_plate_country_id').val('');
 
             fetchFilteredDriverTrucks();
         });
@@ -269,6 +287,7 @@
             var truckTypeId = $('#filter_truck_type_id').val();
             var truckSubTypeId = $('#filter_truck_sub_type_id').val();
             var isVerified = $('#filter_is_verified').val();
+            var plateCountryId = $('#filter_plate_country_id').val();
 
             // Add loading opacity effect to tbody
             $('#driver_trucks_tbody').css('opacity', '0.4');
@@ -281,7 +300,8 @@
                     driver_id: driverId,
                     truck_type_id: truckTypeId,
                     truck_sub_type_id: truckSubTypeId,
-                    is_verified: isVerified
+                    is_verified: isVerified,
+                    plate_country_id: plateCountryId
                 },
                 dataType: "json",
                 success: function(response) {
