@@ -4798,14 +4798,62 @@ class DriverHomeController extends Controller
             }
         }
 
-        // 2. Query driver notifications strictly filtering for trip requests / orders
+        // 1b. Sync recent direct customer-to-driver payments ("Pay to a Driver") that may predate notification creation
+        try {
+            $recentDirectPayments = WalletTransaction::where('user_id', $driverId)
+                ->where('type', 'trip_earnings')
+                ->whereNull('scheduled_trip_id')
+                ->whereNull('shipment_id')
+                ->where('description', 'like', 'Payment received from%')
+                ->latest('id')
+                ->take(15)
+                ->get();
+
+            foreach ($recentDirectPayments as $wtxn) {
+                $alreadyNotified = DB::table('notifications')
+                    ->where('notifiable_id', $driverId)
+                    ->where('data->metadata->wallet_txn_id', $wtxn->id)
+                    ->exists();
+
+                if (!$alreadyNotified) {
+                    $amt = number_format((float) $wtxn->amount, 3);
+                    $bal = number_format((float) $wtxn->balance_after, 3);
+                    $desc = trim((string) $wtxn->description);
+                    $senderLabel = preg_replace('/^Payment received from\s*/i', '', $desc);
+                    $senderLabel = trim((string) $senderLabel) ?: 'Customer';
+
+                    DB::table('notifications')->insert([
+                        'id'              => (string) Str::uuid(),
+                        'notifiable_type' => User::class,
+                        'notifiable_id'   => $driverId,
+                        'type'            => 'App\Notifications\CustomerActivityNotification',
+                        'data'            => json_encode([
+                            'title'        => "Payment Received · +{$amt} KWD",
+                            'body'         => "You received {$amt} KWD from {$senderLabel}. Updated wallet balance: {$bal} KWD.",
+                            'type'         => 'payment',
+                            'reference_id' => 'WAL-' . $wtxn->id,
+                            'action_route' => '/driver_earnings_screen',
+                            'metadata'     => [
+                                'event'           => 'pay_to_driver',
+                                'wallet_txn_id'   => $wtxn->id,
+                                'amount_kwd'      => round((float) $wtxn->amount, 3),
+                                'currency'        => 'KWD',
+                                'customer_name'   => $senderLabel,
+                                'new_balance_kwd' => round((float) $wtxn->balance_after, 3),
+                            ],
+                        ]),
+                        'read_at'         => null,
+                        'created_at'      => $wtxn->created_at ?: now(),
+                        'updated_at'      => now(),
+                    ]);
+                }
+            }
+        } catch (\Throwable $ignoreWalletSync) {
+        }
+
+        // 2. Query all driver notifications (trip requests, payments, invoices, system, support)
         $rawNotifications = DB::table('notifications')
             ->where('notifiable_id', $driverId)
-            ->where(function ($q) {
-                $q->where('type', 'App\Notifications\NewTripRequestNotification')
-                  ->orWhere('data->type', 'order')
-                  ->orWhere('data->action_route', '/driver_trip_requests_screen');
-            })
             ->latest('created_at')
             ->take(50)
             ->get();
@@ -4814,13 +4862,28 @@ class DriverHomeController extends Controller
 
         $formatted = $rawNotifications->map(function ($n) {
             $data = is_array($n->data) ? $n->data : json_decode($n->data, true);
+            if (!is_array($data)) {
+                $data = [];
+            }
+
+            $resolvedType = strtolower((string) ($data['type'] ?? ''));
+            if ($resolvedType === '') {
+                $resolvedType = ($n->type === 'App\Notifications\NewTripRequestNotification')
+                    ? 'order'
+                    : 'system';
+            }
+
+            $defaultRoute = $resolvedType === 'order'
+                ? '/driver_trip_requests_screen'
+                : ($resolvedType === 'payment' ? '/driver_earnings_screen' : null);
+
             return [
                 'id'           => (string) $n->id,
-                'title'        => $data['title'] ?? 'New Trip Request Available',
+                'title'        => $data['title'] ?? 'Notification',
                 'body'         => $data['body'] ?? '',
-                'type'         => 'order',
+                'type'         => $resolvedType,
                 'reference_id' => $data['reference_id'] ?? null,
-                'action_route' => $data['action_route'] ?? '/driver_trip_requests_screen',
+                'action_route' => $data['action_route'] ?? $defaultRoute,
                 'is_read'      => !is_null($n->read_at),
                 'read_at'      => $n->read_at,
                 'created_at'   => $n->created_at,
@@ -4863,11 +4926,6 @@ class DriverHomeController extends Controller
 
         DB::table('notifications')
             ->where('notifiable_id', $driverId)
-            ->where(function ($q) {
-                $q->where('type', 'App\Notifications\NewTripRequestNotification')
-                  ->orWhere('data->type', 'order')
-                  ->orWhere('data->action_route', '/driver_trip_requests_screen');
-            })
             ->whereNull('read_at')
             ->update([
                 'read_at'    => now(),
@@ -4904,11 +4962,6 @@ class DriverHomeController extends Controller
 
         DB::table('notifications')
             ->where('notifiable_id', $driverId)
-            ->where(function ($q) {
-                $q->where('type', 'App\Notifications\NewTripRequestNotification')
-                  ->orWhere('data->type', 'order')
-                  ->orWhere('data->action_route', '/driver_trip_requests_screen');
-            })
             ->delete();
 
         return response()->json([

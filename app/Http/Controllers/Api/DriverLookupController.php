@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\ScheduledTripDriverInvitation;
+use App\Models\Shipment;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -41,9 +43,10 @@ class DriverLookupController extends Controller
         }
 
         $drivers = $query->limit(20)->get();
+        $completedTripsMap = $this->getCompletedTripsCounts($drivers->pluck('id')->all());
 
-        $results = $drivers->map(function ($driver) {
-            return $this->formatDriver($driver);
+        $results = $drivers->map(function ($driver) use ($completedTripsMap) {
+            return $this->formatDriver($driver, $completedTripsMap[$driver->id] ?? 0);
         })->values();
 
         Log::info("=== [DriverLookupController] Search returning " . count($results) . " drivers ===");
@@ -150,39 +153,7 @@ class DriverLookupController extends Controller
             ], 404);
         }
 
-        // Extract plate number: default truck or first truck
-        $defaultTruck = $driver->trucks->where('is_default', 1)->first() ?? $driver->trucks->first();
-        $plateNumber = $defaultTruck?->plate_number ?? 'KW-48192';
-
-        // Extract rating from profile or default to 4.9
-        $rating = 4.9;
-        if ($driver->driverProfile && $driver->driverProfile->rating > 0) {
-            $rating = (float) $driver->driverProfile->rating;
-        }
-
-        // Country name
-        $countryName = $driver->country?->name_en ?? $driver->country?->name_ar ?? 'Kuwait';
-
-        // Bank details
-        $codeDigits = preg_replace('/\D/', '', $driver->client_code ?? $driver->id);
-        $iban = 'KW81-NBKD-0000-0000-' . str_pad($codeDigits, 8, '0', STR_PAD_LEFT);
-
-        $driverData = [
-            'id'              => (string) $driver->id,
-            'client_code'     => $driver->client_code ?? 'DR-' . $driver->id,
-            'name'            => $driver->name ?: ($driver->fname . ' ' . $driver->lname),
-            'fname'           => $driver->fname ?? '',
-            'lname'           => $driver->lname ?? '',
-            'phone'           => $driver->phone ?? '',
-            'avatar'          => $driver->photo ? asset('storage/' . $driver->photo) : null,
-            'vehicle_number'  => $plateNumber,
-            'rating'          => $rating,
-            'country'         => $countryName,
-            'bank_name'       => 'NBK',
-            'iban'            => $iban,
-            'trips_completed' => 142,
-            'is_verified'     => (bool) $driver->is_verified,
-        ];
+        $driverData = $this->formatDriver($driver);
 
         Log::info("=== [DriverLookupController] Driver found: " . json_encode($driverData));
 
@@ -194,41 +165,105 @@ class DriverLookupController extends Controller
     }
 
     /**
-     * Format a driver User model to API array
+     * Count real completed trips (scheduled trips + delivered shipments) for a set of driver IDs.
+     *
+     * @param array<int> $driverIds
+     * @return array<int, int>
+     */
+    private function getCompletedTripsCounts(array $driverIds): array
+    {
+        if (empty($driverIds)) {
+            return [];
+        }
+
+        $invitationCounts = ScheduledTripDriverInvitation::whereIn('driver_id', $driverIds)
+            ->where('status', 'completed')
+            ->selectRaw('driver_id, COUNT(*) as total')
+            ->groupBy('driver_id')
+            ->pluck('total', 'driver_id')
+            ->all();
+
+        $shipmentCounts = Shipment::whereIn('driver_id', $driverIds)
+            ->where('status', 'delivered')
+            ->selectRaw('driver_id, COUNT(*) as total')
+            ->groupBy('driver_id')
+            ->pluck('total', 'driver_id')
+            ->all();
+
+        $totals = [];
+        foreach ($driverIds as $id) {
+            $totals[$id] = (int) ($invitationCounts[$id] ?? 0) + (int) ($shipmentCounts[$id] ?? 0);
+        }
+
+        return $totals;
+    }
+
+    /**
+     * Resolve driver profile photo URL consistent with AuthController uploads.
+     */
+    private function resolveAvatarUrl(?string $photo): ?string
+    {
+        $photo = trim((string) $photo);
+        if ($photo === '') {
+            return null;
+        }
+
+        if (str_starts_with($photo, 'http://') || str_starts_with($photo, 'https://')) {
+            return $photo;
+        }
+
+        $normalized = ltrim($photo, '/');
+        if (str_starts_with($normalized, 'upload/') || str_starts_with($normalized, 'storage/')) {
+            return asset($normalized);
+        }
+
+        return asset('upload/user_images/' . $normalized);
+    }
+
+    /**
+     * Format a driver User model to API array using real database values only.
      *
      * @param User $driver
+     * @param int|null $completedTripsCount
      * @return array
      */
-    private function formatDriver(User $driver): array
+    private function formatDriver(User $driver, ?int $completedTripsCount = null): array
     {
         $defaultTruck = $driver->trucks->where('is_default', 1)->first() ?? $driver->trucks->first();
-        $plateNumber = $defaultTruck?->plate_number ?? '8888';
+        $plateNumber = $defaultTruck && trim((string) $defaultTruck->plate_number) !== ''
+            ? trim((string) $defaultTruck->plate_number)
+            : null;
 
-        $rating = 4.9;
-        if ($driver->driverProfile && $driver->driverProfile->rating > 0) {
+        $rating = null;
+        if ($driver->driverProfile && $driver->driverProfile->rating !== null && (float) $driver->driverProfile->rating > 0) {
             $rating = (float) $driver->driverProfile->rating;
         }
 
-        $countryName = $driver->country?->name_en ?? $driver->country?->name_ar ?? 'Kuwait';
+        $countryName = $driver->country?->name_en ?: ($driver->country?->name_ar ?: null);
 
-        $codeDigits = preg_replace('/\D/', '', $driver->client_code ?? (string) $driver->id);
-        $iban = 'KW81-NBKD-0000-0000-' . str_pad($codeDigits, 8, '0', STR_PAD_LEFT);
+        if ($completedTripsCount === null) {
+            $counts = $this->getCompletedTripsCounts([$driver->id]);
+            $completedTripsCount = $counts[$driver->id] ?? 0;
+        }
+
+        $fullName = trim((string) ($driver->name ?: trim(($driver->fname ?? '') . ' ' . ($driver->lname ?? ''))));
 
         return [
-            'id'              => (string) $driver->id,
-            'client_code'     => $driver->client_code ?? 'DR-' . $driver->id,
-            'name'            => $driver->name ?: ($driver->fname . ' ' . $driver->lname),
-            'fname'           => $driver->fname ?? '',
-            'lname'           => $driver->lname ?? '',
-            'phone'           => $driver->phone ?? '',
-            'avatar'          => $driver->photo ? asset('storage/' . $driver->photo) : null,
-            'vehicle_number'  => $plateNumber,
-            'rating'          => $rating,
-            'country'         => $countryName,
-            'bank_name'       => 'NBK',
-            'iban'            => $iban,
-            'trips_completed' => 142,
-            'is_verified'     => (bool) $driver->is_verified,
+            'id'                 => (string) $driver->id,
+            'client_code'        => $driver->client_code ?? 'DR-' . $driver->id,
+            'name'               => $fullName,
+            'fname'              => $driver->fname ?? '',
+            'lname'              => $driver->lname ?? '',
+            'phone'              => $driver->phone ?? '',
+            'avatar'             => $this->resolveAvatarUrl($driver->photo),
+            'vehicle_number'     => $plateNumber,
+            'rating'             => $rating,
+            'country'            => $countryName,
+            'bank_name'          => null,
+            'iban'               => null,
+            'payout_destination' => 'Salasil Driver Wallet',
+            'trips_completed'    => (int) $completedTripsCount,
+            'is_verified'        => (bool) $driver->is_verified,
         ];
     }
 
@@ -314,7 +349,9 @@ class DriverLookupController extends Controller
         DB::beginTransaction();
         try {
             $customerTxn = null;
+            $driverTxn = null;
             $newCustomerBalance = null;
+            $driverNewBalance = null;
 
             // 3. Process Salasil Wallet deduction
             if ($paymentMethod === 'wallet' || $paymentMethod === 'salasil_wallet') {
@@ -365,12 +402,12 @@ class DriverLookupController extends Controller
                         $driver->driverProfile->save();
                     }
 
-                    WalletTransaction::create([
+                    $driverTxn = WalletTransaction::create([
                         'user_id'           => $driver->id,
                         'amount'            => $amount,
                         'type'              => 'trip_earnings',
                         'balance_after'     => $driverNewBalance,
-                        'description'       => "Payment received from {$user->fname} ({$user->client_code})",
+                        'description'       => "Payment received from {$user->fname} ({$user->client_code})" . ($note ? " - {$note}" : ''),
                         'shipment_id'       => null,
                         'scheduled_trip_id' => null,
                     ]);
@@ -378,6 +415,52 @@ class DriverLookupController extends Controller
             }
 
             DB::commit();
+
+            // 4. Send professional in-app notification to the Driver for Pay to a Driver
+            if ($driver) {
+                try {
+                    $user->loadMissing('companyProfile');
+                    $companyName = trim((string) optional($user->companyProfile)->company_name);
+                    $personName = trim(($user->fname ?? '') . ' ' . ($user->lname ?? ''));
+                    $customerDisplay = $companyName !== ''
+                        ? ($personName !== '' ? "{$companyName} ({$personName})" : $companyName)
+                        : ($personName !== '' ? $personName : ($user->client_code ?: 'Customer'));
+
+                    $formattedAmt = number_format($amount, 3);
+                    $bodyText = "You received {$formattedAmt} KWD from {$customerDisplay}";
+                    if ($note) {
+                        $bodyText .= " · Note: {$note}";
+                    }
+                    if ($driverNewBalance !== null) {
+                        $bodyText .= ". Updated wallet balance: " . number_format($driverNewBalance, 3) . " KWD.";
+                    } else {
+                        $bodyText .= ".";
+                    }
+
+                    $driver->notify(new \App\Notifications\CustomerActivityNotification([
+                        'title'        => "Payment Received · +{$formattedAmt} KWD",
+                        'body'         => $bodyText,
+                        'type'         => 'payment',
+                        'reference_id' => 'TXN-' . $txnId,
+                        'action_route' => '/driver_earnings_screen',
+                        'metadata'     => [
+                            'event'           => 'pay_to_driver',
+                            'transaction_id'  => $txnId,
+                            'wallet_txn_id'   => $driverTxn ? $driverTxn->id : null,
+                            'amount_kwd'      => round($amount, 3),
+                            'currency'        => 'KWD',
+                            'payment_method'  => $paymentMethod,
+                            'customer_id'     => $user->id,
+                            'customer_name'   => $customerDisplay,
+                            'customer_code'   => $user->client_code,
+                            'note'            => $note,
+                            'new_balance_kwd' => $driverNewBalance,
+                        ],
+                    ]));
+                } catch (\Throwable $notifEx) {
+                    Log::warning('[DriverLookupController] Driver payment notification warning: ' . $notifEx->getMessage());
+                }
+            }
 
             Log::info("=== [DriverLookupController] Pay driver success: Txn ID {$txnId}, Customer {$user->id}, New Balance {$newCustomerBalance} ===");
 

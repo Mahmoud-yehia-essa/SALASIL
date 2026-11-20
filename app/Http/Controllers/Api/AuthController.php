@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\CompanyProfile;
+use App\Models\Country;
 use App\Models\DriverProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -117,7 +119,10 @@ class AuthController extends Controller
             } elseif ($request->role === 'driver') {
                 $rules['phone']                    = 'required|string|max:255';
                 $rules['truck_type_id']             = 'nullable|exists:truck_types,id';
+                $rules['truck_sub_type_id']         = 'nullable|integer';
                 $rules['plate_number']             = 'nullable|string|max:50';
+                $rules['plate_country_id']         = 'nullable|integer';
+                $rules['plate_country_code']       = 'nullable|string|max:10';
                 $rules['model_year']               = 'nullable|string|max:50';
                 $rules['administrative_number']    = 'nullable|string|max:100';
                 $rules['is_main_truck']            = 'nullable';
@@ -320,11 +325,39 @@ class AuthController extends Controller
             }
             // 4. Handle Driver Profile
             elseif ($request->role === 'driver') {
+                $plateCountryId = null;
+                $plateCountryCode = null;
+                $resolvedPlateNumber = $request->filled('plate_number') ? trim((string) $request->plate_number) : null;
+
+                if ($request->filled('plate_country_id')) {
+                    $plateCountry = Country::find((int) $request->input('plate_country_id'));
+                    if ($plateCountry) {
+                        $plateCountryId = (int) $plateCountry->id;
+                        $plateCountryCode = strtoupper(trim((string) ($plateCountry->code ?? '')));
+                    }
+                }
+                if (!$plateCountryCode && $request->filled('plate_country_code')) {
+                    $plateCountryCode = strtoupper(trim((string) $request->input('plate_country_code')));
+                    if (!$plateCountryId && $plateCountryCode !== '') {
+                        $matchedCountry = Country::whereRaw('UPPER(code) = ?', [$plateCountryCode])->first();
+                        if ($matchedCountry) {
+                            $plateCountryId = (int) $matchedCountry->id;
+                        }
+                    }
+                }
+                if ($resolvedPlateNumber !== null && $resolvedPlateNumber !== '' && $plateCountryCode) {
+                    $cleanLocal = preg_replace('/^' . preg_quote($plateCountryCode, '/') . '\s*[-·:|]\s*/i', '', $resolvedPlateNumber);
+                    $cleanLocal = trim((string) $cleanLocal);
+                    if ($cleanLocal !== '') {
+                        $resolvedPlateNumber = $plateCountryCode . ' - ' . $cleanLocal;
+                    }
+                }
+
                 $driver = new DriverProfile();
                 $driver->user_id               = $user->id;
                 $driver->truck_type_id         = $request->filled('truck_type_id') ? $request->truck_type_id : null;
                 $driver->license_number        = $request->filled('license_number') ? trim($request->license_number) : null;
-                $driver->plate_number          = $request->filled('plate_number') ? trim($request->plate_number) : null;
+                $driver->plate_number          = $resolvedPlateNumber;
                 $driver->model_year            = $request->filled('model_year') ? trim($request->model_year) : ($request->filled('manufacturing_year') ? trim($request->manufacturing_year) : null);
                 $driver->administrative_number = $request->filled('administrative_number') ? trim($request->administrative_number) : ($request->filled('max_load') ? trim($request->max_load) : null);
                 $driver->is_main_truck         = $request->has('is_main_truck') ? (bool)$request->is_main_truck : 1;
@@ -355,14 +388,22 @@ class AuthController extends Controller
                 // Populate initial default truck in driver_trucks if plate or truck type provided
                 if ($driver->truck_type_id || $driver->plate_number) {
                     try {
-                        \App\Models\DriverTruck::create([
+                        $initialTruckData = [
                             'driver_id'          => $user->id,
                             'truck_type_id'      => $driver->truck_type_id ?? (\App\Models\TruckType::first()->id ?? 1),
+                            'truck_sub_type_id'  => $request->filled('truck_sub_type_id') ? (int) $request->input('truck_sub_type_id') : null,
                             'plate_number'       => $driver->plate_number,
                             'manufacturing_year' => $driver->model_year ? (int)$driver->model_year : null,
                             'is_default'         => $driver->is_main_truck ? 1 : 0,
                             'is_verified'        => 0,
-                        ]);
+                        ];
+                        if (Schema::hasColumn('driver_trucks', 'plate_country_id')) {
+                            $initialTruckData['plate_country_id'] = $plateCountryId;
+                        }
+                        if (Schema::hasColumn('driver_trucks', 'plate_country_code')) {
+                            $initialTruckData['plate_country_code'] = $plateCountryCode;
+                        }
+                        \App\Models\DriverTruck::create($initialTruckData);
                     } catch (\Throwable $ignoreTruck) {
                         Log::warning('Driver truck initial creation warning: ' . $ignoreTruck->getMessage());
                     }
